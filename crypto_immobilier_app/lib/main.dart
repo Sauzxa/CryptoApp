@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'call_log_test_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,11 +17,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const Scaffold(
-        body: Center(
-          child: Text('Hello, Crypto Immobilier!'),
-        ),
-      ),
+      home: const CallLogTestPage(),
     );
   }
 }
