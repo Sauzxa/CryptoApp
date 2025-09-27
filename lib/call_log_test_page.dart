@@ -89,10 +89,7 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
   void _showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
     }
   }
@@ -137,9 +134,11 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
     } else {
       // Input/Output - show only incoming and outgoing (exclude missed/rejected)
       return _callLogs
-          .where((call) =>
-              call.callType == CallType.incoming ||
-              call.callType == CallType.outgoing)
+          .where(
+            (call) =>
+                call.callType == CallType.incoming ||
+                call.callType == CallType.outgoing,
+          )
           .toList();
     }
   }
@@ -262,10 +261,7 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
                 ),
                 Text(
                   _getCallTypeText(call.callType!),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -312,10 +308,12 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
       return _buildCallList();
     }
 
-    final incomingCalls =
-        _callLogs.where((call) => call.callType == CallType.incoming).toList();
-    final outgoingCalls =
-        _callLogs.where((call) => call.callType == CallType.outgoing).toList();
+    final incomingCalls = _callLogs
+        .where((call) => call.callType == CallType.incoming)
+        .toList();
+    final outgoingCalls = _callLogs
+        .where((call) => call.callType == CallType.outgoing)
+        .toList();
 
     return DefaultTabController(
       length: 2,
@@ -428,9 +426,7 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
           padding: EdgeInsets.zero,
           children: [
             const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue,
-              ),
+              decoration: BoxDecoration(color: Colors.blue),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -445,10 +441,7 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
                   ),
                   Text(
                     'Call Log Test',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                 ],
               ),
