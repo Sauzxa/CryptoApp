@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  crypto-immobilier-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - FLUTTER_WEB_PORT=8080
+      - FLUTTER_WEB_HOSTNAME=0.0.0.0
+    volumes:
+      # Mount source code for development (optional)
+      - .:/app
+      # Persist Flutter cache
+      - flutter_cache:/home/developer/.flutter
+      - pub_cache:/home/developer/.pub-cache
+    container_name: crypto_immobilier_app
+    restart: unless-stopped
+
+  # Development service with hot reload
+  crypto-immobilier-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - FLUTTER_WEB_PORT=8080
+      - FLUTTER_WEB_HOSTNAME=0.0.0.0
+    volumes:
+      - .:/app
+      - flutter_cache:/home/developer/.flutter
+      - pub_cache:/home/developer/.pub-cache
+    command: ["flutter", "run", "--web-port", "8080", "--web-hostname", "0.0.0.0", "--hot"]
+    container_name: crypto_immobilier_app_dev
+    profiles:
+      - dev
+
+volumes:
+  flutter_cache:
+  pub_cache:
