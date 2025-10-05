@@ -84,7 +84,7 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
       });
       _showError('Failed to load call logs: $e');
     }
-  }
+  } //
 
   void _showError(String message) {
     if (mounted) {
