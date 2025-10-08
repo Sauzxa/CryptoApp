@@ -20,200 +20,200 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
-        child: AppBar(
-          backgroundColor: const Color(0xFF6366F1),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              _scaffoldKey.currentState?.openDrawer();
-            },
-          ),
-          title: const Text(
-            'Accueil',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-            ),
-          actions: [
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: Color(0xFF6366F1),
-                ),
-                onPressed: () {
-                  // Notification action
-                },
-              ),
-            ),
-          ],
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('lib/assets/CryptoBackground.png'),
+          fit: BoxFit.cover,
         ),
       ),
-      drawer: Drawer(
-        child: Container(
-          color: Colors.white,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: const BoxDecoration(color: Color(0xFF6366F1)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: const [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.person,
-                        size: 35,
-                        color: Color(0xFF6366F1),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      'Menu',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: Colors.transparent,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(70),
+          child: AppBar(
+            backgroundColor: const Color(0xFF6366F1),
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.menu, color: Colors.white),
+              onPressed: () {
+                _scaffoldKey.currentState?.openDrawer();
+              },
+            ),
+            title: const Text(
+              'Accueil',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
-              // Drawer content will be added later
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  'Content à venir...',
-                  style: TextStyle(color: Colors.grey),
+            ),
+            actions: [
+              Container(
+                margin: const EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.notifications_outlined,
+                    color: Color(0xFF6366F1),
+                  ),
+                  onPressed: () {
+                    // Notification action
+                  },
                 ),
               ),
             ],
           ),
         ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('lib/assets/CryptoBackground.png'),
-            fit: BoxFit.cover,
+        drawer: Drawer(
+          child: Container(
+            color: Colors.white,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: const BoxDecoration(color: Color(0xFF6366F1)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: const [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.white,
+                        child: Icon(
+                          Icons.person,
+                          size: 35,
+                          color: Color(0xFF6366F1),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Menu',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Drawer content will be added later
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Content à venir...',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        child: SafeArea(
+        body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
                 const SizedBox(height: 30),
                 // Grid of cards
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.85,
-                children: [
-                  _buildCard(
-                    title: 'Réserver un\nrendez-vous',
-                    subtitle: 'Prenez un rendez-vous\npour un client',
-                    color: const Color(0xFF93C5FD),
-                    icon: Icons.calendar_today_outlined,
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 0.85,
+                  children: [
+                    _buildCard(
+                      title: 'Réserver un\nrendez-vous',
+                      subtitle: 'Prenez un rendez-vous\npour un client',
+                      color: const Color(0xFF93C5FD),
+                      icon: Icons.calendar_today_outlined,
+                    ),
+                    _buildCard(
+                      title: 'Gestion des\nrendez-vous',
+                      subtitle: 'Voir les rendez-vous de\nvos clients',
+                      color: const Color(0xFF7DD3FC),
+                      icon: Icons.event_note_outlined,
+                    ),
+                    _buildCard(
+                      title: 'Voir\ndocuments',
+                      subtitle:
+                          'Voir les documents pour\nles traitements des\nréservations',
+                      color: const Color(0xFF475569),
+                      icon: Icons.description_outlined,
+                      textColor: Colors.white,
+                    ),
+                    _buildCard(
+                      title: 'Statistiques',
+                      subtitle: 'Voir vos statistiques\net performances',
+                      color: const Color(0xFF6366F1),
+                      icon: Icons.bar_chart_outlined,
+                      textColor: Colors.white,
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 100,
+                ), // Extra space for floating navigation
+              ],
+            ),
+          ),
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.only(left: 7.0, right: 7.0, bottom: 16.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF6366F1),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: const Color(0xFF6366F1),
+                selectedItemColor: Colors.white,
+                unselectedItemColor: Colors.white70,
+                selectedFontSize: 9,
+                unselectedFontSize: 8,
+                currentIndex: _selectedIndex,
+                onTap: _onItemTapped,
+                elevation: 0,
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home_outlined),
+                    activeIcon: Icon(Icons.home),
+                    label: 'Accueil',
                   ),
-                  _buildCard(
-                    title: 'Gestion des\nrendez-vous',
-                    subtitle: 'Voir les rendez-vous de\nvos clients',
-                    color: const Color(0xFF7DD3FC),
-                    icon: Icons.event_note_outlined,
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.phone_outlined),
+                    activeIcon: Icon(Icons.phone),
+                    label: 'Appel',
                   ),
-                  _buildCard(
-                    title: 'Voir\ndocuments',
-                    subtitle:
-                        'Voir les documents pour\nles traitements des\nréservations',
-                    color: const Color(0xFF475569),
-                    icon: Icons.description_outlined,
-                    textColor: Colors.white,
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.history_outlined),
+                    activeIcon: Icon(Icons.history),
+                    label: 'Historique',
                   ),
-                  _buildCard(
-                    title: 'Statistiques',
-                    subtitle: 'Voir vos statistiques\net performances',
-                    color: const Color(0xFF6366F1),
-                    icon: Icons.bar_chart_outlined,
-                    textColor: Colors.white,
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.phone_in_talk_outlined),
+                    activeIcon: Icon(Icons.phone_in_talk),
+                    label: 'Gestion des appels',
                   ),
                 ],
               ),
-              const SizedBox(
-                height: 100,
-              ), // Extra space for floating navigation
-            ],
-          ),
-        ),
-      ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(left: 7.0, right: 7.0, bottom: 16.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF6366F1),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(30),
-            child: BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: const Color(0xFF6366F1),
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white70,
-              selectedFontSize: 9,
-              unselectedFontSize: 8,
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              elevation: 0,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home),
-                  label: 'Accueil',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.phone_outlined),
-                  activeIcon: Icon(Icons.phone),
-                  label: 'Appel',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.history_outlined),
-                  activeIcon: Icon(Icons.history),
-                  label: 'Historique',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.phone_in_talk_outlined),
-                  activeIcon: Icon(Icons.phone_in_talk),
-                  label: 'Gestion des appels',
-                ),
-              ],
             ),
           ),
         ),
