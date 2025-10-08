@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'call_log_test_page.dart';
+import 'onboarding/welcomeScreen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,8 +15,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Crypto Immobilier',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const CallLogTestPage(),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        fontFamily: 'Roboto', // Modern font
+      ),
+      home: const WelcomeScreen(),
     );
   }
 }
