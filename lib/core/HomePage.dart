@@ -107,21 +107,14 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             actions: [
-              Container(
-                margin: const EdgeInsets.only(right: 16),
-                decoration: BoxDecoration(
+              IconButton(
+                icon: const Icon(
+                  Icons.notifications_outlined,
                   color: Colors.white,
-                  shape: BoxShape.circle,
                 ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.notifications_outlined,
-                    color: Color(0xFF6366F1),
-                  ),
-                  onPressed: () {
-                    // Notification action
-                  },
-                ),
+                onPressed: () {
+                  // Notification action
+                },
               ),
             ],
           ),
