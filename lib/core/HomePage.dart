@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cryptoimmobilierapp/utils/Routes.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -11,11 +12,36 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  @override
+  void initState() {
+    super.initState();
+    // Reset selected index when page loads
+    _selectedIndex = 0;
+  }
+
   void _onItemTapped(int index) {
+    // If already on home and tapping home, do nothing
+    if (index == 0) {
+      setState(() {
+        _selectedIndex = 0;
+      });
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
     });
-    // Navigation logic will be added later
+
+    // Navigate based on selected index
+    if (index == 1) {
+      // Navigate to Call page
+      Navigator.pushNamed(context, AppRoutes.call).then((_) {
+        // Reset to home when coming back
+        setState(() {
+          _selectedIndex = 0;
+        });
+      });
+    }
   }
 
   @override
@@ -133,27 +159,27 @@ class _HomePageState extends State<HomePage> {
                       title: 'Réserver un\nrendez-vous',
                       subtitle: 'Prenez un rendez-vous\npour un client',
                       color: const Color(0xFF93C5FD),
-                      icon: Icons.calendar_today_outlined,
+                      icon: Icons.edit_calendar_outlined,
                     ),
                     _buildCard(
                       title: 'Gestion des\nrendez-vous',
                       subtitle: 'Voir les rendez-vous de\nvos clients',
                       color: const Color(0xFF7DD3FC),
-                      icon: Icons.event_note_outlined,
+                      icon: Icons.content_paste_outlined,
                     ),
                     _buildCard(
                       title: 'Voir\ndocuments',
                       subtitle:
                           'Voir les documents pour\nles traitements des\nréservations',
                       color: const Color(0xFF475569),
-                      icon: Icons.description_outlined,
+                      icon: Icons.article_outlined,
                       textColor: Colors.white,
                     ),
                     _buildCard(
                       title: 'Statistiques',
                       subtitle: 'Voir vos statistiques\net performances',
                       color: const Color(0xFF6366F1),
-                      icon: Icons.bar_chart_outlined,
+                      icon: Icons.analytics_outlined,
                       textColor: Colors.white,
                     ),
                   ],
@@ -198,18 +224,18 @@ class _HomePageState extends State<HomePage> {
                     label: 'Accueil',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.phone_outlined),
-                    activeIcon: Icon(Icons.phone),
+                    icon: Icon(Icons.call_outlined),
+                    activeIcon: Icon(Icons.call),
                     label: 'Appel',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.history_outlined),
-                    activeIcon: Icon(Icons.history),
+                    icon: Icon(Icons.schedule_outlined),
+                    activeIcon: Icon(Icons.schedule),
                     label: 'Historique',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.phone_in_talk_outlined),
-                    activeIcon: Icon(Icons.phone_in_talk),
+                    icon: Icon(Icons.support_agent_outlined),
+                    activeIcon: Icon(Icons.support_agent),
                     label: 'Gestion des appels',
                   ),
                 ],
