@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cryptoimmobilierapp/utils/Routes.dart';
 
 class CallPage extends StatefulWidget {
   const CallPage({Key? key}) : super(key: key);
@@ -13,12 +14,33 @@ class _CallPageState extends State<CallPage> {
   String _phoneNumber = '';
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    // Navigation logic will be added later
-    if (index == 0) {
-      Navigator.pop(context); // Go back to home
+    if (index == _selectedIndex) return; // Already on this page
+
+    switch (index) {
+      case 0:
+        // Navigate to Home
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.home,
+          (route) => false,
+        );
+        break;
+      case 1:
+        // Already on Call page
+        setState(() {
+          _selectedIndex = 1;
+        });
+        break;
+      case 2:
+        // Navigate to Historique
+        Navigator.pushReplacementNamed(context, AppRoutes.historique);
+        break;
+      case 3:
+        // Navigate to Gestion des appels (to be implemented)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gestion des appels - à venir')),
+        );
+        break;
     }
   }
 

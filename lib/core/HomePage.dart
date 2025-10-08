@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -17,6 +18,18 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     // Reset selected index when page loads
     _selectedIndex = 0;
+    // Request permission on first load
+    _requestPhonePermission();
+  }
+
+  Future<void> _requestPhonePermission() async {
+    // Wait for the first frame to be rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final phoneStatus = await Permission.phone.status;
+      if (phoneStatus.isDenied) {
+        await Permission.phone.request();
+      }
+    });
   }
 
   void _onItemTapped(int index) {
@@ -33,14 +46,32 @@ class _HomePageState extends State<HomePage> {
     });
 
     // Navigate based on selected index
-    if (index == 1) {
-      // Navigate to Call page
-      Navigator.pushNamed(context, AppRoutes.call).then((_) {
-        // Reset to home when coming back
+    switch (index) {
+      case 1:
+        // Navigate to Call page
+        Navigator.pushNamed(context, AppRoutes.call).then((_) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        });
+        break;
+      case 2:
+        // Navigate to Historique page
+        Navigator.pushNamed(context, AppRoutes.historique).then((_) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        });
+        break;
+      case 3:
+        // Navigate to Gestion des appels page (to be implemented)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gestion des appels - à venir')),
+        );
         setState(() {
           _selectedIndex = 0;
         });
-      });
+        break;
     }
   }
 
