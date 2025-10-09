@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
+import '../models/UserModel.dart';
+import '../api/api_client.dart';
+import '../providers/auth_provider.dart';
 
 class AgentTerrainPage extends StatefulWidget {
   const AgentTerrainPage({Key? key}) : super(key: key);
@@ -13,60 +17,66 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  // Sample agent data - replace with actual data source later
-  final List<Map<String, dynamic>> _agents = [
-    {
-      'name': 'Fergune AbdElraouf',
-      'available': true,
-      'hasImage': true,
-      'elapsedTime': '2h 30min',
-    },
-    {
-      'name': 'Benzaoui khaled',
-      'available': false,
-      'hasImage': false,
-      'elapsedTime': '45min',
-    },
-    {
-      'name': 'Zergat Mouhamed',
-      'available': false,
-      'hasImage': true,
-      'elapsedTime': '1h 15min',
-    },
-    {
-      'name': 'Labandji Omar',
-      'available': true,
-      'hasImage': false,
-      'elapsedTime': '30min',
-    },
-    {
-      'name': 'Derriche sami',
-      'available': true,
-      'hasImage': false,
-      'elapsedTime': '3h 20min',
-    },
-    {
-      'name': 'Khider wasim',
-      'available': true,
-      'hasImage': false,
-      'elapsedTime': '1h 05min',
-    },
-    {
-      'name': 'ziddene khaled',
-      'available': false,
-      'hasImage': false,
-      'elapsedTime': '50min',
-    },
-  ];
+  // Data fetching states
+  bool _isLoading = false;
+  String? _errorMessage;
+  List<UserModel> _agents = [];
 
-  List<Map<String, dynamic>> get _filteredAgents {
+  @override
+  void initState() {
+    super.initState();
+    _fetchAgents();
+  }
+
+  Future<void> _fetchAgents() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+
+    if (token == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Session expirée. Veuillez vous reconnecter.';
+      });
+      return;
+    }
+
+    try {
+      final response = await apiClient.getAllAgents(token);
+
+      if (response.success && response.data != null) {
+        setState(() {
+          _agents = response.data!;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage =
+              response.message ?? 'Erreur lors du chargement des agents';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Erreur: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<UserModel> get _filteredAgents {
     if (_searchQuery.isEmpty) {
       return _agents;
     }
     return _agents
         .where(
           (agent) =>
-              agent['name'].toLowerCase().contains(_searchQuery.toLowerCase()),
+              agent.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              agent.phone.toLowerCase().contains(_searchQuery.toLowerCase()),
         )
         .toList();
   }
@@ -102,16 +112,21 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
     }
   }
 
-  Widget _buildAgentCard(Map<String, dynamic> agent) {
-    final bool isAvailable = agent['available'] as bool;
-    final bool hasImage = agent['hasImage'] as bool;
+  Widget _buildAgentCard(UserModel agent) {
+    final bool isAvailable = agent.availability == 'available';
+    final bool hasPhoto = agent.profilePhoto?.url != null;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isAvailable
+              ? const Color(0xFF10B981).withOpacity(0.3)
+              : const Color(0xFFEF4444).withOpacity(0.3),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -120,76 +135,152 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Profile image or icon
+          // Header with availability status
           Container(
-            width: 50,
-            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: hasImage
-                  ? Colors.grey.shade200
-                  : const Color(0xFF6366F1).withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: hasImage
-                ? ClipOval(
-                    child: Icon(
-                      Icons.person,
-                      size: 30,
-                      color: Colors.grey.shade600,
-                    ),
-                  )
-                : Icon(
-                    Icons.person_outline,
-                    size: 30,
-                    color: const Color(0xFF6366F1),
-                  ),
-          ),
-          const SizedBox(width: 16),
-          // Agent name
-          Expanded(
-            child: Text(
-              agent['name'],
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+              color:
+                  (isAvailable
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444))
+                      .withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(14),
+                topRight: Radius.circular(14),
               ),
             ),
-          ),
-          // Status badge and elapsed time
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
+            child: Row(
+              children: [
+                Icon(
+                  isAvailable ? Icons.check_circle : Icons.cancel,
                   color: isAvailable
-                      ? const Color(0xFFD1FAE5)
-                      : const Color(0xFFFECDD3),
-                  borderRadius: BorderRadius.circular(20),
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFFEF4444),
+                  size: 20,
                 ),
-                child: Text(
+                const SizedBox(width: 8),
+                Text(
                   isAvailable ? 'Disponible' : 'Indisponible',
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                     color: isAvailable
-                        ? const Color(0xFF059669)
-                        : const Color(0xFFE11D48),
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFEF4444),
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                agent['elapsedTime'],
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
-            ],
+              ],
+            ),
+          ),
+
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Profile photo
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: const Color(0xFF6366F1).withOpacity(0.1),
+                  backgroundImage: hasPhoto
+                      ? NetworkImage(agent.profilePhoto!.url!)
+                      : null,
+                  child: !hasPhoto
+                      ? Icon(
+                          Icons.person,
+                          size: 32,
+                          color: const Color(0xFF6366F1),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 16),
+
+                // Agent info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        agent.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.phone_outlined,
+                            size: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            agent.phone,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          agent.roleDisplayName,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6366F1),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Messagerie button (disabled)
+                Column(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: IconButton(
+                        onPressed: null, // Disabled for now
+                        icon: Icon(
+                          Icons.message_outlined,
+                          color: Colors.grey.shade400,
+                          size: 20,
+                        ),
+                        tooltip: 'Messagerie (bientôt disponible)',
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Messagerie',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -235,7 +326,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                   });
                 },
                 decoration: InputDecoration(
-                  hintText: 'Entrez le nom de l\'agent',
+                  hintText: 'Rechercher par nom ou téléphone',
                   hintStyle: TextStyle(
                     color: Colors.grey.shade400,
                     fontSize: 14,
@@ -265,9 +356,55 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                 ),
               ),
             ),
-            // Agent list
+
+            // Agent list with loading and error states
             Expanded(
-              child: _filteredAgents.isEmpty
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF6366F1),
+                      ),
+                    )
+                  : _errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Colors.red.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _fetchAgents,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Réessayer'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6366F1),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _filteredAgents.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -279,7 +416,9 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Aucun agent trouvé',
+                            _searchQuery.isEmpty
+                                ? 'Aucun agent disponible'
+                                : 'Aucun agent trouvé',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey.shade600,
@@ -288,12 +427,16 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      itemCount: _filteredAgents.length,
-                      padding: const EdgeInsets.only(bottom: 100),
-                      itemBuilder: (context, index) {
-                        return _buildAgentCard(_filteredAgents[index]);
-                      },
+                  : RefreshIndicator(
+                      onRefresh: _fetchAgents,
+                      color: const Color(0xFF6366F1),
+                      child: ListView.builder(
+                        itemCount: _filteredAgents.length,
+                        padding: const EdgeInsets.only(top: 8, bottom: 100),
+                        itemBuilder: (context, index) {
+                          return _buildAgentCard(_filteredAgents[index]);
+                        },
+                      ),
                     ),
             ),
           ],

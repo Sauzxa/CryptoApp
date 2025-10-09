@@ -102,7 +102,7 @@ If you prefer local development without Docker:
 ### Prerequisites
 
 - Flutter SDK (3.24.3 or later)
-- Java 17 JDK
+- Java 21 JDK
 - Android SDK
 - Kotlin
 

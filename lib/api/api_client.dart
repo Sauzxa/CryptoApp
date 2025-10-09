@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../models/UserModel.dart';
 import '../models/ReservationModel.dart';
 import 'api_endpoints.dart';
@@ -316,6 +317,175 @@ class ApiClient {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         message: 'Serveur non disponible',
+      );
+    }
+  }
+
+  // Profile Methods
+
+  /// Update user profile
+  Future<ApiResponse<UserModel>> updateProfile({
+    required String token,
+    String? name,
+    String? email,
+    String? phone,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (name != null) body['name'] = name;
+      if (email != null) body['email'] = email;
+      if (phone != null) body['phone'] = phone;
+
+      final response = await _makeRequest(
+        'PUT',
+        '${ApiEndpoints.agents}/me',
+        body: body,
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final userData = response.data!['data']['user'];
+        final user = UserModel.fromJson(userData);
+
+        return ApiResponse<UserModel>(
+          success: true,
+          data: user,
+          message: response.data!['message'] ?? 'Profil mis à jour avec succès',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<UserModel>(
+          success: false,
+          message:
+              response.message ?? 'Erreur lors de la mise à jour du profil',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<UserModel>(
+        success: false,
+        message: 'Erreur lors de la mise à jour du profil: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Upload profile photo
+  Future<ApiResponse<UserModel>> uploadProfilePhoto({
+    required String token,
+    required File imageFile,
+  }) async {
+    try {
+      final url = Uri.parse(
+        ApiEndpoints.getFullUrl('${ApiEndpoints.agents}/me/photo'),
+      );
+
+      final request = http.MultipartRequest('PUT', url);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Add image file
+      final fileExtension = imageFile.path.split('.').last.toLowerCase();
+      final mimeType = _getMimeType(fileExtension);
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'photo',
+          imageFile.path,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
+
+      final response = await http.Response.fromStream(streamedResponse);
+      final apiResponse = _handleResponse(response);
+
+      if (apiResponse.success && apiResponse.data != null) {
+        final userData = apiResponse.data!['data']['user'];
+        final user = UserModel.fromJson(userData);
+
+        return ApiResponse<UserModel>(
+          success: true,
+          data: user,
+          message:
+              apiResponse.data!['message'] ?? 'Photo de profil mise à jour',
+          statusCode: apiResponse.statusCode,
+        );
+      } else {
+        return ApiResponse<UserModel>(
+          success: false,
+          message:
+              apiResponse.message ??
+              'Erreur lors du téléchargement de la photo',
+          statusCode: apiResponse.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse<UserModel>(
+        success: false,
+        message: 'Pas de connexion internet',
+        statusCode: 0,
+      );
+    } catch (e) {
+      return ApiResponse<UserModel>(
+        success: false,
+        message: 'Erreur lors du téléchargement: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get MIME type for image file
+  String _getMimeType(String extension) {
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'image/jpeg';
+    }
+  }
+
+  // Agent Methods
+
+  /// Get all agents
+  Future<ApiResponse<List<UserModel>>> getAllAgents(String token) async {
+    try {
+      final response = await _makeRequest(
+        'GET',
+        ApiEndpoints.agents,
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final agentsData = response.data!['data']['agents'] as List;
+        final agents = agentsData
+            .map((json) => UserModel.fromJson(json))
+            .toList();
+
+        return ApiResponse<List<UserModel>>(
+          success: true,
+          data: agents,
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<List<UserModel>>(
+          success: false,
+          message:
+              response.message ?? 'Erreur lors de la récupération des agents',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<UserModel>>(
+        success: false,
+        message: 'Erreur lors de la récupération des agents: ${e.toString()}',
       );
     }
   }

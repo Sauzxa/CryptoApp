@@ -163,6 +163,12 @@ class AuthService {
     }
   }
 
+  // Update user data and persist to storage
+  Future<void> updateUserData(UserModel updatedUser) async {
+    _currentUser = updatedUser;
+    await _storeAuthData();
+  }
+
   // Clear authentication data
   Future<void> clearAuth() async {
     final prefs = await SharedPreferences.getInstance();

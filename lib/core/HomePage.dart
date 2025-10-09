@@ -250,6 +250,9 @@ class _HomePageState extends State<HomePage> {
             debugPrint('HomePage Drawer - User: ${user?.name}');
             debugPrint('HomePage Drawer - Role: ${user?.role}');
             debugPrint(
+              'HomePage Drawer - Profile Photo URL: ${user?.profilePhoto?.url}',
+            );
+            debugPrint(
               'HomePage Drawer - isAuthenticated: ${authProvider.isAuthenticated}',
             );
 
@@ -269,14 +272,19 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 35,
                           backgroundColor: Colors.white,
-                          child: Icon(
-                            Icons.person,
-                            size: 40,
-                            color: Color(0xFF6366F1),
-                          ),
+                          backgroundImage: user?.profilePhoto?.url != null
+                              ? NetworkImage(user!.profilePhoto!.url!)
+                              : null,
+                          child: user?.profilePhoto?.url == null
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: Color(0xFF6366F1),
+                                )
+                              : null,
                         ),
                         const SizedBox(height: 12),
                         Text(

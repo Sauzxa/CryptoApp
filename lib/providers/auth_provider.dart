@@ -179,6 +179,8 @@ class AuthProvider with ChangeNotifier {
   /// Update user data locally (after profile update)
   void updateUser(UserModel updatedUser) {
     _currentUser = updatedUser;
+    // Persist to storage
+    _authService.updateUserData(updatedUser);
     notifyListeners();
   }
 
