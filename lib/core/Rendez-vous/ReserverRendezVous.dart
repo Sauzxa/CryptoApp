@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../models/ReservationModel.dart';
+import '../../api/api_client.dart';
+import '../../providers/auth_provider.dart';
 
 // Custom date input formatter
 class DateInputFormatter extends TextInputFormatter {
@@ -56,9 +60,23 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
   final TextEditingController _prenomController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
+  final TextEditingController _timeController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
 
   DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+  String _selectedCountryCode = '+213'; // Algeria as default
+  bool _isSubmitting = false;
+
+  // Country codes - Algeria first as default
+  final Map<String, String> _countryCodes = {
+    '+213': '🇩🇿 Algérie',
+    '+33': '🇫🇷 France',
+    '+1': '🇺🇸 USA',
+    '+44': '🇬🇧 UK',
+    '+212': '🇲🇦 Maroc',
+    '+216': '🇹🇳 Tunisie',
+  };
 
   @override
   void dispose() {
@@ -66,16 +84,21 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
     _prenomController.dispose();
     _phoneController.dispose();
     _dateController.dispose();
+    _timeController.dispose();
     _messageController.dispose();
     super.dispose();
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    // Backend constraint: reservedAt must be within 24 hours from now
+    final now = DateTime.now();
+    final twentyFourHoursLater = now.add(const Duration(hours: 24));
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: _selectedDate ?? now,
+      firstDate: now,
+      lastDate: twentyFourHoursLater, // Allow up to 24 hours from now
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -98,16 +121,355 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
     }
   }
 
-  void _handleEnvoyer() {
+  Future<void> _selectTime(BuildContext context) async {
+    final now = DateTime.now();
+    final initialTime = _selectedTime ?? TimeOfDay.fromDateTime(now);
+
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF6366F1),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedTime) {
+      setState(() {
+        _selectedTime = picked;
+        _timeController.text = picked.format(context);
+      });
+    }
+  }
+
+  void _handleEnvoyer() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Handle form submission
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Rendez-vous réservé avec succès!'),
-          backgroundColor: Color(0xFF6366F1),
-        ),
-      );
-      Navigator.pop(context);
+      // Prevent multiple submissions
+      if (_isSubmitting) return;
+
+      setState(() {
+        _isSubmitting = true;
+      });
+
+      try {
+        // Get auth token from provider
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final token = authProvider.token;
+
+        if (token == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Session expirée. Veuillez vous reconnecter.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            Navigator.pop(context);
+          }
+          return;
+        }
+
+        // Combine nom and prenom into clientFullName
+        final clientFullName =
+            '${_nomController.text.trim()} ${_prenomController.text.trim()}';
+
+        // Create reservation datetime by combining selected date and time
+        // Backend requires reservedAt to be >= now and <= now + 24 hours
+        final reservationDateTime = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
+        );
+
+        // Validate that the datetime is within 24 hours from now
+        final now = DateTime.now();
+        final twentyFourHoursLater = now.add(const Duration(hours: 24));
+
+        if (reservationDateTime.isBefore(now)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'L\'heure de réservation doit être dans le futur',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        if (reservationDateTime.isAfter(twentyFourHoursLater)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('La réservation doit être dans les 24 heures'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Create reservation model
+        final reservation = ReservationModel(
+          clientFullName: clientFullName,
+          clientPhone: '$_selectedCountryCode${_phoneController.text.trim()}', // Combine country code + number
+          message: _messageController.text.trim(),
+          reservedAt: reservationDateTime,
+        );
+
+        // Show loading indicator
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+              ),
+            ),
+          );
+        }
+
+        // Call API
+        final response = await apiClient.createReservation(reservation, token);
+
+        // Close loading dialog
+        if (mounted) {
+          Navigator.pop(context);
+        }
+
+        if (response.success) {
+          if (mounted) {
+            // Show success dialog
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                icon: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF6366F1),
+                    size: 48,
+                  ),
+                ),
+                title: const Text(
+                  'Rendez-vous enregistré !',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                content: Text(
+                  response.message ?? 
+                  'Votre rendez-vous a été enregistré avec succès.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                actions: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context); // Close dialog
+                        Navigator.pop(
+                          context,
+                          response.data,
+                        ); // Return to previous screen with data
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'OK',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            // Show error dialog
+            await showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                icon: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.error_outline,
+                    color: Colors.red,
+                    size: 48,
+                  ),
+                ),
+                title: const Text(
+                  'Erreur',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                content: Text(
+                  response.message ?? 'Erreur lors de la réservation',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                actions: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context); // Close dialog
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'OK',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        // Close loading dialog if it's open
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+
+        if (mounted) {
+          // Show error dialog
+          await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              icon: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 48,
+                ),
+              ),
+              title: const Text(
+                'Erreur',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              content: Text(
+                'Une erreur s\'est produite: ${e.toString()}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              actions: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+          });
+        }
+      }
     }
   }
 
@@ -161,7 +523,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Remplir ce formulaire pour que tu ajoute ce rendez\nvous dans les réservations',
+                  'Remplir ce formulaire pour ajouter ce rendez-vous\ndans les réservations (dans les 24 heures suivantes)',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.black54,
@@ -279,46 +641,97 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: 'Entrer votre numéro de téléphone',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 14,
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF6366F1),
-                        width: 2,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Country code selector
+                    Container(
+                      height: 56,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedCountryCode,
+                          icon: const Icon(
+                            Icons.arrow_drop_down,
+                            color: Color(0xFF757575),
+                            size: 20,
+                          ),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                          items: _countryCodes.entries.map((entry) {
+                            return DropdownMenuItem<String>(
+                              value: entry.key,
+                              child: Text('${entry.value.split(' ')[0]} ${entry.key}'),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                _selectedCountryCode = newValue;
+                              });
+                            }
+                          },
+                        ),
                       ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                    const SizedBox(width: 12),
+                    // Phone number input
+                    Expanded(
+                      child: TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        decoration: InputDecoration(
+                          hintText: 'Numéro (10 chiffres)',
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 14,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF6366F1),
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Requis';
+                          }
+                          if (value.length != 10) {
+                            return '10 chiffres requis';
+                          }
+                          return null;
+                        },
+                      ),
                     ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Veuillez entrer votre numéro de téléphone';
-                    }
-                    if (value.length < 10) {
-                      return 'Numéro invalide';
-                    }
-                    return null;
-                  },
+                  ],
                 ),
                 const SizedBox(height: 20),
 
@@ -448,12 +861,28 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                                 final month = int.parse(parts[1]);
                                 final year = int.parse(parts[2]);
                                 final date = DateTime(year, month, day);
-                                if (date.isBefore(
-                                  DateTime.now().subtract(
-                                    const Duration(days: 1),
-                                  ),
-                                )) {
-                                  return 'La date doit être dans le futur';
+
+                                // Backend constraint: must be within 24 hours from now
+                                final now = DateTime.now();
+                                final startOfToday = DateTime(
+                                  now.year,
+                                  now.month,
+                                  now.day,
+                                );
+                                final twentyFourHoursLater = now.add(
+                                  const Duration(hours: 24),
+                                );
+                                final endDate = DateTime(
+                                  twentyFourHoursLater.year,
+                                  twentyFourHoursLater.month,
+                                  twentyFourHoursLater.day,
+                                );
+
+                                if (date.isBefore(startOfToday)) {
+                                  return 'La date ne peut pas être dans le passé';
+                                }
+                                if (date.isAfter(endDate)) {
+                                  return 'La date doit être dans les 24h';
                                 }
                                 return null;
                               }
@@ -487,6 +916,134 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                           const SizedBox(width: 8),
                           TextButton(
                             onPressed: () => _selectDate(context),
+                            child: const Text(
+                              'OK',
+                              style: TextStyle(
+                                color: Color(0xFF6366F1),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Time field
+                const Text(
+                  'Sélectionnez l\'heure de rendez-vous',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Sélectionnez l\'heure',
+                          style: TextStyle(fontSize: 13, color: Colors.black54),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _timeController,
+                        readOnly: true,
+                        onTap: () => _selectTime(context),
+                        decoration: InputDecoration(
+                          hintText: 'HH:MM',
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 14,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              Icons.access_time,
+                              color: Colors.grey.shade600,
+                              size: 20,
+                            ),
+                            onPressed: () => _selectTime(context),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF6366F1),
+                              width: 2,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF6366F1),
+                              width: 2,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF6366F1),
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Veuillez sélectionner une heure';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedTime = null;
+                                _timeController.clear();
+                              });
+                            },
+                            child: const Text(
+                              'Annuler',
+                              style: TextStyle(
+                                color: Color(0xFF6366F1),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () => _selectTime(context),
                             child: const Text(
                               'OK',
                               style: TextStyle(
@@ -596,7 +1153,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _handleEnvoyer,
+                        onPressed: _isSubmitting ? null : _handleEnvoyer,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6366F1),
                           foregroundColor: Colors.white,
@@ -605,14 +1162,28 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
+                          disabledBackgroundColor: const Color(
+                            0xFF6366F1,
+                          ).withOpacity(0.6),
                         ),
-                        child: const Text(
-                          'Envoyer',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Text(
+                                'Envoyer',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],

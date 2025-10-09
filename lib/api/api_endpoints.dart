@@ -18,6 +18,8 @@ class ApiEndpoints {
 
   // Reservations endpoints
   static const String reservations = '$apiPrefix/reservations';
+  static const String createReservation = '$reservations';
+  static const String reservationHistory = '$reservations/history';
 
   // Call logs endpoints
   static const String calls = '$apiPrefix/calls';

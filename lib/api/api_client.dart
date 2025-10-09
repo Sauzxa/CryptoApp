@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/UserModel.dart';
+import '../models/ReservationModel.dart';
 import 'api_endpoints.dart';
 
 class ApiResponse<T> {
@@ -315,6 +316,148 @@ class ApiClient {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
         message: 'Serveur non disponible',
+      );
+    }
+  }
+
+  // Reservation Methods
+
+  /// Create a new reservation
+  Future<ApiResponse<ReservationModel>> createReservation(
+    ReservationModel reservation,
+    String token,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'POST',
+        ApiEndpoints.createReservation,
+        body: reservation.toJson(),
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        // Backend returns { success: true, data: { reservation: {...} } }
+        final reservationData = response.data!['data']['reservation'];
+
+        if (reservationData != null) {
+          final createdReservation = ReservationModel.fromJson(reservationData);
+          return ApiResponse<ReservationModel>(
+            success: true,
+            data: createdReservation,
+            message:
+                response.data!['message'] ?? 'Réservation créée avec succès',
+            statusCode: response.statusCode,
+          );
+        } else {
+          return ApiResponse<ReservationModel>(
+            success: false,
+            message: 'Données de réservation manquantes',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        return ApiResponse<ReservationModel>(
+          success: false,
+          message:
+              response.message ??
+              'Erreur lors de la création de la réservation',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message:
+            'Erreur lors de la création de la réservation: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get all reservations
+  Future<ApiResponse<List<ReservationModel>>> getReservations(
+    String token,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'GET',
+        ApiEndpoints.reservations,
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final reservationsData = response.data!['data']['reservations'] as List;
+        final reservations = reservationsData
+            .map((json) => ReservationModel.fromJson(json))
+            .toList();
+
+        return ApiResponse<List<ReservationModel>>(
+          success: true,
+          data: reservations,
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<List<ReservationModel>>(
+          success: false,
+          message:
+              response.message ??
+              'Erreur lors de la récupération des réservations',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<ReservationModel>>(
+        success: false,
+        message:
+            'Erreur lors de la récupération des réservations: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Update reservation state
+  Future<ApiResponse<ReservationModel>> updateReservationState(
+    String reservationId,
+    String state,
+    String token,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'PUT',
+        '${ApiEndpoints.reservations}/$reservationId/state',
+        body: {'state': state},
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final reservationData = response.data!['data']['reservation'];
+
+        if (reservationData != null) {
+          final updatedReservation = ReservationModel.fromJson(reservationData);
+          return ApiResponse<ReservationModel>(
+            success: true,
+            data: updatedReservation,
+            message:
+                response.data!['message'] ?? 'État de réservation mis à jour',
+            statusCode: response.statusCode,
+          );
+        } else {
+          return ApiResponse<ReservationModel>(
+            success: false,
+            message: 'Données de réservation manquantes',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        return ApiResponse<ReservationModel>(
+          success: false,
+          message:
+              response.message ?? 'Erreur lors de la mise à jour de l\'état',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: 'Erreur lors de la mise à jour de l\'état: ${e.toString()}',
       );
     }
   }
