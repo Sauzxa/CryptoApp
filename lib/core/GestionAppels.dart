@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:call_log/call_log.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
+import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
 
 class GestionAppelsPage extends StatefulWidget {
   const GestionAppelsPage({Key? key}) : super(key: key);
@@ -232,6 +234,31 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return; // Already on this page
+
+    // Check if field agent is trying to access Agent Terrain
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (index == 3 && authProvider.isField) {
+      // Show access denied message for field agents
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.lock, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Accès refusé - Cette fonctionnalité n\'est pas disponible',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     switch (index) {
       case 0:
@@ -663,57 +690,73 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
           ),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.only(left: 7.0, right: 7.0, bottom: 16.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF6366F1),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: BottomNavigationBar(
-                type: BottomNavigationBarType.fixed,
-                backgroundColor: const Color(0xFF6366F1),
-                selectedItemColor: Colors.white,
-                unselectedItemColor: Colors.white70,
-                selectedFontSize: 10,
-                unselectedFontSize: 9,
-                currentIndex: _selectedIndex,
-                onTap: _onItemTapped,
-                elevation: 0,
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home_outlined),
-                    activeIcon: Icon(Icons.home),
-                    label: 'Accueil',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.chat_outlined),
-                    activeIcon: Icon(Icons.chat),
-                    label: 'Messagerie',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.support_agent_outlined),
-                    activeIcon: Icon(Icons.support_agent),
-                    label: 'Gestion des appels',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.people_outline),
-                    activeIcon: Icon(Icons.people),
-                    label: 'Agents Terrain',
-                  ),
-                ],
+        bottomNavigationBar: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            final isFieldAgent = authProvider.isField;
+
+            return Padding(
+              padding: const EdgeInsets.only(
+                left: 7.0,
+                right: 7.0,
+                bottom: 16.0,
               ),
-            ),
-          ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BottomNavigationBar(
+                    type: BottomNavigationBarType.fixed,
+                    backgroundColor: const Color(0xFF6366F1),
+                    selectedItemColor: Colors.white,
+                    unselectedItemColor: Colors.white70,
+                    selectedFontSize: 10,
+                    unselectedFontSize: 9,
+                    currentIndex: _selectedIndex,
+                    onTap: _onItemTapped,
+                    elevation: 0,
+                    items: [
+                      const BottomNavigationBarItem(
+                        icon: Icon(Icons.home_outlined),
+                        activeIcon: Icon(Icons.home),
+                        label: 'Accueil',
+                      ),
+                      const BottomNavigationBarItem(
+                        icon: Icon(Icons.chat_outlined),
+                        activeIcon: Icon(Icons.chat),
+                        label: 'Messagerie',
+                      ),
+                      const BottomNavigationBarItem(
+                        icon: Icon(Icons.support_agent_outlined),
+                        activeIcon: Icon(Icons.support_agent),
+                        label: 'Gestion des appels',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Opacity(
+                          opacity: isFieldAgent ? 0.3 : 1.0,
+                          child: const Icon(Icons.people_outline),
+                        ),
+                        activeIcon: Opacity(
+                          opacity: isFieldAgent ? 0.3 : 1.0,
+                          child: const Icon(Icons.people),
+                        ),
+                        label: 'Agents Terrain',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

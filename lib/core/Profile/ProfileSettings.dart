@@ -424,8 +424,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Veuillez entrer votre email';
                               }
-                              if (!value.contains('@')) {
-                                return 'Email invalide';
+                              // Email regex pattern
+                              final emailRegex = RegExp(
+                                r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                              );
+                              if (!emailRegex.hasMatch(value.trim())) {
+                                return 'Format d\'email invalide';
                               }
                               return null;
                             },
@@ -436,9 +440,15 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                             controller: _phoneController,
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
+                            maxLength: 10,
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Veuillez entrer votre numéro';
+                              }
+                              // Phone number regex: only digits, max 10
+                              final phoneRegex = RegExp(r'^[0-9]{10}$');
+                              if (!phoneRegex.hasMatch(value.trim())) {
+                                return 'Le numéro doit contenir exactement 10 chiffres';
                               }
                               return null;
                             },
@@ -455,30 +465,28 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton(
+                            child: ElevatedButton(
                               onPressed: _isLoading
                                   ? null
                                   : () {
                                       Navigator.pop(context);
                                     },
-                              style: OutlinedButton.styleFrom(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
-                                ),
-                                side: BorderSide(
-                                  color: Colors.grey.shade300,
-                                  width: 1.5,
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
+                                elevation: 0,
                               ),
                               child: const Text(
                                 'Annuler',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF6B7280),
                                 ),
                               ),
                             ),
@@ -528,6 +536,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     required IconData icon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    int? maxLength,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,10 +554,12 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           controller: controller,
           keyboardType: keyboardType,
           validator: validator,
+          maxLength: maxLength,
           decoration: InputDecoration(
             filled: true,
             fillColor: const Color(0xFFF9FAFB),
             prefixIcon: Icon(icon, color: const Color(0xFF9CA3AF), size: 20),
+            counterText: maxLength != null ? '' : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
