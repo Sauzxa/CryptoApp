@@ -6,6 +6,7 @@ import 'package:cryptoimmobilierapp/core/HomePage.dart';
 import 'package:cryptoimmobilierapp/core/Messagerie.dart';
 import 'package:cryptoimmobilierapp/core/GestionAppels.dart';
 import 'package:cryptoimmobilierapp/core/Rendez-vous/ReserverRendezVous.dart';
+import 'package:cryptoimmobilierapp/core/Rendez-vous/Reservations.dart';
 import 'package:cryptoimmobilierapp/core/AgentTerrain.dart';
 import 'package:cryptoimmobilierapp/core/Profile/ProfileSettings.dart';
 
@@ -18,6 +19,7 @@ class AppRoutes {
   static const String messagerie = '/messagerie';
   static const String gestionAppels = '/gestion-appels';
   static const String reserverRendezVous = '/reserver-rendez-vous';
+  static const String reservations = '/reservations';
   static const String agentTerrain = '/agent-terrain';
   static const String profileSettings = '/profile-settings';
 
@@ -40,6 +42,8 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => const ReserverRendezVousPage(),
         );
+      case reservations:
+        return MaterialPageRoute(builder: (_) => const ReservationsPage());
       case agentTerrain:
         return MaterialPageRoute(builder: (_) => const AgentTerrainPage());
       case profileSettings:

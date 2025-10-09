@@ -28,7 +28,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
 
   final List<String> _userTypes = ['Agent commercial', 'Agent terrain'];
-  
+
   // Country codes - Algeria first as default
   final Map<String, String> _countryCodes = {
     '+213': '🇩🇿 Algérie',
@@ -78,7 +78,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final user = UserModel(
         name: _nameController.text.trim(),
         email: _emailController.text.trim().toLowerCase(),
-        phone: '$_selectedCountryCode${_phoneController.text.trim()}', // Combine country code + number
+        phone:
+            '$_selectedCountryCode${_phoneController.text.trim()}', // Combine country code + number
         password: _passwordController.text,
         role: _getBackendRole(_selectedUserType!),
         // Set availability for field agents
@@ -489,7 +490,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 // Country code selector
                                 Container(
                                   height: 56,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFF5F5F5),
                                     borderRadius: BorderRadius.circular(12),
@@ -509,7 +512,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       items: _countryCodes.entries.map((entry) {
                                         return DropdownMenuItem<String>(
                                           value: entry.key,
-                                          child: Text('${entry.value.split(' ')[0]} ${entry.key}'),
+                                          child: Text(
+                                            '${entry.value.split(' ')[0]} ${entry.key}',
+                                          ),
                                         );
                                       }).toList(),
                                       onChanged: (String? newValue) {
@@ -540,10 +545,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide.none,
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 16,
-                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 16,
+                                          ),
                                     ),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {

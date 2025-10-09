@@ -224,7 +224,8 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
         // Create reservation model
         final reservation = ReservationModel(
           clientFullName: clientFullName,
-          clientPhone: '$_selectedCountryCode${_phoneController.text.trim()}', // Combine country code + number
+          clientPhone:
+              '$_selectedCountryCode${_phoneController.text.trim()}', // Combine country code + number
           message: _messageController.text.trim(),
           reservedAt: reservationDateTime,
         );
@@ -282,12 +283,9 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                   textAlign: TextAlign.center,
                 ),
                 content: Text(
-                  response.message ?? 
-                  'Votre rendez-vous a été enregistré avec succès.',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black54,
-                  ),
+                  response.message ??
+                      'Votre rendez-vous a été enregistré avec succès.',
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                   textAlign: TextAlign.center,
                 ),
                 actions: [
@@ -355,10 +353,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 ),
                 content: Text(
                   response.message ?? 'Erreur lors de la réservation',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                   textAlign: TextAlign.center,
                 ),
                 actions: [
@@ -428,10 +423,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
               ),
               content: Text(
                 'Une erreur s\'est produite: ${e.toString()}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black54,
-                ),
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
                 textAlign: TextAlign.center,
               ),
               actions: [
@@ -669,7 +661,9 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                           items: _countryCodes.entries.map((entry) {
                             return DropdownMenuItem<String>(
                               value: entry.key,
-                              child: Text('${entry.value.split(' ')[0]} ${entry.key}'),
+                              child: Text(
+                                '${entry.value.split(' ')[0]} ${entry.key}',
+                              ),
                             );
                           }).toList(),
                           onChanged: (String? newValue) {

@@ -497,6 +497,9 @@ class _HomePageState extends State<HomePage> {
                       subtitle: 'Voir les rendez-vous de\nvos clients',
                       color: const Color(0xFF7DD3FC),
                       icon: Icons.content_paste_outlined,
+                      onTap: () {
+                        Navigator.pushNamed(context, AppRoutes.reservations);
+                      },
                     ),
                     _buildCard(
                       title: 'Voir\ndocuments',
