@@ -31,13 +31,21 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
   }
 
   Future<void> _requestPermission() async {
-    final status = await Permission.phone.request();
-    setState(() {
-      _hasPermission = status.isGranted;
-    });
+    try {
+      final status = await Permission.phone.request();
+      setState(() {
+        _hasPermission = status.isGranted;
+      });
 
-    if (!_hasPermission) {
-      _showPermissionDialog();
+      if (!_hasPermission) {
+        _showPermissionDialog();
+      }
+    } catch (e) {
+      // Handle permission request errors
+      debugPrint('CallLogTestPage: Error requesting permission: $e');
+      setState(() {
+        _hasPermission = false;
+      });
     }
   }
 

@@ -14,6 +14,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _permissionRequested =
+      false; // Track if permission was already requested
 
   @override
   void initState() {
@@ -25,13 +27,61 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _requestPhonePermission() async {
-    // Wait for the first frame to be rendered
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final phoneStatus = await Permission.phone.status;
-      if (phoneStatus.isDenied) {
-        await Permission.phone.request();
-      }
-    });
+    // Prevent duplicate requests
+    if (_permissionRequested) return;
+
+    _permissionRequested = true;
+
+    try {
+      // Wait for the first frame to be rendered
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+
+        try {
+          final phoneStatus = await Permission.phone.status;
+
+          // Only request if denied and not permanently denied
+          if (phoneStatus.isDenied) {
+            await Permission.phone.request();
+          } else if (phoneStatus.isPermanentlyDenied) {
+            // Show dialog to open app settings if permanently denied
+            if (!mounted) return;
+            _showPermissionSettingsDialog();
+          }
+        } catch (e) {
+          // Handle any permission-related errors silently
+          debugPrint('Permission request error: $e');
+        }
+      });
+    } catch (e) {
+      debugPrint('Error in _requestPhonePermission: $e');
+    }
+  }
+
+  void _showPermissionSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Permission téléphone requise'),
+        content: const Text(
+          'L\'accès au téléphone est nécessaire pour certaines fonctionnalités. '
+          'Veuillez activer la permission dans les paramètres de l\'application.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Paramètres'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _handleLogout(AuthProvider authProvider) async {

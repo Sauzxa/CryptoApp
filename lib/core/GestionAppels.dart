@@ -68,23 +68,31 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
   }
 
   Future<void> _requestPermission() async {
-    var phoneStatus = await Permission.phone.status;
+    try {
+      var phoneStatus = await Permission.phone.status;
 
-    if (phoneStatus.isDenied) {
-      phoneStatus = await Permission.phone.request();
-    }
+      if (phoneStatus.isDenied) {
+        phoneStatus = await Permission.phone.request();
+      }
 
-    if (phoneStatus.isPermanentlyDenied) {
+      if (phoneStatus.isPermanentlyDenied) {
+        setState(() {
+          _hasPermission = false;
+        });
+        _showPermissionDialog();
+        return;
+      }
+
+      setState(() {
+        _hasPermission = phoneStatus.isGranted;
+      });
+    } catch (e) {
+      // Handle permission request errors (e.g., already requesting)
+      debugPrint('GestionAppels: Error requesting permission: $e');
       setState(() {
         _hasPermission = false;
       });
-      _showPermissionDialog();
-      return;
     }
-
-    setState(() {
-      _hasPermission = phoneStatus.isGranted;
-    });
   }
 
   void _showPermissionDialog() {

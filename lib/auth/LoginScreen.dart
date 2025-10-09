@@ -42,17 +42,27 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (success) {
-        // Login successful
+        // Login successful - token and user data are now saved
         if (mounted) {
+          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Connexion réussie!'),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
             ),
           );
 
-          // Navigate to homepage
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
+          // Small delay to show the success message
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Navigate to homepage and clear the navigation stack
+          // This ensures user can't go back to login screen with back button
+          if (mounted) {
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+          }
         }
       } else {
         // Login failed - show error from provider
@@ -61,6 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
             SnackBar(
               content: Text(authProvider.errorMessage ?? 'Erreur de connexion'),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
             ),
           );
         }
@@ -71,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(
             content: Text('Erreur: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }

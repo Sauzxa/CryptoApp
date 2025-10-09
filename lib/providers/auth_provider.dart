@@ -19,6 +19,7 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _token != null && _currentUser != null;
+  bool get hasSeenWelcome => _authService.hasSeenWelcome;
 
   // Role-based getters
   bool get isAdmin => _currentUser?.isAdmin ?? false;
@@ -192,4 +193,10 @@ class AuthProvider with ChangeNotifier {
 
   /// Get field agent availability
   String get availability => _currentUser?.availabilityDisplayName ?? '';
+
+  /// Mark welcome screen as seen
+  Future<void> markWelcomeAsSeen() async {
+    await _authService.markWelcomeAsSeen();
+    notifyListeners();
+  }
 }

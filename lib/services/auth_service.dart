@@ -10,14 +10,17 @@ class AuthService {
 
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'user_data';
+  static const String _hasSeenWelcomeKey = 'has_seen_welcome';
 
   UserModel? _currentUser;
   String? _token;
+  bool _hasSeenWelcome = false;
 
   // Getters
   UserModel? get currentUser => _currentUser;
   String? get token => _token;
   bool get isLoggedIn => _token != null && _currentUser != null;
+  bool get hasSeenWelcome => _hasSeenWelcome;
 
   // Initialize auth service (call this on app startup)
   Future<void> initialize() async {
@@ -30,6 +33,7 @@ class AuthService {
 
     _token = prefs.getString(_tokenKey);
     final userData = prefs.getString(_userKey);
+    _hasSeenWelcome = prefs.getBool(_hasSeenWelcomeKey) ?? false;
 
     if (userData != null) {
       try {
@@ -188,6 +192,13 @@ class AuthService {
 
     final result = await getCurrentUser();
     return result.success;
+  }
+
+  // Mark welcome screen as seen
+  Future<void> markWelcomeAsSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_hasSeenWelcomeKey, true);
+    _hasSeenWelcome = true;
   }
 }
 

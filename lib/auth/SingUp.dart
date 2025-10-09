@@ -77,7 +77,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final success = await authProvider.register(user);
 
       if (success) {
-        // Registration successful
+        // Registration successful - token and user data are now saved
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -85,11 +85,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 'Inscription réussie! Redirection vers l\'accueil...',
               ),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
             ),
           );
 
-          // Navigate to homepage with replacement (can't go back)
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
+          // Small delay to show the success message
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Navigate to homepage and clear the navigation stack
+          if (mounted) {
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+          }
         }
       } else {
         // Registration failed - show error from provider
@@ -100,6 +108,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 authProvider.errorMessage ?? 'Erreur lors de l\'inscription',
               ),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
             ),
           );
         }
@@ -111,6 +120,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           SnackBar(
             content: Text('Erreur lors de l\'inscription: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }

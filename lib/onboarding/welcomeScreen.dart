@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/Routes.dart';
+import '../providers/auth_provider.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -134,7 +136,15 @@ class WelcomeScreen extends StatelessWidget {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () {
+                              onTap: () async {
+                                // Mark welcome screen as seen before navigating
+                                final authProvider = Provider.of<AuthProvider>(
+                                  context,
+                                  listen: false,
+                                );
+                                await authProvider.markWelcomeAsSeen();
+
+                                if (!context.mounted) return;
                                 Navigator.pushNamed(context, AppRoutes.login);
                               },
                               borderRadius: BorderRadius.circular(12),
@@ -166,7 +176,15 @@ class WelcomeScreen extends StatelessWidget {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () {
+                              onTap: () async {
+                                // Mark welcome screen as seen before navigating
+                                final authProvider = Provider.of<AuthProvider>(
+                                  context,
+                                  listen: false,
+                                );
+                                await authProvider.markWelcomeAsSeen();
+
+                                if (!context.mounted) return;
                                 Navigator.pushNamed(context, AppRoutes.signup);
                               },
                               borderRadius: BorderRadius.circular(12),
