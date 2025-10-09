@@ -312,7 +312,7 @@ class _HomePageState extends State<HomePage> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 16),
 
                           // Change State (Only for field agents)
                           if (isFieldAgent)
@@ -358,8 +358,10 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
 
+                          if (isFieldAgent) const SizedBox(height: 8),
                           if (isFieldAgent)
                             const Divider(height: 1, indent: 20, endIndent: 20),
+                          if (isFieldAgent) const SizedBox(height: 8),
 
                           // Change Language (Disabled)
                           Opacity(
@@ -385,7 +387,9 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
 
+                          const SizedBox(height: 8),
                           const Divider(height: 1, indent: 20, endIndent: 20),
+                          const SizedBox(height: 8),
 
                           // Dark Mode (Disabled)
                           Opacity(
@@ -408,7 +412,9 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
 
+                          const SizedBox(height: 8),
                           const Divider(height: 1, indent: 20, endIndent: 20),
+                          const SizedBox(height: 8),
 
                           // Profile Settings
                           ListTile(
@@ -417,7 +423,7 @@ class _HomePageState extends State<HomePage> {
                               vertical: 4,
                             ),
                             leading: const Icon(
-                              Icons.settings_outlined,
+                              Icons.account_circle_outlined,
                               color: Color(0xFF6366F1),
                             ),
                             title: const Text(
@@ -426,10 +432,6 @@ class _HomePageState extends State<HomePage> {
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
-                            ),
-                            trailing: const Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
                             ),
                             onTap: () {
                               Navigator.pop(context);
@@ -440,23 +442,27 @@ class _HomePageState extends State<HomePage> {
                             },
                           ),
 
+                          const SizedBox(height: 8),
                           const Divider(height: 1, indent: 20, endIndent: 20),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
 
                           // Logout Button
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: SizedBox(
                               width: double.infinity,
-                              child: OutlinedButton.icon(
+                              child: ElevatedButton.icon(
                                 onPressed: () => _handleLogout(authProvider),
                                 icon: const Icon(Icons.logout, size: 20),
                                 label: const Text('Déconnexion'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                  side: const BorderSide(color: Colors.red),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
                               ),
