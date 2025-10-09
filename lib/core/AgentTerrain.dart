@@ -69,10 +69,16 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   }
 
   List<UserModel> get _filteredAgents {
+    // First, filter to only show field agents (role = 'field')
+    final fieldAgents = _agents
+        .where((agent) => agent.role == 'field')
+        .toList();
+
+    // Then apply search filter if there's a search query
     if (_searchQuery.isEmpty) {
-      return _agents;
+      return fieldAgents;
     }
-    return _agents
+    return fieldAgents
         .where(
           (agent) =>
               agent.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
