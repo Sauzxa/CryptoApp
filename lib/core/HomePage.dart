@@ -127,17 +127,16 @@ class _HomePageState extends State<HomePage> {
       // Perform logout
       await authProvider.logout();
 
+      // Close the loading dialog
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
       // Wait a tiny bit to ensure logout is complete
       await Future.delayed(const Duration(milliseconds: 100));
 
-      // Navigate to welcome screen (not login screen)
+      // Navigate to welcome screen and clear navigation stack
+      // Manual navigation is necessary because we're on an existing route
       if (!mounted) return;
-
-      // Close the loading dialog first
-      Navigator.of(context).pop();
-
-      // Then navigate to welcome screen and clear stack
-      // This allows users to navigate to login or signup from welcome screen
       Navigator.of(
         context,
       ).pushNamedAndRemoveUntil(AppRoutes.welcome, (route) => false);
@@ -246,6 +245,13 @@ class _HomePageState extends State<HomePage> {
           builder: (context, authProvider, child) {
             final user = authProvider.currentUser;
             final isFieldAgent = authProvider.isField;
+
+            // Debug: Print user data when drawer rebuilds
+            debugPrint('HomePage Drawer - User: ${user?.name}');
+            debugPrint('HomePage Drawer - Role: ${user?.role}');
+            debugPrint(
+              'HomePage Drawer - isAuthenticated: ${authProvider.isAuthenticated}',
+            );
 
             return Drawer(
               child: Column(

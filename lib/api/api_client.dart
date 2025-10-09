@@ -208,12 +208,24 @@ class ApiClient {
       );
 
       if (response.success && response.data != null) {
-        return ApiResponse<Map<String, dynamic>>(
-          success: true,
-          data: response.data,
-          message: 'Connexion réussie',
-          statusCode: response.statusCode,
-        );
+        // Backend returns { success: true, data: { user: {...}, token: "..." } }
+        // Extract the nested 'data' field to match the register method pattern
+        final responseData = response.data!['data'];
+
+        if (responseData != null) {
+          return ApiResponse<Map<String, dynamic>>(
+            success: true,
+            data: responseData, // Contains both user and token
+            message: response.data!['message'] ?? 'Connexion réussie',
+            statusCode: response.statusCode,
+          );
+        } else {
+          return ApiResponse<Map<String, dynamic>>(
+            success: false,
+            message: 'Données utilisateur manquantes',
+            statusCode: response.statusCode,
+          );
+        }
       } else {
         return ApiResponse<Map<String, dynamic>>(
           success: false,

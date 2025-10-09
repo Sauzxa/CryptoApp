@@ -88,6 +88,10 @@ class AuthService {
       final response = await apiClient.login(email, password);
 
       if (response.success && response.data != null) {
+        // Debug: Print the actual response structure
+        print('DEBUG - Response data keys: ${response.data!.keys}');
+        print('DEBUG - Full response data: ${response.data}');
+
         final data = response.data!;
         _token = data['token'];
 

@@ -44,6 +44,12 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success) {
         // Login successful - token and user data are now saved
         if (mounted) {
+          // Debug: verify user data is loaded
+          print('Login successful - User: ${authProvider.currentUser?.name}');
+          print(
+            'Login successful - Token exists: ${authProvider.token != null}',
+          );
+
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -57,7 +63,8 @@ class _LoginScreenState extends State<LoginScreen> {
           await Future.delayed(const Duration(milliseconds: 500));
 
           // Navigate to homepage and clear the navigation stack
-          // This ensures user can't go back to login screen with back button
+          // This is necessary because we're on a child route (LoginScreen)
+          // and the MaterialApp home change doesn't affect existing navigation stack
           if (mounted) {
             Navigator.of(
               context,

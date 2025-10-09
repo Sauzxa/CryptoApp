@@ -47,5 +47,3 @@ class MyApp extends StatelessWidget {
     return const WelcomeScreen();
   }
 }
-
-// Remove the AuthWrapper class - no longer needed

@@ -89,21 +89,30 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('AuthProvider: Starting login...');
       final result = await _authService.login(email, password);
 
       if (result.success) {
         _currentUser = result.user;
         _token = result.token;
         _errorMessage = null;
+
+        debugPrint('AuthProvider: Login successful');
+        debugPrint('AuthProvider: User = ${_currentUser?.name}');
+        debugPrint('AuthProvider: Token exists = ${_token != null}');
+        debugPrint('AuthProvider: isAuthenticated = $isAuthenticated');
+
         notifyListeners();
         return true;
       } else {
         _errorMessage = result.message ?? 'Erreur de connexion';
+        debugPrint('AuthProvider: Login failed - $_errorMessage');
         notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Erreur: ${e.toString()}';
+      debugPrint('AuthProvider: Login error - $_errorMessage');
       notifyListeners();
       return false;
     } finally {
@@ -118,13 +127,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('AuthProvider: Starting logout...');
       await _authService.logout();
       _currentUser = null;
       _token = null;
       _errorMessage = null;
+      debugPrint('AuthProvider: Logout successful - user and token cleared');
     } catch (e) {
       _errorMessage = 'Erreur lors de la déconnexion: ${e.toString()}';
-      debugPrint(_errorMessage);
+      debugPrint('AuthProvider: Logout error - $_errorMessage');
     } finally {
       _isLoading = false;
       notifyListeners();
