@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../auth/SingUp.dart';
+import '../utils/Routes.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -135,8 +135,7 @@ class WelcomeScreen extends StatelessWidget {
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: () {
-                                // TODO: Navigate to login screen
-                                print('Navigate to Login');
+                                Navigator.pushNamed(context, AppRoutes.login);
                               },
                               borderRadius: BorderRadius.circular(12),
                               child: Center(
@@ -168,12 +167,7 @@ class WelcomeScreen extends StatelessWidget {
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const SignUpScreen(),
-                                  ),
-                                );
+                                Navigator.pushNamed(context, AppRoutes.signup);
                               },
                               borderRadius: BorderRadius.circular(12),
                               child: Center(

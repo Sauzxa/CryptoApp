@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../utils/Routes.dart';
+import '../models/UserModel.dart';
+import '../providers/auth_provider.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -9,8 +13,8 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _fullNameController = TextEditingController();
-  final _firstNameController = TextEditingController();
+  final _nameController =
+      TextEditingController(); // Combined name field to match backend
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -19,18 +23,104 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isDropdownExpanded = false;
+  bool _isLoading = false;
 
   final List<String> _userTypes = ['Agent commercial', 'Agent terrain'];
 
+  // Helper method to convert display name to backend role
+  String _getBackendRole(String displayRole) {
+    switch (displayRole) {
+      case 'Agent commercial':
+        return 'commercial';
+      case 'Agent terrain':
+        return 'field';
+      default:
+        return 'field'; // default to field agent
+    }
+  }
+
   @override
   void dispose() {
-    _fullNameController.dispose();
-    _firstNameController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  // Handle signup logic
+  Future<void> _handleSignup() async {
+    if (!_formKey.currentState!.validate() || _selectedUserType == null) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // Create UserModel object
+      final user = UserModel(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim().toLowerCase(),
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text,
+        role: _getBackendRole(_selectedUserType!),
+        // Set availability for field agents
+        availability: _selectedUserType == 'Agent terrain' ? 'available' : null,
+      );
+
+      // Call the AuthProvider for registration
+      final success = await authProvider.register(user);
+
+      if (success) {
+        // Registration successful
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Inscription réussie! Redirection vers l\'accueil...',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Navigate to homepage with replacement (can't go back)
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        }
+      } else {
+        // Registration failed - show error from provider
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                authProvider.errorMessage ?? 'Erreur lors de l\'inscription',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'inscription: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -112,7 +202,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 32),
                             const Text(
-                              'Nom',
+                              'Nom Complet',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -122,9 +212,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                             const SizedBox(height: 8),
                             TextFormField(
-                              controller: _fullNameController,
+                              controller: _nameController,
                               decoration: InputDecoration(
-                                hintText: 'Entrez votre nom',
+                                hintText: 'Entrez votre nom complet',
                                 filled: true,
                                 fillColor: const Color(0xFFF5F5F5),
                                 border: OutlineInputBorder(
@@ -138,37 +228,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               validator: (value) =>
                                   (value == null || value.isEmpty)
-                                  ? 'Veuillez entrer votre nom'
-                                  : null,
-                            ),
-                            const SizedBox(height: 20),
-                            const Text(
-                              'Prenom',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _firstNameController,
-                              decoration: InputDecoration(
-                                hintText: 'Entrez votre prenom',
-                                filled: true,
-                                fillColor: const Color(0xFFF5F5F5),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                              validator: (value) =>
-                                  (value == null || value.isEmpty)
-                                  ? 'Veuillez entrer votre prénom'
+                                  ? 'Veuillez entrer votre nom complet'
                                   : null,
                             ),
                             const SizedBox(height: 20),
@@ -201,7 +261,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       color: const Color(0xFFF5F5F5),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: Colors.transparent,
+                                        color: _selectedUserType == null
+                                            ? Colors.red.withOpacity(0.3)
+                                            : Colors.transparent,
                                       ),
                                     ),
                                     child: Row(
@@ -209,7 +271,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                          _selectedUserType ?? 'Type',
+                                          _selectedUserType ??
+                                              'Sélectionner le type d\'employé',
                                           style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w400,
@@ -343,6 +406,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ],
                               ],
                             ),
+                            if (_selectedUserType == null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  'Veuillez sélectionner un type d\'employé',
+                                  style: TextStyle(
+                                    color: Colors.red.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
                             const SizedBox(height: 20),
                             const Text(
                               'Email',
@@ -502,17 +576,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               width: double.infinity,
                               height: 56,
                               child: ElevatedButton(
-                                onPressed: () {
-                                  if (_formKey.currentState!.validate()) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Inscription en cours...',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
+                                onPressed: _isLoading
+                                    ? null
+                                    : () {
+                                        if (_formKey.currentState!.validate() &&
+                                            _selectedUserType != null) {
+                                          _handleSignup();
+                                        } else if (_selectedUserType == null) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Veuillez sélectionner un type d\'employé',
+                                              ),
+                                              backgroundColor: Colors.orange,
+                                            ),
+                                          );
+                                        }
+                                      },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF2196F3),
                                   foregroundColor: Colors.white,
@@ -520,13 +602,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: const Text(
-                                  'S\'inscrire',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'S\'inscrire',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                               ),
                             ),
                             const SizedBox(height: 24),
