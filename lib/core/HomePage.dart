@@ -12,6 +12,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isAvailable = true; // User availability state
+  String _userRole =
+      'Agent Terrain'; // Can be 'Agent Terrain' or 'Agent Commercial'
+  String _userName = 'Fergune AbdElraouf'; // User name
 
   @override
   void initState() {
@@ -119,48 +123,214 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         drawer: Drawer(
-          child: Container(
-            color: Colors.white,
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                DrawerHeader(
-                  decoration: const BoxDecoration(color: Color(0xFF6366F1)),
+          child: Column(
+            children: [
+              // Drawer Header with profile
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 20,
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                ),
+                decoration: const BoxDecoration(color: Color(0xFF6366F1)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const CircleAvatar(
+                      radius: 35,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.person,
+                        size: 40,
+                        color: Color(0xFF6366F1),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Scrollable content
+              Expanded(
+                child: SingleChildScrollView(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: const [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.person,
-                          size: 35,
+                    children: [
+                      const SizedBox(height: 8),
+
+                      // Change State
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 4,
+                        ),
+                        title: const Text(
+                          'Changer l\'état',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _isAvailable ? 'Disponible' : 'Indisponible',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _isAvailable
+                                ? const Color(0xFF059669)
+                                : const Color(0xFFE11D48),
+                          ),
+                        ),
+                        trailing: Switch(
+                          value: _isAvailable,
+                          onChanged: (value) {
+                            setState(() {
+                              _isAvailable = value;
+                            });
+                          },
+                          activeColor: const Color(0xFF059669),
+                        ),
+                      ),
+
+                      const Divider(height: 1, indent: 20, endIndent: 20),
+
+                      // Change Language (Disabled)
+                      Opacity(
+                        opacity: 0.5,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 4,
+                          ),
+                          leading: const Icon(Icons.language),
+                          title: const Text(
+                            'Changer la langue',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Français (Bientôt)',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          enabled: false,
+                        ),
+                      ),
+
+                      const Divider(height: 1, indent: 20, endIndent: 20),
+
+                      // Dark Mode (Disabled)
+                      Opacity(
+                        opacity: 0.5,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 4,
+                          ),
+                          leading: const Icon(Icons.dark_mode_outlined),
+                          title: const Text(
+                            'Mode sombre',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          trailing: Switch(value: false, onChanged: null),
+                          enabled: false,
+                        ),
+                      ),
+
+                      const Divider(height: 1, indent: 20, endIndent: 20),
+
+                      // Profile Settings
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 4,
+                        ),
+                        leading: const Icon(
+                          Icons.settings_outlined,
                           color: Color(0xFF6366F1),
                         ),
+                        title: const Text(
+                          'Paramètres du profil',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.profileSettings,
+                          );
+                        },
                       ),
-                      SizedBox(height: 10),
-                      Text(
-                        'Menu',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+
+                      const Divider(height: 1, indent: 20, endIndent: 20),
+                      const SizedBox(height: 16),
+
+                      // Logout Button
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Déconnexion'),
+                                  content: const Text(
+                                    'Êtes-vous sûr de vouloir vous déconnecter ?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Annuler'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text(
+                                        'Déconnexion',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.logout, size: 20),
+                            label: const Text('Déconnexion'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
                         ),
                       ),
+
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
-                // Drawer content will be added later
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'Content à venir...',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         body: SafeArea(
