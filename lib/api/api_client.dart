@@ -490,6 +490,46 @@ class ApiClient {
     }
   }
 
+  /// Update agent availability status
+  Future<ApiResponse<UserModel>> updateAgentStatus({
+    required String agentId,
+    required String availability,
+    required String token,
+  }) async {
+    try {
+      final response = await _makeRequest(
+        'PUT',
+        '${ApiEndpoints.agents}/$agentId/status',
+        body: {'availability': availability},
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final userData = response.data!['data']['user'];
+        final user = UserModel.fromJson(userData);
+
+        return ApiResponse<UserModel>(
+          success: true,
+          data: user,
+          message: response.data!['message'] ?? 'Statut mis à jour avec succès',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<UserModel>(
+          success: false,
+          message:
+              response.message ?? 'Erreur lors de la mise à jour du statut',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<UserModel>(
+        success: false,
+        message: 'Erreur lors de la mise à jour du statut: ${e.toString()}',
+      );
+    }
+  }
+
   // Reservation Methods
 
   /// Create a new reservation

@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../models/UserModel.dart';
 import '../services/auth_service.dart';
+import '../services/socket_service.dart';
+import '../api/api_client.dart';
 
 /// AuthProvider manages authentication state across the app
 /// Uses ChangeNotifier to notify listeners when auth state changes
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = authService;
+  final SocketService _socketService = socketService;
 
   // Private state
   UserModel? _currentUser;
@@ -41,6 +44,9 @@ class AuthProvider with ChangeNotifier {
         final isValid = await _authService.isTokenValid();
         if (!isValid) {
           await logout();
+        } else {
+          // Connect to socket if authenticated
+          await _connectSocket();
         }
       }
     } catch (e) {
@@ -102,6 +108,9 @@ class AuthProvider with ChangeNotifier {
         debugPrint('AuthProvider: Token exists = ${_token != null}');
         debugPrint('AuthProvider: isAuthenticated = $isAuthenticated');
 
+        // Connect to socket after successful login
+        await _connectSocket();
+
         notifyListeners();
         return true;
       } else {
@@ -128,6 +137,10 @@ class AuthProvider with ChangeNotifier {
 
     try {
       debugPrint('AuthProvider: Starting logout...');
+
+      // Disconnect socket before logging out
+      _socketService.disconnect();
+
       await _authService.logout();
       _currentUser = null;
       _token = null;
@@ -211,5 +224,79 @@ class AuthProvider with ChangeNotifier {
   Future<void> markWelcomeAsSeen() async {
     await _authService.markWelcomeAsSeen();
     notifyListeners();
+  }
+
+  /// Connect to Socket.IO server
+  Future<void> _connectSocket() async {
+    if (_token != null) {
+      debugPrint('AuthProvider: Connecting to socket...');
+      await _socketService.connect(_token!);
+
+      // Listen for agent status updates from other clients
+      _socketService.onAgentStatusUpdate((data) {
+        debugPrint('AuthProvider: Received status update: $data');
+        final agentId = data['agentId'] as String?;
+        final availability = data['availability'] as String?;
+
+        // If it's the current user's status, update locally
+        if (agentId == _currentUser?.id && availability != null) {
+          _currentUser = _currentUser?.copyWith(availability: availability);
+          notifyListeners();
+          debugPrint(
+            'AuthProvider: Updated current user availability to $availability',
+          );
+        }
+      });
+    }
+  }
+
+  /// Update agent availability status (field agents only)
+  Future<bool> updateAvailability(String availability) async {
+    if (_currentUser == null || _token == null) {
+      _errorMessage = 'Utilisateur non connecté';
+      notifyListeners();
+      return false;
+    }
+
+    if (!isField) {
+      _errorMessage =
+          'Seuls les agents terrain peuvent modifier leur disponibilité';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      debugPrint('AuthProvider: Updating availability to $availability...');
+
+      // Call API to update status in database
+      final response = await apiClient.updateAgentStatus(
+        agentId: _currentUser!.id!,
+        availability: availability,
+        token: _token!,
+      );
+
+      if (response.success && response.data != null) {
+        // Update local user data
+        _currentUser = response.data;
+        _authService.updateUserData(_currentUser!);
+
+        // Emit socket event to notify other clients
+        _socketService.emitStatusChange(availability);
+
+        debugPrint('AuthProvider: Availability updated successfully');
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = response.message ?? 'Erreur lors de la mise à jour';
+        debugPrint('AuthProvider: Update failed - $_errorMessage');
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Erreur: ${e.toString()}';
+      debugPrint('AuthProvider: Update error - $_errorMessage');
+      notifyListeners();
+      return false;
+    }
   }
 }
