@@ -554,7 +554,7 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
             children: [
-              _buildFilterChip('Tous', 'all', Icons.all_inclusive),
+              _buildFilterChip('Tous', 'all', Icons.history),
               const SizedBox(width: 8),
               _buildFilterChip('Entrant', 'incoming', Icons.call_received),
               const SizedBox(width: 8),

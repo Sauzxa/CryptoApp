@@ -175,6 +175,12 @@ class _HomePageState extends State<HomePage> {
                       subtitle: 'Prenez un rendez-vous\npour un client',
                       color: const Color(0xFF93C5FD),
                       icon: Icons.edit_calendar_outlined,
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.reserverRendezVous,
+                        );
+                      },
                     ),
                     _buildCard(
                       title: 'Voir les\nrendez-vous',
@@ -263,11 +269,10 @@ class _HomePageState extends State<HomePage> {
     required Color color,
     required IconData icon,
     Color textColor = const Color(0xFF1E293B),
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
-      onTap: () {
-        // Navigation will be added later
-      },
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: color,
