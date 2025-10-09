@@ -130,16 +130,17 @@ class _HomePageState extends State<HomePage> {
       // Wait a tiny bit to ensure logout is complete
       await Future.delayed(const Duration(milliseconds: 100));
 
-      // Navigate to login screen
+      // Navigate to welcome screen (not login screen)
       if (!mounted) return;
 
       // Close the loading dialog first
       Navigator.of(context).pop();
 
-      // Then navigate to login and clear stack
+      // Then navigate to welcome screen and clear stack
+      // This allows users to navigate to login or signup from welcome screen
       Navigator.of(
         context,
-      ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+      ).pushNamedAndRemoveUntil(AppRoutes.welcome, (route) => false);
     } catch (e) {
       // Close loading dialog
       if (!mounted) return;
