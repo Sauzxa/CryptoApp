@@ -63,6 +63,14 @@ class _HomePageState extends State<HomePage> {
           });
         });
         break;
+      case 3:
+        // Navigate to Agent Terrain page
+        Navigator.pushNamed(context, AppRoutes.agentTerrain).then((_) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        });
+        break;
     }
   }
 
@@ -253,6 +261,11 @@ class _HomePageState extends State<HomePage> {
                     icon: Icon(Icons.support_agent_outlined),
                     activeIcon: Icon(Icons.support_agent),
                     label: 'Gestion des appels',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.people_outline),
+                    activeIcon: Icon(Icons.people),
+                    label: 'Agents Terrain',
                   ),
                 ],
               ),

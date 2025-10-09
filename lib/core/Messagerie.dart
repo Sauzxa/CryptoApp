@@ -33,6 +33,10 @@ class _MessageriePageState extends State<MessageriePage> {
         // Navigate to Gestion des appels
         Navigator.pushReplacementNamed(context, AppRoutes.gestionAppels);
         break;
+      case 3:
+        // Navigate to Agent Terrain
+        Navigator.pushReplacementNamed(context, AppRoutes.agentTerrain);
+        break;
     }
   }
 
@@ -137,6 +141,11 @@ class _MessageriePageState extends State<MessageriePage> {
                     icon: Icon(Icons.support_agent_outlined),
                     activeIcon: Icon(Icons.support_agent),
                     label: 'Gestion des appels',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.people_outline),
+                    activeIcon: Icon(Icons.people),
+                    label: 'Agents Terrain',
                   ),
                 ],
               ),

@@ -3,6 +3,7 @@ import 'package:cryptoimmobilierapp/core/HomePage.dart';
 import 'package:cryptoimmobilierapp/core/Messagerie.dart';
 import 'package:cryptoimmobilierapp/core/GestionAppels.dart';
 import 'package:cryptoimmobilierapp/core/Rendez-vous/ReserverRendezVous.dart';
+import 'package:cryptoimmobilierapp/core/AgentTerrain.dart';
 
 class AppRoutes {
   // Route names
@@ -10,6 +11,7 @@ class AppRoutes {
   static const String messagerie = '/messagerie';
   static const String gestionAppels = '/gestion-appels';
   static const String reserverRendezVous = '/reserver-rendez-vous';
+  static const String agentTerrain = '/agent-terrain';
 
   // Route generator
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -24,6 +26,8 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => const ReserverRendezVousPage(),
         );
+      case agentTerrain:
+        return MaterialPageRoute(builder: (_) => const AgentTerrainPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

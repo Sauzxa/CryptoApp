@@ -244,6 +244,10 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
           _selectedIndex = 2;
         });
         break;
+      case 3:
+        // Navigate to Agent Terrain
+        Navigator.pushReplacementNamed(context, AppRoutes.agentTerrain);
+        break;
     }
   }
 
@@ -692,6 +696,11 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
                     icon: Icon(Icons.support_agent_outlined),
                     activeIcon: Icon(Icons.support_agent),
                     label: 'Gestion des appels',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.people_outline),
+                    activeIcon: Icon(Icons.people),
+                    label: 'Agents Terrain',
                   ),
                 ],
               ),
