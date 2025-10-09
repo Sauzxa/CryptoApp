@@ -1,5 +1,6 @@
+import 'package:cryptoimmobilierapp/core/HomePage.dart';
+import 'package:cryptoimmobilierapp/utils/Routes.dart';
 import 'package:flutter/material.dart';
-import 'onboarding/welcomeScreen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,7 +20,8 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'Roboto', // Modern font
       ),
-      home: const WelcomeScreen(),
+      home: const HomePage(),
+      onGenerateRoute: AppRoutes.generateRoute,
     ); //
   }
 }

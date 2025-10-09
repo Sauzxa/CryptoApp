@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:call_log/call_log.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
 
-class HistoriquePage extends StatefulWidget {
-  const HistoriquePage({Key? key}) : super(key: key);
+class GestionAppelsPage extends StatefulWidget {
+  const GestionAppelsPage({Key? key}) : super(key: key);
 
   @override
-  State<HistoriquePage> createState() => _HistoriquePageState();
+  State<GestionAppelsPage> createState() => _GestionAppelsPageState();
 }
 
-class _HistoriquePageState extends State<HistoriquePage> {
-  int _selectedIndex = 2; // Set to 2 for "Historique" tab
+class _GestionAppelsPageState extends State<GestionAppelsPage> {
+  int _selectedIndex = 2; // Set to 2 for "Gestion des appels" tab
   List<CallLogEntry> _callLogs = [];
+  List<CallLogEntry> _filteredCallLogs = [];
   bool _isLoading = false;
   bool _hasPermission = false;
+  String _searchQuery = '';
+  String _filterType = 'all'; // 'all', 'incoming', 'outgoing'
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -23,31 +28,37 @@ class _HistoriquePageState extends State<HistoriquePage> {
     _checkPermissionAndLoadLogs();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkPermissionAndLoadLogs() async {
     try {
-      print('Historique: Checking permission...');
+      print('GestionAppels: Checking permission...');
       final phoneStatus = await Permission.phone.status;
-      print('Historique: Permission status: $phoneStatus');
+      print('GestionAppels: Permission status: $phoneStatus');
 
       setState(() {
         _hasPermission = phoneStatus.isGranted;
       });
 
       if (phoneStatus.isGranted) {
-        print('Historique: Permission granted, loading call logs...');
+        print('GestionAppels: Permission granted, loading call logs...');
         await _loadCallLogs();
       } else if (phoneStatus.isDenied) {
-        print('Historique: Permission denied, requesting...');
+        print('GestionAppels: Permission denied, requesting...');
         await _requestPermission();
         if (_hasPermission) {
           await _loadCallLogs();
         }
       } else if (phoneStatus.isPermanentlyDenied) {
-        print('Historique: Permission permanently denied');
+        print('GestionAppels: Permission permanently denied');
         _showPermissionDialog();
       }
     } catch (e, stackTrace) {
-      print('Historique: Error in checkPermissionAndLoadLogs: $e');
+      print('GestionAppels: Error in checkPermissionAndLoadLogs: $e');
       print('Stack trace: $stackTrace');
       setState(() {
         _isLoading = false;
@@ -104,7 +115,7 @@ class _HistoriquePageState extends State<HistoriquePage> {
 
   Future<void> _loadCallLogs() async {
     if (!_hasPermission) {
-      print('Historique: No permission to load call logs');
+      print('GestionAppels: No permission to load call logs');
       return;
     }
 
@@ -113,7 +124,7 @@ class _HistoriquePageState extends State<HistoriquePage> {
     });
 
     try {
-      print('Historique: Fetching call logs...');
+      print('GestionAppels: Fetching call logs...');
       // Limit to last 100 call logs for better performance
       final Iterable<CallLogEntry> logs = await CallLog.query(
         dateFrom: DateTime.now()
@@ -124,15 +135,17 @@ class _HistoriquePageState extends State<HistoriquePage> {
 
       // Take only the first 100 entries
       final limitedLogs = logs.take(100).toList();
-      print('Historique: Fetched ${limitedLogs.length} call logs');
+      print('GestionAppels: Fetched ${limitedLogs.length} call logs');
 
       setState(() {
         _callLogs = limitedLogs;
+        _filteredCallLogs = limitedLogs;
         _isLoading = false;
       });
-      print('Historique: Call logs loaded successfully');
+      _applyFilters();
+      print('GestionAppels: Call logs loaded successfully');
     } catch (e, stackTrace) {
-      print('Historique: Error loading call logs: $e');
+      print('GestionAppels: Error loading call logs: $e');
       print('Stack trace: $stackTrace');
 
       setState(() {
@@ -151,6 +164,64 @@ class _HistoriquePageState extends State<HistoriquePage> {
     }
   }
 
+  void _applyFilters() {
+    List<CallLogEntry> filtered = _callLogs;
+
+    // Apply call type filter
+    if (_filterType == 'incoming') {
+      filtered = filtered
+          .where((call) => call.callType == CallType.incoming)
+          .toList();
+    } else if (_filterType == 'outgoing') {
+      filtered = filtered
+          .where((call) => call.callType == CallType.outgoing)
+          .toList();
+    }
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((call) {
+        final number = call.number?.toLowerCase() ?? '';
+        final name = call.name?.toLowerCase() ?? '';
+        final query = _searchQuery.toLowerCase();
+        return number.contains(query) || name.contains(query);
+      }).toList();
+    }
+
+    setState(() {
+      _filteredCallLogs = filtered;
+    });
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+    _applyFilters();
+  }
+
+  void _onFilterChanged(String filter) {
+    setState(() {
+      _filterType = filter;
+    });
+    _applyFilters();
+  }
+
+  void _makeCall(String? phoneNumber) async {
+    if (phoneNumber == null || phoneNumber.isEmpty) return;
+
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de passer l\'appel')),
+        );
+      }
+    }
+  }
+
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return; // Already on this page
 
@@ -164,20 +235,14 @@ class _HistoriquePageState extends State<HistoriquePage> {
         );
         break;
       case 1:
-        // Navigate to Call
-        Navigator.pushReplacementNamed(context, AppRoutes.call);
+        // Navigate to Messagerie
+        Navigator.pushReplacementNamed(context, AppRoutes.messagerie);
         break;
       case 2:
-        // Already on Historique
+        // Already on Gestion des appels
         setState(() {
           _selectedIndex = 2;
         });
-        break;
-      case 3:
-        // Navigate to Gestion des appels (to be implemented)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gestion des appels - à venir')),
-        );
         break;
     }
   }
@@ -186,7 +251,16 @@ class _HistoriquePageState extends State<HistoriquePage> {
     if (timestamp == null) return 'Inconnu';
 
     final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    return DateFormat('MMM dd, yyyy HH:mm').format(dateTime);
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays == 0) {
+      return 'Aujourd\'hui ${DateFormat('HH:mm').format(dateTime)}';
+    } else if (difference.inDays == 1) {
+      return 'Hier ${DateFormat('HH:mm').format(dateTime)}';
+    } else {
+      return DateFormat('dd MMM yyyy HH:mm').format(dateTime);
+    }
   }
 
   String _formatDuration(int? duration) {
@@ -196,22 +270,22 @@ class _HistoriquePageState extends State<HistoriquePage> {
     final seconds = duration % 60;
 
     if (minutes > 0) {
-      return 'Durée : ${minutes}min${seconds}s';
+      return '${minutes}min ${seconds}s';
     } else {
-      return 'Durée : ${seconds}s';
+      return '${seconds}s';
     }
   }
 
   String _getCallTypeText(CallType callType) {
     switch (callType) {
       case CallType.incoming:
-        return 'Appel entrant';
+        return 'Entrant';
       case CallType.outgoing:
-        return 'Appel sortant';
+        return 'Sortant';
       case CallType.missed:
-        return 'Appel manqué';
+        return 'Manqué';
       case CallType.rejected:
-        return 'Appel rejeté';
+        return 'Rejeté';
       default:
         return 'Appel';
     }
@@ -220,8 +294,9 @@ class _HistoriquePageState extends State<HistoriquePage> {
   Color _getCallTypeColor(CallType callType) {
     switch (callType) {
       case CallType.incoming:
+        return const Color(0xFF4CAF50); // Green for incoming
       case CallType.outgoing:
-        return const Color(0xFF4CAF50); // Green for successful calls
+        return const Color(0xFF2196F3); // Blue for outgoing
       case CallType.missed:
       case CallType.rejected:
         return const Color(0xFFFF5252); // Red for missed calls
@@ -233,8 +308,9 @@ class _HistoriquePageState extends State<HistoriquePage> {
   IconData _getCallIcon(CallType callType) {
     switch (callType) {
       case CallType.incoming:
+        return Icons.call_received;
       case CallType.outgoing:
-        return Icons.phone;
+        return Icons.call_made;
       case CallType.missed:
       case CallType.rejected:
         return Icons.phone_missed;
@@ -248,10 +324,10 @@ class _HistoriquePageState extends State<HistoriquePage> {
         call.callType == CallType.missed || call.callType == CallType.rejected;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -263,73 +339,119 @@ class _HistoriquePageState extends State<HistoriquePage> {
       ),
       child: Row(
         children: [
+          // Call type icon
+          Container(
+            width: 45,
+            height: 45,
+            decoration: BoxDecoration(
+              color: _getCallTypeColor(call.callType!).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _getCallIcon(call.callType!),
+              color: _getCallTypeColor(call.callType!),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Call details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  call.number ?? 'Inconnu',
+                  call.name ?? call.number ?? 'Inconnu',
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _formatDateTime(call.timestamp),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
+                if (call.name != null && call.number != null)
+                  Text(
+                    call.number!,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
                 const SizedBox(height: 2),
-                Text(
-                  call.simDisplayName ?? 'Téléphone',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                Row(
                   children: [
                     Text(
                       _getCallTypeText(call.callType!),
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade700,
+                        color: _getCallTypeColor(call.callType!),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      _getCallIcon(call.callType!),
-                      color: _getCallTypeColor(call.callType!),
-                      size: 18,
+                    const SizedBox(width: 8),
+                    Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatDateTime(call.timestamp),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 8),
-              if (!isMissed)
+                const SizedBox(height: 4),
+                // Duration display
                 Text(
-                  _formatDuration(call.duration),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  isMissed
+                      ? 'Durée: N/A'
+                      : 'Durée: ${_formatDuration(call.duration)}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-            ],
+              ],
+            ),
+          ),
+          // Call action button
+          GestureDetector(
+            onTap: () => _makeCall(call.number),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFF4CAF50),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.call, color: Colors.white, size: 20),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, IconData icon) {
+    final isSelected = _filterType == value;
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey),
+          const SizedBox(width: 4),
+          Text(label),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        _onFilterChanged(value);
+      },
+      selectedColor: const Color(0xFF6366F1),
+      backgroundColor: Colors.grey.shade200,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.black87,
+        fontSize: 12,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 
@@ -343,14 +465,14 @@ class _HistoriquePageState extends State<HistoriquePage> {
             const SizedBox(height: 16),
             const Text(
               'Permission requise',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 18, color: Colors.white),
             ),
             const SizedBox(height: 8),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 32),
               child: Text(
                 'Accordez l\'autorisation pour afficher l\'historique des appels',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.white70),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -379,37 +501,90 @@ class _HistoriquePageState extends State<HistoriquePage> {
       );
     }
 
-    if (_callLogs.isEmpty) {
+    if (_filteredCallLogs.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.phone, size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 16),
-            const Text(
-              'Aucun appel trouvé',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+            Text(
+              _searchQuery.isNotEmpty || _filterType != 'all'
+                  ? 'Aucun résultat'
+                  : 'Aucun appel trouvé',
+              style: const TextStyle(fontSize: 18, color: Colors.white),
             ),
           ],
         ),
       );
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _callLogs.length,
+    return Column(
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Rechercher par nom ou numéro...',
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF6366F1)),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        // Filter chips
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            children: [
+              _buildFilterChip('Tous', 'all', Icons.all_inclusive),
+              const SizedBox(width: 8),
+              _buildFilterChip('Entrant', 'incoming', Icons.call_received),
+              const SizedBox(width: 8),
+              _buildFilterChip('Sortant', 'outgoing', Icons.call_made),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Results count
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${_filteredCallLogs.length} appel(s)',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade300),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Call logs list
+        Expanded(
+          child: ListView.builder(
+            itemCount: _filteredCallLogs.length,
             itemBuilder: (context, index) {
-              return _buildCallCard(_callLogs[index]);
+              return _buildCallCard(_filteredCallLogs[index]);
             },
           ),
-          const SizedBox(height: 100), // Extra space for navigation bar
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -436,7 +611,7 @@ class _HistoriquePageState extends State<HistoriquePage> {
               },
             ),
             title: const Text(
-              'Historique des appels',
+              'Gestion des appels',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -452,6 +627,30 @@ class _HistoriquePageState extends State<HistoriquePage> {
           ),
         ),
         body: SafeArea(child: _buildBody()),
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.only(bottom: 15.0, right: 5.0),
+          child: FloatingActionButton(
+            onPressed: () async {
+              // Open phone dialer directly
+              final Uri phoneUri = Uri(scheme: 'tel', path: '');
+              if (await canLaunchUrl(phoneUri)) {
+                await launchUrl(phoneUri);
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Impossible d\'ouvrir le composeur'),
+                    ),
+                  );
+                }
+              }
+            },
+            backgroundColor: const Color(0xFF4CAF50),
+            elevation: 8,
+            child: const Icon(Icons.dialpad, color: Colors.white, size: 30),
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         bottomNavigationBar: Padding(
           padding: const EdgeInsets.only(left: 7.0, right: 7.0, bottom: 16.0),
           child: Container(
@@ -473,8 +672,8 @@ class _HistoriquePageState extends State<HistoriquePage> {
                 backgroundColor: const Color(0xFF6366F1),
                 selectedItemColor: Colors.white,
                 unselectedItemColor: Colors.white70,
-                selectedFontSize: 9,
-                unselectedFontSize: 8,
+                selectedFontSize: 10,
+                unselectedFontSize: 9,
                 currentIndex: _selectedIndex,
                 onTap: _onItemTapped,
                 elevation: 0,
@@ -485,14 +684,9 @@ class _HistoriquePageState extends State<HistoriquePage> {
                     label: 'Accueil',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.call_outlined),
-                    activeIcon: Icon(Icons.call),
-                    label: 'Appel',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.schedule_outlined),
-                    activeIcon: Icon(Icons.schedule),
-                    label: 'Historique',
+                    icon: Icon(Icons.chat_outlined),
+                    activeIcon: Icon(Icons.chat),
+                    label: 'Messagerie',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.support_agent_outlined),

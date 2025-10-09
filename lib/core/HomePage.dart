@@ -48,28 +48,19 @@ class _HomePageState extends State<HomePage> {
     // Navigate based on selected index
     switch (index) {
       case 1:
-        // Navigate to Call page
-        Navigator.pushNamed(context, AppRoutes.call).then((_) {
+        // Navigate to Messagerie page
+        Navigator.pushNamed(context, AppRoutes.messagerie).then((_) {
           setState(() {
             _selectedIndex = 0;
           });
         });
         break;
       case 2:
-        // Navigate to Historique page
-        Navigator.pushNamed(context, AppRoutes.historique).then((_) {
+        // Navigate to Gestion des appels page
+        Navigator.pushNamed(context, AppRoutes.gestionAppels).then((_) {
           setState(() {
             _selectedIndex = 0;
           });
-        });
-        break;
-      case 3:
-        // Navigate to Gestion des appels page (to be implemented)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gestion des appels - à venir')),
-        );
-        setState(() {
-          _selectedIndex = 0;
         });
         break;
     }
@@ -186,7 +177,7 @@ class _HomePageState extends State<HomePage> {
                       icon: Icons.edit_calendar_outlined,
                     ),
                     _buildCard(
-                      title: 'Gestion des\nrendez-vous',
+                      title: 'Voir les\nrendez-vous',
                       subtitle: 'Voir les rendez-vous de\nvos clients',
                       color: const Color(0xFF7DD3FC),
                       icon: Icons.content_paste_outlined,
@@ -236,8 +227,8 @@ class _HomePageState extends State<HomePage> {
                 backgroundColor: const Color(0xFF6366F1),
                 selectedItemColor: Colors.white,
                 unselectedItemColor: Colors.white70,
-                selectedFontSize: 9,
-                unselectedFontSize: 8,
+                selectedFontSize: 10,
+                unselectedFontSize: 9,
                 currentIndex: _selectedIndex,
                 onTap: _onItemTapped,
                 elevation: 0,
@@ -248,14 +239,9 @@ class _HomePageState extends State<HomePage> {
                     label: 'Accueil',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.call_outlined),
-                    activeIcon: Icon(Icons.call),
-                    label: 'Appel',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.schedule_outlined),
-                    activeIcon: Icon(Icons.schedule),
-                    label: 'Historique',
+                    icon: Icon(Icons.chat_outlined),
+                    activeIcon: Icon(Icons.chat),
+                    label: 'Messagerie',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.support_agent_outlined),
