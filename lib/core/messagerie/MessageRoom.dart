@@ -1,13 +1,17 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
 import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
 import 'package:cryptoimmobilierapp/models/RoomModel.dart';
+import 'package:cryptoimmobilierapp/api/api_endpoints.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:record/record.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 
 class MessageRoomPage extends StatefulWidget {
   final RoomModel room;
@@ -22,7 +26,10 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AudioRecorder _audioRecorder = AudioRecorder();
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final ap.AudioPlayer _audioPlayer = ap.AudioPlayer();
+  late final RecorderController _recorderController;
+  final Map<String, PlayerController> _playerControllers = {};
+  StreamSubscription<void>? _audioPlayerCompleteSubscription;
 
   bool _isRecording = false;
   bool _isLoadingMessages = true;
@@ -30,11 +37,54 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   String? _recordingPath;
   int _recordingDuration = 0;
   String? _currentlyPlayingMessageId;
+  int _previousMessageCount = 0;
 
   @override
   void initState() {
     super.initState();
     timeago.setLocaleMessages('fr', timeago.FrMessages());
+
+    // Initialize waveform recorder controller with better quality settings
+    _recorderController = RecorderController()
+      ..androidEncoder = AndroidEncoder.aac
+      ..androidOutputFormat = AndroidOutputFormat.mpeg4
+      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+      ..sampleRate = 44100
+      ..bitRate = 128000;
+
+    // Listen for audio player state changes
+    _audioPlayer.onPlayerStateChanged.listen((ap.PlayerState state) {
+      print('🎵 Audio player state changed: $state');
+      if (state == ap.PlayerState.completed) {
+        print('✅ Playback completed - stopping player');
+        if (mounted) {
+          setState(() {
+            _currentlyPlayingMessageId = null;
+          });
+        }
+      }
+    });
+
+    // Listen for audio player completion - store subscription to cancel later
+    _audioPlayerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((
+      _,
+    ) {
+      print('🎵 Audio player onComplete event fired');
+      if (mounted) {
+        setState(() {
+          _currentlyPlayingMessageId = null;
+        });
+        print('✅ Audio playback stopped and UI updated');
+      }
+    });
+
+    // Listen to text field changes to update send button color
+    _messageController.addListener(() {
+      setState(() {
+        // This will trigger rebuild to update send button color
+      });
+    });
+
     _initializeRoom();
   }
 
@@ -137,41 +187,126 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   Future<void> _startRecording() async {
     try {
-      if (await _audioRecorder.hasPermission()) {
-        final directory = await getTemporaryDirectory();
-        final path =
-            '${directory.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      print('🔍 Checking microphone permission...');
 
-        await _audioRecorder.start(
+      // Check microphone permission status first
+      final micStatus = await Permission.microphone.status;
+      print('  Microphone status: $micStatus');
+
+      // Request permission if not already granted
+      if (!micStatus.isGranted) {
+        print('  Requesting microphone permission...');
+        final result = await Permission.microphone.request();
+        print('  Permission result: $result');
+
+        if (!result.isGranted) {
+          print('❌ Microphone permission denied by user');
+          if (!mounted) return;
+
+          // Show different message for permanently denied
+          if (result.isPermanentlyDenied) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Permission microphone refusée définitivement. Veuillez l\'activer dans les paramètres de l\'application.',
+                ),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Ouvrir Paramètres',
+                  textColor: Colors.white,
+                  onPressed: () => openAppSettings(),
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Permission microphone requise pour enregistrer des messages vocaux.',
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      print('✅ Microphone permission granted');
+
+      // Check storage permission for Android 12 and below
+      if (Platform.isAndroid) {
+        final storageStatus = await Permission.storage.status;
+        print('  Storage status: $storageStatus');
+
+        if (!storageStatus.isGranted) {
+          print('  Requesting storage permission...');
+          final result = await Permission.storage.request();
+          print('  Storage permission result: $result');
+        }
+      }
+
+      // Double check with audio recorder
+      final hasPermission = await _audioRecorder.hasPermission();
+      print('  Audio recorder hasPermission: $hasPermission');
+
+      if (!hasPermission) {
+        print('❌ Audio recorder reports no permission');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur: Permission microphone non disponible'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Permission granted, start recording
+      print('✅ All permissions granted, starting recording...');
+
+      final directory = await getTemporaryDirectory();
+      final path =
+          '${directory.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      print('🎙️ Recording to: $path');
+      print('  Directory exists: ${await directory.exists()}');
+
+      // Start both audio recorder and waveform recorder
+      await Future.wait([
+        _audioRecorder.start(
           const RecordConfig(
             encoder: AudioEncoder.aacLc,
             bitRate: 128000,
             sampleRate: 44100,
+            numChannels: 1, // Mono for voice
+            autoGain: true, // Auto gain control
+            echoCancel: true, // Echo cancellation
+            noiseSuppress: true, // Noise suppression
           ),
           path: path,
-        );
+        ),
+        _recorderController.record(path: path),
+      ]);
 
-        if (!mounted) return;
+      print('✅ Recording started successfully');
+      print('  Is recording: ${await _audioRecorder.isRecording()}');
+      print('  Waveform recording: ${_recorderController.isRecording}');
 
-        setState(() {
-          _isRecording = true;
-          _recordingPath = path;
-          _recordingDuration = 0;
-        });
+      if (!mounted) return;
 
-        // Update duration every second
-        _updateRecordingDuration();
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Permission microphone requise'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      setState(() {
+        _isRecording = true;
+        _recordingPath = path;
+        _recordingDuration = 0;
+      });
+
+      // Update duration every second
+      _updateRecordingDuration();
     } catch (e) {
-      print('Error starting recording: $e');
+      print('❌ Error starting recording: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
@@ -194,7 +329,16 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   Future<void> _stopRecording() async {
     try {
-      final path = await _audioRecorder.stop();
+      print('⏹️ Stopping recording...');
+
+      // Stop both audio recorder and waveform recorder
+      final results = await Future.wait([
+        _audioRecorder.stop(),
+        _recorderController.stop(),
+      ]);
+
+      final path = results[0];
+      print('  Recorded file path: $path');
 
       if (!mounted) return;
 
@@ -203,10 +347,23 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       });
 
       if (path != null && path.isNotEmpty) {
+        // Check file size to verify audio was captured
+        final file = File(path);
+        if (await file.exists()) {
+          final fileSize = await file.length();
+          print('  File size: ${fileSize} bytes');
+
+          if (fileSize < 1000) {
+            print('⚠️ Warning: File size is very small, might be empty/silent');
+          }
+        }
+
         await _sendVoiceMessage(path);
+      } else {
+        print('❌ No recording path returned');
       }
     } catch (e) {
-      print('Error stopping recording: $e');
+      print('❌ Error stopping recording: $e');
       if (!mounted) return;
 
       setState(() {
@@ -224,7 +381,11 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   Future<void> _cancelRecording() async {
     try {
-      await _audioRecorder.stop();
+      // Stop both recorders
+      await Future.wait([
+        _audioRecorder.stop(),
+        _recorderController.stop(false), // false = don't save the file
+      ]);
 
       if (!mounted) return;
 
@@ -351,31 +512,43 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         setState(() {
           _currentlyPlayingMessageId = null;
         });
+        print('⏸️ Audio playback stopped');
       } else {
+        // Stop any currently playing audio first
+        if (_currentlyPlayingMessageId != null) {
+          await _audioPlayer.stop();
+        }
+
         // Start playing
-        final url = message.voiceUrl;
-        if (url != null && url.isNotEmpty) {
-          await _audioPlayer.play(UrlSource(url));
+        final voiceUrl = message.voiceUrl;
+        if (voiceUrl != null && voiceUrl.isNotEmpty) {
+          // Construct full URL if it's a relative path
+          final fullUrl = voiceUrl.startsWith('http')
+              ? voiceUrl
+              : '${ApiEndpoints.baseUrl}$voiceUrl';
+
+          print('🔊 Playing voice message from: $fullUrl');
+
+          await _audioPlayer.play(ap.UrlSource(fullUrl));
           if (!mounted) return;
           setState(() {
             _currentlyPlayingMessageId = message.id;
           });
 
-          // Listen for completion
-          _audioPlayer.onPlayerComplete.listen((_) {
-            if (mounted) {
-              setState(() {
-                _currentlyPlayingMessageId = null;
-              });
-            }
-          });
+          print('✅ Voice message playing');
         }
       }
     } catch (e) {
-      print('Error playing voice message: $e');
+      print('❌ Error playing voice message: $e');
       if (!mounted) return;
+      setState(() {
+        _currentlyPlayingMessageId = null;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Erreur lecture audio: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -492,38 +665,57 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           ),
         ),
         const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 150,
-              height: 3,
-              decoration: BoxDecoration(
-                color: isMe
-                    ? Colors.white.withOpacity(0.3)
-                    : const Color(0xFF6366F1).withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: isPlaying ? 0.5 : 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isMe ? Colors.white : const Color(0xFF6366F1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Waveform-style visualization
+              SizedBox(
+                height: 35,
+                width: 150,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: List.generate(25, (index) {
+                    // Create varied heights for waveform effect
+                    final heights = [
+                      0.3,
+                      0.5,
+                      0.8,
+                      1.0,
+                      0.7,
+                      0.4,
+                      0.6,
+                      0.9,
+                      0.5,
+                      0.3,
+                    ];
+                    final heightFactor = heights[index % heights.length];
+
+                    return Container(
+                      width: 2.5,
+                      height: 35 * heightFactor,
+                      decoration: BoxDecoration(
+                        color: isMe
+                            ? Colors.white.withOpacity(0.5)
+                            : const Color(0xFF6366F1).withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    );
+                  }),
                 ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${message.voiceDuration}s',
-              style: TextStyle(
-                fontSize: 12,
-                color: isMe ? Colors.white : Colors.grey.shade600,
+              const SizedBox(height: 4),
+              Text(
+                '${message.voiceDuration ?? 0}s',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isMe ? Colors.white70 : Colors.grey.shade600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -552,16 +744,42 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Enregistrement en cours...',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Enregistrement',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_recordingDuration}s',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  '${_recordingDuration}s',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                const SizedBox(height: 8),
+                // Waveform visualization
+                SizedBox(
+                  height: 40,
+                  child: AudioWaveforms(
+                    size: Size(MediaQuery.of(context).size.width - 200, 40),
+                    recorderController: _recorderController,
+                    enableGesture: false,
+                    waveStyle: WaveStyle(
+                      waveColor: Colors.red,
+                      extendWaveform: true,
+                      showMiddleLine: false,
+                      scaleFactor: 100,
+                      waveThickness: 3,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -669,6 +887,16 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     _scrollController.dispose();
     _audioRecorder.dispose();
     _audioPlayer.dispose();
+    _recorderController.dispose();
+
+    // Cancel audio player completion subscription
+    _audioPlayerCompleteSubscription?.cancel();
+
+    // Dispose all player controllers
+    for (var controller in _playerControllers.values) {
+      controller.dispose();
+    }
+    _playerControllers.clear();
 
     // Leave room - but check if widget is still mounted
     // We need to leave the room before disposing, but safely
@@ -771,6 +999,20 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                   final messages = messagingProvider.getMessagesForRoom(
                     widget.room.id,
                   );
+
+                  // Auto-scroll to bottom when new messages arrive
+                  if (messages.length > _previousMessageCount) {
+                    _previousMessageCount = messages.length;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted && _scrollController.hasClients) {
+                        _scrollController.animateTo(
+                          _scrollController.position.maxScrollExtent,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      }
+                    });
+                  }
 
                   if (messages.isEmpty) {
                     return Center(

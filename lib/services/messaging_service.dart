@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
 import '../api/api_endpoints.dart';
 import '../models/RoomModel.dart';
@@ -162,6 +163,12 @@ class MessagingService {
     required int duration,
   }) async {
     try {
+      print('📤 Sending voice message:');
+      print('  Room ID: $roomId');
+      print('  File path: ${voiceFile.path}');
+      print('  File exists: ${await voiceFile.exists()}');
+      print('  Duration: $duration');
+
       final url = Uri.parse(
         '${ApiEndpoints.baseUrl}/api/messages/rooms/$roomId/messages',
       );
@@ -169,28 +176,42 @@ class MessagingService {
       final request = http.MultipartRequest('POST', url);
       request.headers['Authorization'] = 'Bearer $token';
 
-      request.files.add(
-        await http.MultipartFile.fromPath('voice', voiceFile.path),
+      // Add file with explicit content type for m4a
+      final file = await http.MultipartFile.fromPath(
+        'voice',
+        voiceFile.path,
+        contentType: MediaType('audio', 'm4a'), // Explicitly set content type
       );
+      request.files.add(file);
       request.fields['voiceDuration'] = duration.toString();
+
+      print('📡 Sending request to: $url');
+      print('📡 File content type: ${file.contentType}');
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201) {
+        print('✅ Voice message sent successfully');
         return {
           'success': true,
           'message': MessageModel.fromJson(data['data']),
         };
       } else {
+        print('❌ Failed to send voice message: ${data['message']}');
         return {
           'success': false,
           'message': data['message'] ?? 'Failed to send voice message',
         };
       }
-    } catch (e) {
-      print('Error sending voice message: $e');
+    } catch (e, stackTrace) {
+      print('❌ Error sending voice message: $e');
+      print('Stack trace: $stackTrace');
       return {'success': false, 'message': 'Error: $e'};
     }
   }
