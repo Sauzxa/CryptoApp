@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
 import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
+import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
+import 'package:cryptoimmobilierapp/core/messagerie/CreateRoomPage.dart';
+import 'package:cryptoimmobilierapp/core/messagerie/MessageRoom.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class MessageriePage extends StatefulWidget {
   const MessageriePage({Key? key}) : super(key: key);
@@ -12,6 +16,40 @@ class MessageriePage extends StatefulWidget {
 
 class _MessageriePageState extends State<MessageriePage> {
   int _selectedIndex = 1; // Set to 1 for "Messagerie" tab
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Configure timeago for French
+    timeago.setLocaleMessages('fr', timeago.FrMessages());
+
+    // Load rooms after the first frame to avoid provider access during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRooms();
+    });
+  }
+
+  Future<void> _loadRooms() async {
+    if (!mounted) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final messagingProvider = Provider.of<MessagingProvider>(
+      context,
+      listen: false,
+    );
+
+    final token = authProvider.token;
+    if (token != null) {
+      await messagingProvider.fetchRooms(token);
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return; // Already on this page
@@ -67,6 +105,129 @@ class _MessageriePageState extends State<MessageriePage> {
     }
   }
 
+  Widget _buildRoomCard(room) {
+    final lastMessage = room.lastMessage;
+    final timeAgo = lastMessage != null
+        ? timeago.format(lastMessage.createdAt, locale: 'fr')
+        : timeago.format(room.createdAt, locale: 'fr');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            // Navigate to chat room
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MessageRoomPage(room: room),
+              ),
+            ).then((_) {
+              // Reload rooms when returning
+              _loadRooms();
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Room Avatar
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: const Color(0xFF6366F1).withOpacity(0.1),
+                  child: Text(
+                    room.name[0].toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6366F1),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Room Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              room.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1F2937),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            timeAgo,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              lastMessage != null
+                                  ? (lastMessage.type == 'voice'
+                                        ? '🎤 Message vocal'
+                                        : lastMessage.text)
+                                  : '${room.members.length} membres',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCreateRoomDialog(BuildContext context) {
+    // Navigate to CreateRoomPage
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CreateRoomPage()),
+    ).then((_) {
+      // Reload rooms when returning from create page
+      _loadRooms();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -100,32 +261,95 @@ class _MessageriePageState extends State<MessageriePage> {
           ),
         ),
         body: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.chat_outlined,
-                  size: 64,
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Messagerie',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+          child: Consumer<MessagingProvider>(
+            builder: (context, messagingProvider, child) {
+              if (_isLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+                );
+              }
+
+              final rooms = messagingProvider.rooms;
+
+              if (rooms.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Aucune conversation',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Créez une nouvelle conversation\npour commencer',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.white70),
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton.icon(
+                        onPressed: () => _showCreateRoomDialog(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Nouvelle conversation'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'À venir...',
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade300),
-                ),
-              ],
-            ),
+                );
+              }
+
+              return Column(
+                children: [
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _loadRooms,
+                      color: const Color(0xFF6366F1),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: rooms.length,
+                        itemBuilder: (context, index) {
+                          final room = rooms[index];
+                          return _buildRoomCard(room);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _showCreateRoomDialog(context),
+          backgroundColor: const Color(0xFF6366F1),
+          child: const Icon(Icons.add, color: Colors.white),
         ),
         bottomNavigationBar: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {

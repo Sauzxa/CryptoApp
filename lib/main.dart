@@ -1,6 +1,7 @@
 import 'package:cryptoimmobilierapp/onboarding/welcomeScreen.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
 import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
+import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
 import 'package:cryptoimmobilierapp/core/HomePage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,10 +16,24 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider()..initialize(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
+        ChangeNotifierProvider(create: (_) => MessagingProvider()),
+      ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
+          // Initialize messaging when authenticated
+          if (authProvider.isAuthenticated) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final messagingProvider = Provider.of<MessagingProvider>(
+                context,
+                listen: false,
+              );
+              messagingProvider.initializeMessaging();
+            });
+          }
+
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Crypto Immobilier',
