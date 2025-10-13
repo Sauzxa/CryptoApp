@@ -112,21 +112,41 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
 
   List<UserModel> get _filteredAgents {
     // First, filter to only show field agents (role = 'field')
-    final fieldAgents = _agents
+    var fieldAgents = _agents
         .where((agent) => agent.role == 'field')
         .toList();
 
-    // Then apply search filter if there's a search query
-    if (_searchQuery.isEmpty) {
-      return fieldAgents;
+    // Apply search filter if there's a search query
+    if (_searchQuery.isNotEmpty) {
+      fieldAgents = fieldAgents
+          .where(
+            (agent) =>
+                agent.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                agent.phone.toLowerCase().contains(_searchQuery.toLowerCase()),
+          )
+          .toList();
     }
-    return fieldAgents
-        .where(
-          (agent) =>
-              agent.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              agent.phone.toLowerCase().contains(_searchQuery.toLowerCase()),
-        )
-        .toList();
+
+    // Sort: Available agents first, then by longest elapsed time
+    fieldAgents.sort((a, b) {
+      // 1. Available agents come before unavailable agents
+      final aAvailable = a.availability == 'available';
+      final bAvailable = b.availability == 'available';
+      
+      if (aAvailable && !bAvailable) return -1;
+      if (!aAvailable && bAvailable) return 1;
+
+      // 2. Within same availability status, sort by elapsed time
+      // Agents with null dateAvailable go to the end
+      if (a.dateAvailable == null && b.dateAvailable != null) return 1;
+      if (a.dateAvailable != null && b.dateAvailable == null) return -1;
+      if (a.dateAvailable == null && b.dateAvailable == null) return 0;
+
+      // 3. Earlier date = more elapsed time = should come first
+      return a.dateAvailable!.compareTo(b.dateAvailable!);
+    });
+
+    return fieldAgents;
   }
 
   @override
