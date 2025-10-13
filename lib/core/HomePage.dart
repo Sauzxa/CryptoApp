@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
 import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:cryptoimmobilierapp/widgets/notification_bell_button.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -253,16 +254,8 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  // Notification action
-                },
-              ),
+            actions: const [
+              NotificationBellButton(),
             ],
           ),
         ),

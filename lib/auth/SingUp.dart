@@ -26,6 +26,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscureConfirmPassword = true;
   bool _isDropdownExpanded = false;
   bool _isLoading = false;
+  bool _hasAttemptedSubmit = false; // Track if user has tried to submit
 
   final List<String> _userTypes = ['Agent commercial', 'Agent terrain'];
 
@@ -63,6 +64,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   // Handle signup logic
   Future<void> _handleSignup() async {
+    setState(() {
+      _hasAttemptedSubmit = true;
+    });
+
     if (!_formKey.currentState!.validate() || _selectedUserType == null) {
       return;
     }
@@ -284,7 +289,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       color: const Color(0xFFF5F5F5),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: _selectedUserType == null
+                                        color: _hasAttemptedSubmit && _selectedUserType == null
                                             ? Colors.red.withOpacity(0.3)
                                             : Colors.transparent,
                                       ),
@@ -429,7 +434,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ],
                               ],
                             ),
-                            if (_selectedUserType == null)
+                            if (_hasAttemptedSubmit && _selectedUserType == null)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
                                 child: Text(

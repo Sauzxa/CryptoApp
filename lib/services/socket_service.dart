@@ -159,6 +159,18 @@ class SocketService {
     }
   }
 
+  /// Listen for agent available notifications (for commercial agents)
+  void onAgentAvailable(Function(Map<String, dynamic>) callback) {
+    if (_socket != null) {
+      _socket!.on('agent_available', (data) {
+        print('📥 Received agent_available notification: $data');
+        if (data is Map<String, dynamic>) {
+          callback(data);
+        }
+      });
+    }
+  }
+
   /// Remove all listeners
   void removeAllListeners() {
     if (_socket != null) {
@@ -166,6 +178,7 @@ class SocketService {
       _socket!.off('notification');
       _socket!.off('reservation:created');
       _socket!.off('reservation:updated');
+      _socket!.off('agent_available');
       print('🧹 Removed all socket listeners');
     }
   }

@@ -22,6 +22,7 @@ class UserModel {
   final String role; // 'admin', 'commercial', 'field'
   final String?
   availability; // 'available', 'not_available' - only for field agents
+  final DateTime? dateAvailable; // Timestamp when agent became available/unavailable
   final ProfilePhoto? profilePhoto;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -34,6 +35,7 @@ class UserModel {
     this.password,
     required this.role,
     this.availability,
+    this.dateAvailable,
     this.profilePhoto,
     this.createdAt,
     this.updatedAt,
@@ -48,6 +50,9 @@ class UserModel {
       phone: json['phone'],
       role: json['role'],
       availability: json['availability'],
+      dateAvailable: json['dateAvailable'] != null
+          ? DateTime.parse(json['dateAvailable'])
+          : null,
       profilePhoto: json['profilePhoto'] != null
           ? ProfilePhoto.fromJson(json['profilePhoto'])
           : null,
@@ -96,6 +101,7 @@ class UserModel {
     String? password,
     String? role,
     String? availability,
+    DateTime? dateAvailable,
     ProfilePhoto? profilePhoto,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -108,6 +114,7 @@ class UserModel {
       password: password ?? this.password,
       role: role ?? this.role,
       availability: availability ?? this.availability,
+      dateAvailable: dateAvailable ?? this.dateAvailable,
       profilePhoto: profilePhoto ?? this.profilePhoto,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

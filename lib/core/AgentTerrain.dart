@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
@@ -6,6 +7,7 @@ import '../api/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../providers/messaging_provider.dart';
 import '../core/messagerie/MessageRoom.dart';
+import '../services/socket_service.dart';
 
 class AgentTerrainPage extends StatefulWidget {
   const AgentTerrainPage({Key? key}) : super(key: key);
@@ -23,11 +25,49 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   bool _isLoading = false;
   String? _errorMessage;
   List<UserModel> _agents = [];
+  
+  // Timer for updating elapsed time display
+  Timer? _updateTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchAgents();
+    _setupSocketListeners();
+    
+    // Update UI every second to refresh elapsed time
+    _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          // This will rebuild the UI and update all time displays
+        });
+      }
+    });
+  }
+
+  void _setupSocketListeners() {
+    // Listen for agent status updates
+    socketService.onAgentStatusUpdate((data) {
+      final agentId = data['agentId'] as String?;
+      final availability = data['availability'] as String?;
+      final dateAvailableStr = data['dateAvailable'] as String?;
+      
+      if (agentId != null && availability != null) {
+        setState(() {
+          // Find and update the agent in the list
+          final index = _agents.indexWhere((agent) => agent.id == agentId);
+          if (index != -1) {
+            final agent = _agents[index];
+            _agents[index] = agent.copyWith(
+              availability: availability,
+              dateAvailable: dateAvailableStr != null 
+                  ? DateTime.parse(dateAvailableStr)
+                  : null,
+            );
+          }
+        });
+      }
+    });
   }
 
   Future<void> _fetchAgents() async {
@@ -92,6 +132,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _updateTimer?.cancel();
     super.dispose();
   }
 
@@ -202,9 +243,34 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
     }
   }
 
+  String _formatAvailabilityTime(DateTime? dateAvailable, bool isAvailable) {
+    if (dateAvailable == null) {
+      // Show a default message when no date is available
+      return isAvailable ? 'Statut: Disponible' : 'Statut: Indisponible';
+    }
+
+    final now = DateTime.now();
+    final difference = now.difference(dateAvailable);
+
+    // Calculate hours, minutes, seconds
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes.remainder(60);
+    final seconds = difference.inSeconds.remainder(60);
+
+    // Format as "Xh Xm Xs" (same as reservations)
+    return '${hours}h ${minutes}m ${seconds}s';
+  }
+
   Widget _buildAgentCard(UserModel agent) {
     final bool isAvailable = agent.availability == 'available';
     final bool hasPhoto = agent.profilePhoto?.url != null;
+    final String availabilityText = _formatAvailabilityTime(agent.dateAvailable, isAvailable);
+    
+    // Debug: Print agent data
+    print('🔍 Agent: ${agent.name}');
+    print('   Availability: ${agent.availability}');
+    print('   DateAvailable: ${agent.dateAvailable}');
+    print('   Formatted: $availabilityText');
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -251,14 +317,32 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  isAvailable ? 'Disponible' : 'Indisponible',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isAvailable
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFFEF4444),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isAvailable ? 'Disponible' : 'Indisponible',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isAvailable
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFEF4444),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        availabilityText,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: (isAvailable
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFEF4444))
+                              .withOpacity(0.8),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
