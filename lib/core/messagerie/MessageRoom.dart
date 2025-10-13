@@ -556,88 +556,139 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   Widget _buildMessageBubble(MessageModel message, bool isMe) {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: EdgeInsets.only(
-          top: 2,
-          bottom: 2,
-          left: isMe ? 64 : 8,
-          right: isMe ? 8 : 64,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF6366F1) : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isMe ? 16 : 4),
-            bottomRight: Radius.circular(isMe ? 4 : 16),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
+      child: Row(
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Profile picture for other users (left side)
+          if (!isMe) ...[
+            _buildProfilePicture(message.sender),
+            const SizedBox(width: 8),
           ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Sender name (if not me)
-            if (!isMe)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  message.sender.name,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6366F1),
-                  ),
-                ),
+
+          // Message bubble
+          Flexible(
+            child: Container(
+              margin: EdgeInsets.only(
+                top: 2,
+                bottom: 2,
+                left: isMe ? 64 : 0,
+                right: isMe ? 0 : 64,
               ),
-
-            // Message content
-            if (message.type == 'text')
-              Text(
-                message.text,
-                style: TextStyle(
-                  color: isMe ? Colors.white : const Color(0xFF1F2937),
-                  fontSize: 15,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isMe ? const Color(0xFF6366F1) : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isMe ? 16 : 4),
+                  bottomRight: Radius.circular(isMe ? 4 : 16),
                 ),
-              )
-            else
-              _buildVoiceMessageContent(message, isMe),
-
-            const SizedBox(height: 4),
-
-            // Timestamp and seen indicator
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  timeago.format(message.createdAt, locale: 'fr'),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isMe ? Colors.white70 : Colors.grey.shade600,
-                  ),
-                ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    message.seenBy.length > 1 ? Icons.done_all : Icons.done,
-                    size: 14,
-                    color: message.seenBy.length > 1
-                        ? Colors.blue.shade200
-                        : Colors.white70,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
                   ),
                 ],
-              ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Sender name (if not me)
+                  if (!isMe)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        message.sender.name,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF6366F1),
+                        ),
+                      ),
+                    ),
+
+                  // Message content
+                  if (message.type == 'text')
+                    Text(
+                      message.text,
+                      style: TextStyle(
+                        color: isMe ? Colors.white : const Color(0xFF1F2937),
+                        fontSize: 15,
+                      ),
+                    )
+                  else
+                    _buildVoiceMessageContent(message, isMe),
+
+                  const SizedBox(height: 4),
+
+                  // Timestamp and seen indicator
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        timeago.format(message.createdAt, locale: 'fr'),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isMe ? Colors.white70 : Colors.grey.shade600,
+                        ),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          message.seenBy.length > 1
+                              ? Icons.done_all
+                              : Icons.done,
+                          size: 14,
+                          color: message.seenBy.length > 1
+                              ? Colors.blue.shade200
+                              : Colors.white70,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
+          ),
+
+          // Profile picture for current user (right side)
+          if (isMe) ...[
+            const SizedBox(width: 8),
+            _buildProfilePicture(message.sender),
           ],
-        ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildProfilePicture(UserBasic user) {
+    final hasProfilePhoto =
+        user.profilePhoto != null && user.profilePhoto!.url != null;
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: const Color(0xFF6366F1).withOpacity(0.1),
+      backgroundImage: hasProfilePhoto
+          ? NetworkImage(
+              user.profilePhoto!.url!.startsWith('http')
+                  ? user.profilePhoto!.url!
+                  : '${ApiEndpoints.baseUrl}${user.profilePhoto!.url!}',
+            )
+          : null,
+      child: !hasProfilePhoto
+          ? Text(
+              user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF6366F1),
+              ),
+            )
+          : null,
     );
   }
 
@@ -1194,17 +1245,31 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             ),
             const SizedBox(height: 12),
             ...widget.room.members.map((member) {
+              final hasProfilePhoto = member.profilePhoto != null &&
+                  member.profilePhoto!.url != null;
+
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
+                  radius: 24,
                   backgroundColor: const Color(0xFF6366F1).withOpacity(0.1),
-                  child: Text(
-                    member.name[0].toUpperCase(),
-                    style: const TextStyle(
-                      color: Color(0xFF6366F1),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  backgroundImage: hasProfilePhoto
+                      ? NetworkImage(
+                          member.profilePhoto!.url!.startsWith('http')
+                              ? member.profilePhoto!.url!
+                              : '${ApiEndpoints.baseUrl}${member.profilePhoto!.url!}',
+                        )
+                      : null,
+                  child: !hasProfilePhoto
+                      ? Text(
+                          member.name[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFF6366F1),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        )
+                      : null,
                 ),
                 title: Text(member.name),
                 subtitle: Text(member.role),
