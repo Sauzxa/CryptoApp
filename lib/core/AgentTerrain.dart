@@ -265,12 +265,6 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
     final bool isAvailable = agent.availability == 'available';
     final bool hasPhoto = agent.profilePhoto?.url != null;
     final String availabilityText = _formatAvailabilityTime(agent.dateAvailable, isAvailable);
-    
-    // Debug: Print agent data
-    print('🔍 Agent: ${agent.name}');
-    print('   Availability: ${agent.availability}');
-    print('   DateAvailable: ${agent.dateAvailable}');
-    print('   Formatted: $availabilityText');
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
