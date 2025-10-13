@@ -6,6 +6,7 @@ import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
 import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
 import 'package:cryptoimmobilierapp/models/RoomModel.dart';
 import 'package:cryptoimmobilierapp/api/api_endpoints.dart';
+import 'package:cryptoimmobilierapp/services/messaging_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart' as ap;
@@ -1005,30 +1006,61 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                 _showLeaveRoomDialog();
               } else if (value == 'info') {
                 _showRoomInfo();
+              } else if (value == 'delete') {
+                _showDeleteRoomDialog();
+              } else if (value == 'add_members') {
+                _showAddMembersDialog();
               }
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'info',
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline),
-                    SizedBox(width: 8),
-                    Text('Informations'),
-                  ],
+            itemBuilder: (context) {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              final isCreator = widget.room.creator.id == authProvider.currentUser?.id;
+
+              return [
+                const PopupMenuItem(
+                  value: 'info',
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline),
+                      SizedBox(width: 8),
+                      Text('Informations'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'leave',
-                child: Row(
-                  children: [
-                    Icon(Icons.exit_to_app, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Quitter', style: TextStyle(color: Colors.red)),
-                  ],
+                if (isCreator) ...[
+                  const PopupMenuItem(
+                    value: 'add_members',
+                    child: Row(
+                      children: [
+                        Icon(Icons.person_add, color: Color(0xFF6366F1)),
+                        SizedBox(width: 8),
+                        Text('Ajouter des membres', style: TextStyle(color: Color(0xFF6366F1))),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Supprimer la conversation', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+                const PopupMenuItem(
+                  value: 'leave',
+                  child: Row(
+                    children: [
+                      Icon(Icons.exit_to_app, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Quitter', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ];
+            },
           ),
         ],
       ),
@@ -1189,6 +1221,9 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   }
 
   void _showRoomInfo() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isCreator = widget.room.creator.id == authProvider.currentUser?.id;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -1247,6 +1282,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             ...widget.room.members.map((member) {
               final hasProfilePhoto = member.profilePhoto != null &&
                   member.profilePhoto!.url != null;
+              final isMemberCreator = widget.room.creator.id == member.id;
 
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -1273,7 +1309,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                 ),
                 title: Text(member.name),
                 subtitle: Text(member.role),
-                trailing: widget.room.creator.id == member.id
+                trailing: isMemberCreator
                     ? Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -1292,11 +1328,280 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                           ),
                         ),
                       )
-                    : null,
+                    : (isCreator
+                        ? IconButton(
+                            icon: const Icon(Icons.remove_circle, color: Colors.red),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showRemoveMemberDialog(member);
+                            },
+                            tooltip: 'Retirer',
+                          )
+                        : null),
               );
             }).toList(),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showDeleteRoomDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Supprimer la conversation'),
+        content: const Text(
+          'Êtes-vous sûr de vouloir supprimer cette conversation? '
+          'Tous les messages seront définitivement supprimés.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+
+              final authProvider = Provider.of<AuthProvider>(
+                context,
+                listen: false,
+              );
+              final messagingProvider = Provider.of<MessagingProvider>(
+                context,
+                listen: false,
+              );
+              final token = authProvider.token;
+
+              if (token != null) {
+                final success = await messagingProvider.deleteRoom(
+                  token: token,
+                  roomId: widget.room.id,
+                );
+
+                if (!mounted) return;
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Conversation supprimée'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Erreur lors de la suppression'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddMembersDialog() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+
+    if (token == null) return;
+
+    // Fetch available users
+    final result = await MessagingService.getAvailableUsers(
+      token: token,
+      roomId: widget.room.id,
+    );
+
+    if (!mounted) return;
+
+    if (!result['success']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Erreur'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final availableUsers = result['users'] as List<UserBasic>;
+
+    if (availableUsers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aucun utilisateur disponible à ajouter'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final selectedUsers = <String>[];
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Ajouter des membres'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: availableUsers.length,
+              itemBuilder: (context, index) {
+                final user = availableUsers[index];
+                final isSelected = selectedUsers.contains(user.id);
+
+                return CheckboxListTile(
+                  value: isSelected,
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == true) {
+                        selectedUsers.add(user.id);
+                      } else {
+                        selectedUsers.remove(user.id);
+                      }
+                    });
+                  },
+                  title: Text(user.name),
+                  subtitle: Text(user.email),
+                  secondary: CircleAvatar(
+                    backgroundColor: const Color(0xFF6366F1).withOpacity(0.1),
+                    backgroundImage: user.profilePhoto?.url != null
+                        ? NetworkImage(
+                            user.profilePhoto!.url!.startsWith('http')
+                                ? user.profilePhoto!.url!
+                                : '${ApiEndpoints.baseUrl}${user.profilePhoto!.url!}',
+                          )
+                        : null,
+                    child: user.profilePhoto?.url == null
+                        ? Text(
+                            user.name[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Color(0xFF6366F1),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: selectedUsers.isEmpty
+                  ? null
+                  : () async {
+                      Navigator.pop(dialogContext);
+
+                      final messagingProvider = Provider.of<MessagingProvider>(
+                        context,
+                        listen: false,
+                      );
+
+                      final success = await messagingProvider.addMembersToRoom(
+                        token: token,
+                        roomId: widget.room.id,
+                        memberIds: selectedUsers,
+                      );
+
+                      if (!mounted) return;
+
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Membres ajoutés avec succès'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Erreur lors de l\'ajout des membres'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              child: const Text('Ajouter'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRemoveMemberDialog(UserBasic member) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Retirer le membre'),
+        content: Text(
+          'Voulez-vous retirer ${member.name} de cette conversation?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+
+              final authProvider = Provider.of<AuthProvider>(
+                context,
+                listen: false,
+              );
+              final messagingProvider = Provider.of<MessagingProvider>(
+                context,
+                listen: false,
+              );
+              final token = authProvider.token;
+
+              if (token != null) {
+                final success = await messagingProvider.removeMemberFromRoom(
+                  token: token,
+                  roomId: widget.room.id,
+                  memberId: member.id,
+                );
+
+                if (!mounted) return;
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${member.name} a été retiré'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Erreur lors du retrait'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Retirer', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

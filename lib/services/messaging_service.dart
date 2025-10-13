@@ -312,4 +312,145 @@ class MessagingService {
       return {'success': false, 'message': 'Error: $e'};
     }
   }
+
+  // Delete room (admin/creator only)
+  static Future<Map<String, dynamic>> deleteRoom({
+    required String token,
+    required String roomId,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '${ApiEndpoints.baseUrl}/api/messages/rooms/$roomId',
+      );
+
+      final response = await http.delete(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to delete room',
+        };
+      }
+    } catch (e) {
+      print('Error deleting room: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Add members to room (admin/creator only)
+  static Future<Map<String, dynamic>> addMembersToRoom({
+    required String token,
+    required String roomId,
+    required List<String> memberIds,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '${ApiEndpoints.baseUrl}/api/messages/rooms/$roomId/members',
+      );
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'memberIds': memberIds}),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'room': RoomModel.fromJson(data['data']),
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to add members',
+        };
+      }
+    } catch (e) {
+      print('Error adding members: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Remove member from room (admin/creator only)
+  static Future<Map<String, dynamic>> removeMemberFromRoom({
+    required String token,
+    required String roomId,
+    required String memberId,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '${ApiEndpoints.baseUrl}/api/messages/rooms/$roomId/members/$memberId',
+      );
+
+      final response = await http.delete(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to remove member',
+        };
+      }
+    } catch (e) {
+      print('Error removing member: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Find or create direct room
+  static Future<Map<String, dynamic>> findOrCreateDirectRoom({
+    required String token,
+    required String otherUserId,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '${ApiEndpoints.baseUrl}/api/messages/rooms/direct',
+      );
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'otherUserId': otherUserId}),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'room': RoomModel.fromJson(data['data']),
+          'isNew': data['isNew'] ?? false,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to create/find room',
+        };
+      }
+    } catch (e) {
+      print('Error finding/creating direct room: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
 }

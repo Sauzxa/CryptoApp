@@ -414,6 +414,129 @@ class MessagingProvider with ChangeNotifier {
     }
   }
 
+  /// Delete room (admin/creator only)
+  Future<bool> deleteRoom({
+    required String token,
+    required String roomId,
+  }) async {
+    try {
+      final result = await MessagingService.deleteRoom(
+        token: token,
+        roomId: roomId,
+      );
+
+      if (result['success']) {
+        _rooms.removeWhere((room) => room.id == roomId);
+        _roomMessages.remove(roomId);
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error deleting room: $e');
+      return false;
+    }
+  }
+
+  /// Add members to room (admin/creator only)
+  Future<bool> addMembersToRoom({
+    required String token,
+    required String roomId,
+    required List<String> memberIds,
+  }) async {
+    try {
+      final result = await MessagingService.addMembersToRoom(
+        token: token,
+        roomId: roomId,
+        memberIds: memberIds,
+      );
+
+      if (result['success']) {
+        final updatedRoom = result['room'] as RoomModel;
+        final roomIndex = _rooms.indexWhere((room) => room.id == roomId);
+        if (roomIndex != -1) {
+          _rooms[roomIndex] = updatedRoom;
+          notifyListeners();
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error adding members: $e');
+      return false;
+    }
+  }
+
+  /// Remove member from room (admin/creator only)
+  Future<bool> removeMemberFromRoom({
+    required String token,
+    required String roomId,
+    required String memberId,
+  }) async {
+    try {
+      final result = await MessagingService.removeMemberFromRoom(
+        token: token,
+        roomId: roomId,
+        memberId: memberId,
+      );
+
+      if (result['success']) {
+        final roomIndex = _rooms.indexWhere((room) => room.id == roomId);
+        if (roomIndex != -1) {
+          final room = _rooms[roomIndex];
+          final updatedMembers = room.members
+              .where((member) => member.id != memberId)
+              .toList();
+          _rooms[roomIndex] = room.copyWith(members: updatedMembers);
+          notifyListeners();
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error removing member: $e');
+      return false;
+    }
+  }
+
+  /// Find or create direct room
+  Future<RoomModel?> findOrCreateDirectRoom({
+    required String token,
+    required String otherUserId,
+  }) async {
+    try {
+      final result = await MessagingService.findOrCreateDirectRoom(
+        token: token,
+        otherUserId: otherUserId,
+      );
+
+      if (result['success']) {
+        final room = result['room'] as RoomModel;
+        final isNew = result['isNew'] as bool;
+
+        if (isNew) {
+          // Add to rooms list if it's a new room
+          _rooms.insert(0, room);
+          notifyListeners();
+        } else {
+          // Update existing room if found
+          final roomIndex = _rooms.indexWhere((r) => r.id == room.id);
+          if (roomIndex == -1) {
+            // Room exists in DB but not in local state, add it
+            _rooms.insert(0, room);
+            notifyListeners();
+          }
+        }
+
+        return room;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error finding/creating direct room: $e');
+      return null;
+    }
+  }
+
   /// Clean up
   void dispose() {
     _rooms.clear();

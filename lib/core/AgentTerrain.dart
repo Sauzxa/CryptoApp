@@ -4,6 +4,8 @@ import 'package:cryptoimmobilierapp/utils/Routes.dart';
 import '../models/UserModel.dart';
 import '../api/api_client.dart';
 import '../providers/auth_provider.dart';
+import '../providers/messaging_provider.dart';
+import '../core/messagerie/MessageRoom.dart';
 
 class AgentTerrainPage extends StatefulWidget {
   const AgentTerrainPage({Key? key}) : super(key: key);
@@ -115,6 +117,88 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
           _selectedIndex = 3;
         });
         break;
+    }
+  }
+
+  Future<void> _openDirectMessage(UserModel agent) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final messagingProvider = Provider.of<MessagingProvider>(
+      context,
+      listen: false,
+    );
+    final token = authProvider.token;
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Session expirée. Veuillez vous reconnecter.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+      ),
+    );
+
+    try {
+      // Validate agent ID
+      if (agent.id == null) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ID de l\'agent invalide'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Find or create direct room with this agent
+      final room = await messagingProvider.findOrCreateDirectRoom(
+        token: token,
+        otherUserId: agent.id!,
+      );
+
+      if (!mounted) return;
+
+      // Close loading indicator
+      Navigator.pop(context);
+
+      if (room != null) {
+        // Navigate to the message room
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MessageRoomPage(room: room),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de la création de la conversation'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      // Close loading indicator
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -257,30 +341,30 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                   ),
                 ),
 
-                // Messagerie button (disabled)
+                // Messagerie button
                 Column(
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
+                        color: const Color(0xFF6366F1).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: IconButton(
-                        onPressed: null, // Disabled for now
-                        icon: Icon(
+                        onPressed: () => _openDirectMessage(agent),
+                        icon: const Icon(
                           Icons.message_outlined,
-                          color: Colors.grey.shade400,
+                          color: Color(0xFF6366F1),
                           size: 20,
                         ),
-                        tooltip: 'Messagerie (bientôt disponible)',
+                        tooltip: 'Envoyer un message',
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                    const Text(
                       'Messagerie',
                       style: TextStyle(
                         fontSize: 10,
-                        color: Colors.grey.shade400,
+                        color: Color(0xFF6366F1),
                       ),
                     ),
                   ],
