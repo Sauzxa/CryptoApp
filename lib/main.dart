@@ -49,16 +49,24 @@ class MyApp extends StatelessWidget {
   Widget _getInitialScreen(AuthProvider authProvider) {
     // Show loading while initializing
     if (authProvider.isLoading) {
+      print('⏳ App initializing...');
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    print('🚀 Determining initial route...');
+    print('   isAuthenticated: ${authProvider.isAuthenticated}');
+    print('   hasToken: ${authProvider.token != null}');
+    print('   hasUser: ${authProvider.currentUser != null}');
+
     // If authenticated, show HomePage
     if (authProvider.isAuthenticated) {
+      print('✅ Routing to HomePage (user is authenticated)');
       return const HomePage();
     }
 
     // If not authenticated, always show WelcomeScreen
     // User can navigate to login/signup from there
+    print('🏠 Routing to WelcomeScreen (user not authenticated)');
     return const WelcomeScreen();
   }
 }

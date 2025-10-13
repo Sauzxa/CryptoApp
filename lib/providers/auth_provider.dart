@@ -35,26 +35,34 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('🔄 AuthProvider: Initializing...');
       await _authService.initialize();
       _currentUser = _authService.currentUser;
       _token = _authService.token;
 
-      // Verify token is still valid
-      if (_token != null) {
-        final isValid = await _authService.isTokenValid();
-        if (!isValid) {
-          await logout();
-        } else {
-          // Connect to socket if authenticated
-          await _connectSocket();
-        }
+      debugPrint('📦 AuthProvider: Loaded from storage');
+      debugPrint('   Token: ${_token != null ? "exists" : "null"}');
+      debugPrint('   User: ${_currentUser?.name ?? "null"}');
+
+      // If we have a token, try to connect socket
+      // Don't validate token on startup - let user in even if offline
+      if (_token != null && _currentUser != null) {
+        debugPrint('✅ AuthProvider: User is authenticated');
+        // Try to connect socket (non-blocking)
+        _connectSocket().catchError((e) {
+          debugPrint('⚠️ Socket connection failed: $e');
+          // Don't logout on socket failure
+        });
+      } else {
+        debugPrint('❌ AuthProvider: No stored credentials');
       }
     } catch (e) {
       _errorMessage = 'Erreur d\'initialisation: ${e.toString()}';
-      debugPrint(_errorMessage);
+      debugPrint('❌ AuthProvider initialization error: $_errorMessage');
     } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('✅ AuthProvider: Initialization complete');
     }
   }
 

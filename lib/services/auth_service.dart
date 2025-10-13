@@ -35,11 +35,17 @@ class AuthService {
     final userData = prefs.getString(_userKey);
     _hasSeenWelcome = prefs.getBool(_hasSeenWelcomeKey) ?? false;
 
+    print('🔍 Loading stored data...');
+    print('   Token exists: ${_token != null}');
+    print('   User data exists: ${userData != null}');
+
     if (userData != null) {
       try {
         final userJson = jsonDecode(userData);
         _currentUser = UserModel.fromJson(userJson);
+        print('✅ User loaded from storage: ${_currentUser!.name}');
       } catch (e) {
+        print('❌ Error loading user data: $e');
         // Clear invalid data
         await clearAuth();
       }
@@ -155,11 +161,13 @@ class AuthService {
 
     if (_token != null) {
       await prefs.setString(_tokenKey, _token!);
+      print('✅ Token saved to storage');
     }
 
     if (_currentUser != null) {
       final userJson = jsonEncode(_currentUser!.toJson());
       await prefs.setString(_userKey, userJson);
+      print('✅ User data saved to storage: ${_currentUser!.name}');
     }
   }
 
@@ -178,6 +186,8 @@ class AuthService {
 
     _token = null;
     _currentUser = null;
+    
+    print('🗑️ Auth data cleared from storage');
   }
 
   // Logout
