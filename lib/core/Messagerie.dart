@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
@@ -230,32 +231,39 @@ class _MessageriePageState extends State<MessageriePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('lib/assets/CryptoBackground.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
+    return Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(70),
-          child: AppBar(
-            backgroundColor: const Color(0xFF6366F1),
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-            title: const Text(
-              'Messagerie',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+          child: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: AppBar(
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black.withOpacity(0.3)
+                    : Colors.white.withOpacity(0.3),
+                elevation: 0,
+                leading: IconButton(
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : const Color(0xFF6366F1),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+                title: Text(
+                  'Messagerie',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : const Color(0xFF6366F1),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ),
@@ -279,13 +287,13 @@ class _MessageriePageState extends State<MessageriePage> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: const Color(0xFF6366F1).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.chat_bubble_outline,
                           size: 64,
-                          color: Colors.white70,
+                          color: Color(0xFF6366F1),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -294,14 +302,17 @@ class _MessageriePageState extends State<MessageriePage> {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Color(0xFF1F2937),
                         ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
                         'Créez une nouvelle conversation\npour commencer',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, color: Colors.white70),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF6B7280),
+                        ),
                       ),
                       const SizedBox(height: 32),
                       ElevatedButton.icon(
@@ -363,63 +374,95 @@ class _MessageriePageState extends State<MessageriePage> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1),
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 5),
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                      spreadRadius: 0,
                     ),
                   ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(30),
-                  child: BottomNavigationBar(
-                    type: BottomNavigationBarType.fixed,
-                    backgroundColor: const Color(0xFF6366F1),
-                    selectedItemColor: Colors.white,
-                    unselectedItemColor: Colors.white70,
-                    selectedFontSize: 10,
-                    unselectedFontSize: 9,
-                    currentIndex: _selectedIndex,
-                    onTap: _onItemTapped,
-                    elevation: 0,
-                    items: [
-                      const BottomNavigationBarItem(
-                        icon: Icon(Icons.home_outlined),
-                        activeIcon: Icon(Icons.home),
-                        label: 'Accueil',
-                      ),
-                      const BottomNavigationBarItem(
-                        icon: Icon(Icons.chat_outlined),
-                        activeIcon: Icon(Icons.chat),
-                        label: 'Messagerie',
-                      ),
-                      const BottomNavigationBarItem(
-                        icon: Icon(Icons.support_agent_outlined),
-                        activeIcon: Icon(Icons.support_agent),
-                        label: 'Gestion des appels',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Opacity(
-                          opacity: isFieldAgent ? 0.3 : 1.0,
-                          child: const Icon(Icons.people_outline),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: Theme.of(context).brightness == Brightness.dark
+                              ? [
+                                  Colors.black.withOpacity(0.4),
+                                  Colors.black.withOpacity(0.3),
+                                ]
+                              : [
+                                  Colors.white.withOpacity(0.4),
+                                  Colors.white.withOpacity(0.3),
+                                ],
                         ),
-                        activeIcon: Opacity(
-                          opacity: isFieldAgent ? 0.3 : 1.0,
-                          child: const Icon(Icons.people),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.white.withOpacity(0.5),
+                          width: 1.5,
                         ),
-                        label: 'Agents Terrain',
                       ),
-                    ],
+                      child: BottomNavigationBar(
+                        type: BottomNavigationBarType.fixed,
+                        backgroundColor: Colors.transparent,
+                        selectedItemColor:
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : const Color(0xFF6366F1),
+                        unselectedItemColor:
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white60
+                                : const Color(0xFF6366F1).withOpacity(0.5),
+                        selectedFontSize: 10,
+                        unselectedFontSize: 9,
+                        currentIndex: _selectedIndex,
+                        onTap: _onItemTapped,
+                        elevation: 0,
+                        items: [
+                          const BottomNavigationBarItem(
+                            icon: Icon(Icons.home_outlined),
+                            activeIcon: Icon(Icons.home),
+                            label: 'Accueil',
+                          ),
+                          const BottomNavigationBarItem(
+                            icon: Icon(Icons.chat_outlined),
+                            activeIcon: Icon(Icons.chat),
+                            label: 'Messagerie',
+                          ),
+                          const BottomNavigationBarItem(
+                            icon: Icon(Icons.support_agent_outlined),
+                            activeIcon: Icon(Icons.support_agent),
+                            label: 'Gestion des appels',
+                          ),
+                          BottomNavigationBarItem(
+                            icon: Opacity(
+                              opacity: isFieldAgent ? 0.3 : 1.0,
+                              child: const Icon(Icons.people_outline),
+                            ),
+                            activeIcon: Opacity(
+                              opacity: isFieldAgent ? 0.3 : 1.0,
+                              child: const Icon(Icons.people),
+                            ),
+                            label: 'Agents Terrain',
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             );
           },
         ),
-      ),
     );
   }
 }

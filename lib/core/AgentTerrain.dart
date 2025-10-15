@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
@@ -481,21 +482,35 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
-        child: AppBar(
-          backgroundColor: const Color(0xFF6366F1),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-          title: const Text(
-            'Voir état des agents',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: AppBar(
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.3),
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF6366F1),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+              title: Text(
+                'Voir état des agents',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF6366F1),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ),
@@ -634,50 +649,83 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
         padding: const EdgeInsets.only(left: 7.0, right: 7.0, bottom: 16.0),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF6366F1),
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 5),
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+                spreadRadius: 0,
               ),
             ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(30),
-            child: BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: const Color(0xFF6366F1),
-              selectedItemColor: Colors.white,
-              unselectedItemColor: Colors.white70,
-              selectedFontSize: 10,
-              unselectedFontSize: 9,
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              elevation: 0,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home),
-                  label: 'Accueil',
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: Theme.of(context).brightness == Brightness.dark
+                        ? [
+                            Colors.black.withOpacity(0.4),
+                            Colors.black.withOpacity(0.3),
+                          ]
+                        : [
+                            Colors.white.withOpacity(0.4),
+                            Colors.white.withOpacity(0.3),
+                          ],
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.5),
+                    width: 1.5,
+                  ),
                 ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.chat_outlined),
-                  activeIcon: Icon(Icons.chat),
-                  label: 'Messagerie',
+                child: BottomNavigationBar(
+                  type: BottomNavigationBarType.fixed,
+                  backgroundColor: Colors.transparent,
+                  selectedItemColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : const Color(0xFF6366F1),
+                  unselectedItemColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white60
+                          : const Color(0xFF6366F1).withOpacity(0.5),
+                  selectedFontSize: 10,
+                  unselectedFontSize: 9,
+                  currentIndex: _selectedIndex,
+                  onTap: _onItemTapped,
+                  elevation: 0,
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.home_outlined),
+                      activeIcon: Icon(Icons.home),
+                      label: 'Accueil',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.chat_outlined),
+                      activeIcon: Icon(Icons.chat),
+                      label: 'Messagerie',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.support_agent_outlined),
+                      activeIcon: Icon(Icons.support_agent),
+                      label: 'Gestion des appels',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.people_outline),
+                      activeIcon: Icon(Icons.people),
+                      label: 'Agents Terrain',
+                    ),
+                  ],
                 ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.support_agent_outlined),
-                  activeIcon: Icon(Icons.support_agent),
-                  label: 'Gestion des appels',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.people_outline),
-                  activeIcon: Icon(Icons.people),
-                  label: 'Agents Terrain',
-                ),
-              ],
+              ),
             ),
           ),
         ),
