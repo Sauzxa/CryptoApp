@@ -357,11 +357,6 @@ class _MessageriePageState extends State<MessageriePage> {
             },
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _showCreateRoomDialog(context),
-          backgroundColor: const Color(0xFF6366F1),
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
         bottomNavigationBar: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
             final isFieldAgent = authProvider.isField;
