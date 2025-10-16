@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "642181655311",
+    "project_id": "cryptoapp-da8c1",
+    "storage_bucket": "cryptoapp-da8c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:642181655311:android:2fa0dac9d6b3b7311f6c7a",
+        "android_client_info": {
+          "package_name": "com.example.cryptoimmobilierapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMYO-bY4FYhvvdMnDk1i-1gQuxB_ffdnc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
