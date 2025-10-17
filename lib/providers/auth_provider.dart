@@ -148,8 +148,18 @@ class AuthProvider with ChangeNotifier {
 
       // Disconnect socket before logging out
       _socketService.disconnect();
+      debugPrint('AuthProvider: Socket disconnected');
 
-      await _authService.logout();
+      // Call auth service logout (with timeout)
+      await _authService.logout().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint(
+            'AuthProvider: Logout API call timed out, continuing with local logout',
+          );
+        },
+      );
+
       _currentUser = null;
       _token = null;
       _errorMessage = null;
@@ -157,9 +167,13 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _errorMessage = 'Erreur lors de la déconnexion: ${e.toString()}';
       debugPrint('AuthProvider: Logout error - $_errorMessage');
+      // Clear local data anyway
+      _currentUser = null;
+      _token = null;
     } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('AuthProvider: Logout complete');
     }
   }
 

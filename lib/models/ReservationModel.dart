@@ -2,47 +2,79 @@ class ReservationAgent {
   final String? id;
   final String? name;
   final String? email;
+  final String? phone;
   final String? role;
+  final String? profilePhoto;
 
-  ReservationAgent({this.id, this.name, this.email, this.role});
+  ReservationAgent({
+    this.id,
+    this.name,
+    this.email,
+    this.phone,
+    this.role,
+    this.profilePhoto,
+  });
 
   factory ReservationAgent.fromJson(Map<String, dynamic> json) {
     return ReservationAgent(
       id: json['_id'] ?? json['id'],
       name: json['name'],
       email: json['email'],
+      phone: json['phone'],
       role: json['role'],
+      profilePhoto: json['profilePhoto'],
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'_id': id, 'name': name, 'email': email, 'role': role};
+    return {
+      '_id': id,
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'role': role,
+      'profilePhoto': profilePhoto,
+    };
   }
 }
 
 class ReservationModel {
   final String? id;
-  final String? agentId; // For creation request
-  final ReservationAgent? agent; // For response with populated data
+  final String? agentCommercialId;
+  final String? agentTerrainId;
+  final ReservationAgent? agentCommercial;
+  final ReservationAgent? agentTerrain;
   final String clientFullName;
   final String clientPhone;
   final String? message;
   final DateTime reservedAt;
-  final String state; // 'pending', 'done', 'missed'
-  final bool notificationSent;
+  final String state; // 'pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'missed'
+  final String? callDirection; // 'client_to_agent', 'agent_to_client'
+  final String? result; // 'rented', 'not_rented'
+  final String? rapportMessage;
+  final DateTime? assignedAt;
+  final DateTime? completedAt;
+  final bool notificationSent3h;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
   ReservationModel({
     this.id,
-    this.agentId,
-    this.agent,
+    this.agentCommercialId,
+    this.agentTerrainId,
+    this.agentCommercial,
+    this.agentTerrain,
     required this.clientFullName,
     required this.clientPhone,
     this.message,
     required this.reservedAt,
     this.state = 'pending',
-    this.notificationSent = false,
+    this.callDirection,
+    this.result,
+    this.rapportMessage,
+    this.assignedAt,
+    this.completedAt,
+    this.notificationSent3h = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -51,22 +83,31 @@ class ReservationModel {
   factory ReservationModel.fromJson(Map<String, dynamic> json) {
     return ReservationModel(
       id: json['_id'] ?? json['id'],
-      agentId: json['agentId'] is String ? json['agentId'] : null,
-      agent: json['agentId'] is Map<String, dynamic>
-          ? ReservationAgent.fromJson(json['agentId'])
+      agentCommercialId: json['agentCommercialId'] is String 
+          ? json['agentCommercialId'] 
+          : (json['agentCommercialId'] is Map ? json['agentCommercialId']['_id'] : null),
+      agentTerrainId: json['agentTerrainId'] is String 
+          ? json['agentTerrainId'] 
+          : (json['agentTerrainId'] is Map ? json['agentTerrainId']['_id'] : null),
+      agentCommercial: json['agentCommercialId'] is Map<String, dynamic>
+          ? ReservationAgent.fromJson(json['agentCommercialId'])
           : null,
-      clientFullName: json['clientFullName'],
-      clientPhone: json['clientPhone'],
+      agentTerrain: json['agentTerrainId'] is Map<String, dynamic>
+          ? ReservationAgent.fromJson(json['agentTerrainId'])
+          : null,
+      clientFullName: json['clientFullName'] ?? '',
+      clientPhone: json['clientPhone'] ?? '',
       message: json['message'],
       reservedAt: DateTime.parse(json['reservedAt']),
       state: json['state'] ?? 'pending',
-      notificationSent: json['notificationSent'] ?? false,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
+      callDirection: json['callDirection'],
+      result: json['result'],
+      rapportMessage: json['rapportMessage'],
+      assignedAt: json['assignedAt'] != null ? DateTime.parse(json['assignedAt']) : null,
+      completedAt: json['completedAt'] != null ? DateTime.parse(json['completedAt']) : null,
+      notificationSent3h: json['notificationSent3h'] ?? false,
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
     );
   }
 
@@ -79,9 +120,11 @@ class ReservationModel {
       'reservedAt': reservedAt.toIso8601String(),
     };
 
-    // Include message if provided
     if (message != null && message!.isNotEmpty) {
       data['message'] = message;
+    }
+    if (callDirection != null) {
+      data['callDirection'] = callDirection;
     }
 
     return data;
@@ -90,44 +133,66 @@ class ReservationModel {
   // Method to create a copy of the reservation with updated fields
   ReservationModel copyWith({
     String? id,
-    String? agentId,
-    ReservationAgent? agent,
+    String? agentCommercialId,
+    String? agentTerrainId,
+    ReservationAgent? agentCommercial,
+    ReservationAgent? agentTerrain,
     String? clientFullName,
     String? clientPhone,
     String? message,
     DateTime? reservedAt,
     String? state,
-    bool? notificationSent,
+    String? callDirection,
+    String? result,
+    String? rapportMessage,
+    DateTime? assignedAt,
+    DateTime? completedAt,
+    bool? notificationSent3h,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return ReservationModel(
       id: id ?? this.id,
-      agentId: agentId ?? this.agentId,
-      agent: agent ?? this.agent,
+      agentCommercialId: agentCommercialId ?? this.agentCommercialId,
+      agentTerrainId: agentTerrainId ?? this.agentTerrainId,
+      agentCommercial: agentCommercial ?? this.agentCommercial,
+      agentTerrain: agentTerrain ?? this.agentTerrain,
       clientFullName: clientFullName ?? this.clientFullName,
       clientPhone: clientPhone ?? this.clientPhone,
       message: message ?? this.message,
       reservedAt: reservedAt ?? this.reservedAt,
       state: state ?? this.state,
-      notificationSent: notificationSent ?? this.notificationSent,
+      callDirection: callDirection ?? this.callDirection,
+      result: result ?? this.result,
+      rapportMessage: rapportMessage ?? this.rapportMessage,
+      assignedAt: assignedAt ?? this.assignedAt,
+      completedAt: completedAt ?? this.completedAt,
+      notificationSent3h: notificationSent3h ?? this.notificationSent3h,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
-  // Helper getters for state checking
+  // State helpers
   bool get isPending => state == 'pending';
-  bool get isDone => state == 'done';
+  bool get isAssigned => state == 'assigned';
+  bool get isInProgress => state == 'in_progress';
+  bool get isCompleted => state == 'completed';
+  bool get isCancelled => state == 'cancelled';
   bool get isMissed => state == 'missed';
 
-  // Helper method to get state display name in French
   String get stateDisplayName {
     switch (state) {
       case 'pending':
         return 'En attente';
-      case 'done':
+      case 'assigned':
+        return 'Assigné';
+      case 'in_progress':
+        return 'En cours';
+      case 'completed':
         return 'Terminé';
+      case 'cancelled':
+        return 'Annulé';
       case 'missed':
         return 'Manqué';
       default:
@@ -135,8 +200,28 @@ class ReservationModel {
     }
   }
 
-  // Helper method to get agent name
-  String? get agentName => agent?.name;
+  String? get agentCommercialName => agentCommercial?.name;
+  String? get agentTerrainName => agentTerrain?.name;
+
+  bool get hasRapport => result != null && rapportMessage != null;
+
+  String get callDirectionDisplay {
+    if (callDirection == 'client_to_agent') {
+      return 'Client a appelé';
+    } else if (callDirection == 'agent_to_client') {
+      return 'Agent a appelé';
+    }
+    return '';
+  }
+
+  String get resultDisplay {
+    if (result == 'rented') {
+      return 'Loué';
+    } else if (result == 'not_rented') {
+      return 'Non loué';
+    }
+    return '';
+  }
 
   @override
   String toString() {
@@ -156,34 +241,33 @@ class ReservationModel {
 
 // Enum for reservation states (for type safety)
 enum ReservationState {
-  pending('pending'),
-  done('done'),
-  missed('missed');
+  pending('pending', 'En attente'),
+  assigned('assigned', 'Assigné'),
+  inProgress('in_progress', 'En cours'),
+  completed('completed', 'Terminé'),
+  cancelled('cancelled', 'Annulé'),
+  missed('missed', 'Manqué');
 
-  const ReservationState(this.value);
+  const ReservationState(this.value, this.displayName);
   final String value;
+  final String displayName;
 
   static ReservationState fromString(String state) {
     switch (state.toLowerCase()) {
       case 'pending':
         return ReservationState.pending;
-      case 'done':
-        return ReservationState.done;
+      case 'assigned':
+        return ReservationState.assigned;
+      case 'in_progress':
+        return ReservationState.inProgress;
+      case 'completed':
+        return ReservationState.completed;
+      case 'cancelled':
+        return ReservationState.cancelled;
       case 'missed':
         return ReservationState.missed;
       default:
-        throw ArgumentError('Invalid state: $state');
-    }
-  }
-
-  String toDisplayString() {
-    switch (this) {
-      case ReservationState.pending:
-        return 'En attente';
-      case ReservationState.done:
-        return 'Terminé';
-      case ReservationState.missed:
-        return 'Manqué';
+        return ReservationState.pending;
     }
   }
 }

@@ -195,7 +195,13 @@ class AuthService {
     // Call backend logout endpoint if token exists
     if (_token != null) {
       try {
-        await apiClient.logout(_token!);
+        await apiClient.logout(_token!).timeout(
+          const Duration(seconds: 3),
+          onTimeout: () {
+            print('Logout API call timed out');
+            return ApiResponse(success: false, message: 'Timeout');
+          },
+        );
       } catch (e) {
         // Continue with local logout even if API call fails
         print('Logout API call failed: $e');
@@ -204,6 +210,7 @@ class AuthService {
 
     // Clear local authentication data
     await clearAuth();
+    print('✅ Local auth data cleared');
   }
 
   // Check if token is valid

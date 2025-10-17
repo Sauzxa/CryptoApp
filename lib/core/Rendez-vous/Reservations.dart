@@ -523,7 +523,7 @@ class _ReservationsPageState extends State<ReservationsPage> {
                               reservation.message != null &&
                                       reservation.message!.isNotEmpty
                                   ? reservation.message!
-                                  : reservation.agentName ?? 'N/A',
+                                  : reservation.agentCommercialName ?? 'N/A',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.black54,
@@ -542,6 +542,105 @@ class _ReservationsPageState extends State<ReservationsPage> {
                     ),
                   ],
                 ),
+                
+                // Show assigned agent terrain if available
+                if (reservation.agentTerrain != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: const Color(0xFF6366F1),
+                          child: Text(
+                            reservation.agentTerrain!.name?.substring(0, 1).toUpperCase() ?? 'A',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Agent Terrain Assigné',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                reservation.agentTerrain!.name ?? 'N/A',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              if (reservation.agentTerrain!.phone != null)
+                                Text(
+                                  reservation.agentTerrain!.phone!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green.shade600,
+                          size: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                
+                // Show pending message if no agent assigned
+                if (reservation.state == 'pending' && reservation.agentTerrain == null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.hourglass_empty,
+                          color: Colors.orange.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'En attente d\'assignation à un agent terrain disponible',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange.shade900,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

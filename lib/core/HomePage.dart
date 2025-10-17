@@ -275,6 +275,9 @@ class _HomePageState extends State<HomePage> {
             // Debug: Print user data when drawer rebuilds
             debugPrint('HomePage Drawer - User: ${user?.name}');
             debugPrint('HomePage Drawer - Role: ${user?.role}');
+            debugPrint('HomePage Drawer - isField: $isFieldAgent');
+            debugPrint('HomePage Drawer - isCommercial: ${authProvider.isCommercial}');
+            debugPrint('HomePage Drawer - isAdmin: ${authProvider.isAdmin}');
             debugPrint(
               'HomePage Drawer - Profile Photo URL: ${user?.profilePhoto?.url}',
             );
@@ -422,6 +425,43 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
 
+                          if (isFieldAgent) const SizedBox(height: 8),
+                          
+                          // Suivi (Only for field agents)
+                          if (isFieldAgent) ...[
+                            Builder(
+                              builder: (context) {
+                                debugPrint('🔵 SUIVI MENU ITEM IS BEING RENDERED');
+                                return const SizedBox.shrink();
+                              },
+                            ),
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              leading: const Icon(
+                                Icons.assignment_outlined,
+                                color: Color(0xFF6366F1),
+                              ),
+                              title: const Text(
+                                'Suivi',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: const Text(
+                                'Mes rendez-vous assignés',
+                                style: TextStyle(fontSize: 13),
+                              ),
+                              onTap: () {
+                                Navigator.pop(context); // Close drawer
+                                Navigator.pushNamed(context, AppRoutes.suivi);
+                              },
+                            ),
+                          ],
+                          
                           if (isFieldAgent) const SizedBox(height: 8),
                           if (isFieldAgent)
                             const Divider(height: 1, indent: 20, endIndent: 20),

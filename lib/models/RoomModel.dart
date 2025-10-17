@@ -4,6 +4,8 @@ class RoomModel {
   final UserBasic creator;
   final List<UserBasic> members;
   final MessageModel? lastMessage;
+  final String? reservationId;
+  final String? roomType; // 'general' or 'reservation'
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -13,6 +15,8 @@ class RoomModel {
     required this.creator,
     required this.members,
     this.lastMessage,
+    this.reservationId,
+    this.roomType,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -30,6 +34,8 @@ class RoomModel {
       lastMessage: json['lastMessage'] != null
           ? MessageModel.fromJson(json['lastMessage'])
           : null,
+      reservationId: json['reservationId'],
+      roomType: json['roomType'],
       createdAt: DateTime.parse(
         json['createdAt'] ?? DateTime.now().toIso8601String(),
       ),
@@ -222,4 +228,5 @@ class MessageModel {
 
   bool get isVoice => type == 'voice';
   bool get isText => type == 'text';
+  bool get isRapport => type == 'rapport';
 }

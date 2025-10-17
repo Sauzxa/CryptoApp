@@ -3,6 +3,7 @@ import 'package:cryptoimmobilierapp/utils/Routes.dart';
 import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
 import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
 import 'package:cryptoimmobilierapp/core/HomePage.dart';
+import 'package:cryptoimmobilierapp/services/firebase_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,9 +11,15 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize Firebase Notification Service
+  await firebaseNotificationService.initialize();
+  
   runApp(const MyApp());
 }
 

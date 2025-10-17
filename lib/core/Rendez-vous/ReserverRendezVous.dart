@@ -67,6 +67,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String _selectedCountryCode = '+213'; // Algeria as default
+  String _callDirection = 'client_to_agent'; // Default: client called agent
   bool _isSubmitting = false;
 
   // Country codes - Algeria first as default
@@ -229,6 +230,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
               '$_selectedCountryCode${_phoneController.text.trim()}', // Combine country code + number
           message: _messageController.text.trim(),
           reservedAt: reservationDateTime,
+          callDirection: _callDirection, // Add call direction
         );
 
         // Show loading indicator
@@ -539,6 +541,57 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
+
+                // Call Direction Section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Direction de l\'appel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      RadioListTile<String>(
+                        title: const Text('Client m\'a appelé'),
+                        subtitle: const Text('Le client a contacté l\'agence'),
+                        value: 'client_to_agent',
+                        groupValue: _callDirection,
+                        onChanged: (value) {
+                          setState(() {
+                            _callDirection = value!;
+                          });
+                        },
+                        activeColor: const Color(0xFF6366F1),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      RadioListTile<String>(
+                        title: const Text('J\'ai appelé le client'),
+                        subtitle: const Text('Pour formulaire site web ou rappel'),
+                        value: 'agent_to_client',
+                        groupValue: _callDirection,
+                        onChanged: (value) {
+                          setState(() {
+                            _callDirection = value!;
+                          });
+                        },
+                        activeColor: const Color(0xFF6366F1),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
 
                 // Nom field
                 const Text(
