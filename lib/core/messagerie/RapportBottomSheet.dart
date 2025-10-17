@@ -3,8 +3,21 @@ import 'package:intl/intl.dart';
 
 class RapportBottomSheet extends StatefulWidget {
   final Function(String result, String message, DateTime? newReservedAt) onSubmit;
+  final String clientName;
+  final String clientPhone;
+  final String agentCommercialName;
+  final String agentTerrainName;
+  final String currentState;
 
-  const RapportBottomSheet({Key? key, required this.onSubmit}) : super(key: key);
+  const RapportBottomSheet({
+    Key? key,
+    required this.onSubmit,
+    required this.clientName,
+    required this.clientPhone,
+    required this.agentCommercialName,
+    required this.agentTerrainName,
+    required this.currentState,
+  }) : super(key: key);
 
   @override
   State<RapportBottomSheet> createState() => _RapportBottomSheetState();
@@ -59,6 +72,19 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          
+          // Client Information (Read-only)
+          _buildReadOnlyField('Client', widget.clientName, Icons.person),
+          const SizedBox(height: 12),
+          _buildReadOnlyField('Téléphone', widget.clientPhone, Icons.phone),
+          const SizedBox(height: 12),
+          _buildReadOnlyField('Agent Commercial', widget.agentCommercialName, Icons.business_center),
+          const SizedBox(height: 12),
+          _buildReadOnlyField('Agent Terrain', widget.agentTerrainName, Icons.engineering),
+          
+          const SizedBox(height: 20),
+          const Divider(),
           const SizedBox(height: 20),
           
           // Result Selection Dropdown
@@ -307,6 +333,47 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
             ],
           ),
           const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: const Color(0xFF6366F1)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

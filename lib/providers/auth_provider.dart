@@ -3,6 +3,7 @@ import '../models/UserModel.dart';
 import '../services/auth_service.dart';
 import '../services/socket_service.dart';
 import '../api/api_client.dart';
+import 'messaging_provider.dart';
 
 /// AuthProvider manages authentication state across the app
 /// Uses ChangeNotifier to notify listeners when auth state changes
@@ -139,12 +140,18 @@ class AuthProvider with ChangeNotifier {
   }
 
   /// Logout user
-  Future<void> logout() async {
+  Future<void> logout({MessagingProvider? messagingProvider}) async {
     _isLoading = true;
     notifyListeners();
 
     try {
       debugPrint('AuthProvider: Starting logout...');
+
+      // Clear messaging data first (before disconnecting socket)
+      if (messagingProvider != null) {
+        messagingProvider.clearMessagingData();
+        debugPrint('AuthProvider: Messaging data cleared');
+      }
 
       // Disconnect socket before logging out
       _socketService.disconnect();
@@ -266,6 +273,22 @@ class AuthProvider with ChangeNotifier {
           notifyListeners();
           debugPrint(
             'AuthProvider: Updated current user availability to $availability',
+          );
+        }
+      });
+
+      // Listen for direct status changes (from "Commencer" button, rapport, etc.)
+      _socketService.socket?.on('agent:status_changed', (data) {
+        debugPrint('AuthProvider: Received direct status change: $data');
+        final availability = data['availability'] as String?;
+        final message = data['message'] as String?;
+
+        if (availability != null && _currentUser != null) {
+          _currentUser = _currentUser?.copyWith(availability: availability);
+          _authService.updateUserData(_currentUser!);
+          notifyListeners();
+          debugPrint(
+            'AuthProvider: Status changed to $availability - $message',
           );
         }
       });

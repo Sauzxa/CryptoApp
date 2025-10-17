@@ -38,6 +38,36 @@ class MessagingProvider with ChangeNotifier {
     return _typingUsers[roomId] ?? false;
   }
 
+  /// Clear all messaging data (call on logout)
+  void clearMessagingData() {
+    debugPrint('🧹 MessagingProvider: Clearing all messaging data...');
+    
+    // Clear all state
+    _rooms = [];
+    _roomMessages = {};
+    _typingUsers = {};
+    _isLoading = false;
+    _errorMessage = null;
+    _currentRoomId = null;
+    
+    // Remove all socket listeners
+    if (_socketService.socket != null) {
+      final socket = _socketService.socket!;
+      socket.off('message:new');
+      socket.off('message:seen-update');
+      socket.off('room:updated');
+      socket.off('room:new');
+      socket.off('room:typing-update');
+      socket.off('room:member-left');
+      socket.off('new_message');
+      socket.off('message_sent');
+      debugPrint('✅ MessagingProvider: All socket listeners removed');
+    }
+    
+    notifyListeners();
+    debugPrint('✅ MessagingProvider: Data cleared successfully');
+  }
+
   /// Initialize messaging system with Socket.IO event listeners
   void initializeMessaging() {
     if (_socketService.socket == null) return;

@@ -1,19 +1,24 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
 import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
 import 'package:cryptoimmobilierapp/models/RoomModel.dart';
 import 'package:cryptoimmobilierapp/api/api_endpoints.dart';
+import 'package:cryptoimmobilierapp/api/api_client.dart';
 import 'package:cryptoimmobilierapp/services/messaging_service.dart';
+import 'package:cryptoimmobilierapp/services/socket_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
+import 'package:intl/intl.dart';
+import 'RapportBottomSheet.dart';
 
 class MessageRoomPage extends StatefulWidget {
   final RoomModel room;
@@ -45,6 +50,10 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   void initState() {
     super.initState();
     timeago.setLocaleMessages('fr', timeago.FrMessages());
+
+    // Join socket room for real-time messages
+    _joinSocketRoom();
+    _setupSocketListeners();
 
     // Initialize waveform recorder controller with better quality settings
     _recorderController = RecorderController()
@@ -125,6 +134,76 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
+  }
+
+  void _joinSocketRoom() {
+    final socket = socketService.socket;
+    if (socket != null && widget.room.id.isNotEmpty) {
+      debugPrint('🔌 Joining socket room: ${widget.room.id}');
+      socket.emit('room:join', {'roomId': widget.room.id});
+    }
+  }
+
+  void _setupSocketListeners() {
+    final socket = socketService.socket;
+    if (socket == null) {
+      debugPrint('⚠️ Socket is null, cannot setup listeners');
+      return;
+    }
+
+    debugPrint('🔌 Setting up socket listeners for room: ${widget.room.id}');
+
+    // Listen for new messages in this room
+    socket.on('new_message', (data) {
+      debugPrint('📨 Received new_message event: $data');
+      debugPrint('📨 Message type: ${data is Map ? data['type'] : 'unknown'}');
+      // Reload messages to show the new rapport message
+      _reloadMessages();
+    });
+
+    // Listen for message sent confirmation
+    socket.on('message_sent', (data) {
+      debugPrint('✅ Message sent confirmation: $data');
+      _reloadMessages();
+    });
+
+    // Listen for room joined confirmation
+    socket.on('room:joined', (data) {
+      debugPrint('✅ Successfully joined room: ${data['roomId']}');
+    });
+    
+    // Listen for errors
+    socket.on('error', (data) {
+      debugPrint('❌ Socket error: $data');
+    });
+  }
+
+  void _removeSocketListeners() {
+    final socket = socketService.socket;
+    if (socket == null) return;
+
+    socket.off('new_message');
+    socket.off('message_sent');
+    socket.off('room:joined');
+    
+    // Leave the room
+    if (widget.room.id.isNotEmpty) {
+      socket.emit('room:leave', {'roomId': widget.room.id});
+      debugPrint('👋 Left socket room: ${widget.room.id}');
+    }
+  }
+
+  Future<void> _reloadMessages() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final messagingProvider = Provider.of<MessagingProvider>(context, listen: false);
+    
+    final token = authProvider.token;
+    if (token != null) {
+      await messagingProvider.fetchRoomMessages(
+        token: token,
+        roomId: widget.room.id,
+      );
+    }
   }
 
   Future<void> _sendTextMessage() async {
@@ -556,6 +635,11 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   }
 
   Widget _buildMessageBubble(MessageModel message, bool isMe) {
+    // Check if this is a rapport message
+    if (message.isRapport) {
+      return _buildRapportMessage(message);
+    }
+    
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Row(
@@ -893,6 +977,21 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             ),
           ),
           const SizedBox(width: 8),
+          // Rapport button (only for reservation rooms and agent terrain)
+          if (_isReservationRoom() && _isAgentTerrain()) ...[
+            GestureDetector(
+              onTap: _showRapportBottomSheet,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF6366F1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.description, color: Colors.white, size: 24),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           // Voice message button
           GestureDetector(
             onLongPressStart: (_) => _startRecording(),
@@ -934,8 +1033,205 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     );
   }
 
+  // Helper methods for rapport functionality
+  bool _isReservationRoom() {
+    return widget.room.roomType == 'reservation' && 
+           widget.room.reservationId != null;
+  }
+
+  bool _isAgentTerrain() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    return authProvider.isField;
+  }
+
+  Future<void> _showRapportBottomSheet() async {
+    try {
+      // Fetch all reservations to find the current one
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+      
+      if (token == null || widget.room.reservationId == null) return;
+      
+      // Get all reservations and find the current one
+      final response = await apiClient.getReservations(token);
+      
+      if (!response.success || response.data == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur lors du chargement des détails'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      
+      // Find the reservation by ID
+      final reservation = response.data!.firstWhere(
+        (r) => r.id == widget.room.reservationId,
+        orElse: () => throw Exception('Reservation not found'),
+      );
+      
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => RapportBottomSheet(
+            clientName: reservation.clientFullName,
+            clientPhone: reservation.clientPhone,
+            agentCommercialName: reservation.agentCommercialName ?? 'N/A',
+            agentTerrainName: reservation.agentTerrainName ?? 'N/A',
+            currentState: reservation.state,
+            onSubmit: (result, message, newReservedAt) {
+              _sendRapportMessage(result, message, newReservedAt);
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error showing rapport sheet: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _sendRapportMessage(String result, String rapportMessage, DateTime? newReservedAt) {
+    try {
+      final socketService = SocketService();
+      
+      final messageData = {
+        'roomId': widget.room.id,
+        'text': rapportMessage,
+        'type': 'rapport',
+        'result': result,
+        'reservationId': widget.room.reservationId,
+        if (newReservedAt != null) 'newReservedAt': newReservedAt.toIso8601String(),
+      };
+      
+      socketService.socket?.emit('send_message', messageData);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Rapport envoyé'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error sending rapport: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildRapportMessage(MessageModel message) {
+    // Parse rapport data from message text (JSON format)
+    Map<String, dynamic> rapportData;
+    try {
+      // Backend sends JSON string in message.text
+      rapportData = jsonDecode(message.text);
+    } catch (e) {
+      // Fallback if not JSON
+      rapportData = {
+        'rapportMessage': message.text,
+        'result': 'completed',
+      };
+    }
+    
+    final result = rapportData['result'] ?? 'completed';
+    final rapportMessage = rapportData['rapportMessage'] ?? message.text;
+    final isCompleted = result == 'completed';
+    final isCancelled = result == 'cancelled';
+    
+    Color bgColor = isCompleted ? Colors.green.shade50 : 
+                    isCancelled ? Colors.red.shade50 : 
+                    Colors.blue.shade50;
+    Color borderColor = isCompleted ? Colors.green : 
+                        isCancelled ? Colors.red : 
+                        Colors.blue;
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.description, color: borderColor),
+              const SizedBox(width: 8),
+              Text(
+                '📋 RAPPORT DE RENDEZ-VOUS',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: borderColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                isCompleted ? Icons.check_circle : 
+                isCancelled ? Icons.cancel : 
+                Icons.refresh,
+                color: borderColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Résultat: ${isCompleted ? "TERMINÉ (LOUÉ)" : isCancelled ? "ANNULÉ" : "EN COURS"}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: borderColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            rapportMessage.toString(),
+            style: const TextStyle(fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            DateFormat('dd/MM/yyyy à HH:mm').format(message.createdAt),
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    // Remove socket listeners and leave room
+    _removeSocketListeners();
+    
     _messageController.dispose();
     _scrollController.dispose();
     _audioRecorder.dispose();

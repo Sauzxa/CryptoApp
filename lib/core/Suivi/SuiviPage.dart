@@ -5,6 +5,7 @@ import '../../models/ReservationModel.dart';
 import '../../api/api_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/messaging_provider.dart';
+import '../../services/socket_service.dart';
 import '../messagerie/MessageRoom.dart';
 
 class SuiviPage extends StatefulWidget {
@@ -25,12 +26,55 @@ class _SuiviPageState extends State<SuiviPage> with SingleTickerProviderStateMix
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _loadReservations();
+    _setupSocketListeners();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _removeSocketListeners();
     super.dispose();
+  }
+
+  void _setupSocketListeners() {
+    final socket = socketService.socket;
+    if (socket == null) return;
+
+    // Listen for agent becoming available again
+    socket.on('agent:available_again', (data) {
+      debugPrint('📥 Agent available again: $data');
+      // Reload reservations to update UI
+      _loadReservations();
+    });
+
+    // Listen for agent still unavailable
+    socket.on('agent:still_unavailable', (data) {
+      debugPrint('📥 Agent still unavailable: $data');
+      // Reload reservations to update UI
+      _loadReservations();
+    });
+
+    // Listen for reservation updates
+    socket.on('reservation:updated', (data) {
+      debugPrint('📥 Reservation updated: $data');
+      _loadReservations();
+    });
+
+    // Listen for new reservation assigned
+    socket.on('reservation:assigned', (data) {
+      debugPrint('📥 New reservation assigned: $data');
+      _loadReservations();
+    });
+  }
+
+  void _removeSocketListeners() {
+    final socket = socketService.socket;
+    if (socket == null) return;
+
+    socket.off('agent:available_again');
+    socket.off('agent:still_unavailable');
+    socket.off('reservation:updated');
+    socket.off('reservation:assigned');
   }
 
   Future<void> _loadReservations() async {
@@ -359,27 +403,7 @@ class _SuiviPageState extends State<SuiviPage> with SingleTickerProviderStateMix
                     ),
                     const SizedBox(width: 8),
                   ],
-                  if (reservation.isInProgress) ...[
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          // TODO: Open chat to submit rapport
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Ouvrez le chat pour soumettre le rapport'),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.description, size: 18),
-                        label: const Text('Rapport'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
+                  // Rapport button removed - submit rapport from chat room only
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _openChatRoom(reservation),

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
 import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
+import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
+import 'package:cryptoimmobilierapp/api/api_client.dart';
+import 'package:cryptoimmobilierapp/services/socket_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cryptoimmobilierapp/widgets/notification_bell_button.dart';
 
@@ -18,6 +21,8 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _permissionRequested =
       false; // Track if permission was already requested
+  bool _hasActiveReservation = false; // Track if agent has reservation in progress
+  bool _isCheckingReservations = false;
 
   @override
   void initState() {
@@ -26,6 +31,81 @@ class _HomePageState extends State<HomePage> {
     _selectedIndex = 0;
     // Request permission on first load
     _requestPhonePermission();
+    // Check for active reservations
+    _checkActiveReservations();
+    // Setup socket listeners for reservation updates
+    _setupReservationListeners();
+  }
+
+  @override
+  void dispose() {
+    _removeReservationListeners();
+    super.dispose();
+  }
+
+  void _setupReservationListeners() {
+    final socket = socketService.socket;
+    
+    if (socket != null) {
+      // Listen for reservation updates that might affect active status
+      socket.on('reservation:updated', (_) {
+        _checkActiveReservations();
+      });
+      
+      socket.on('reservation:assigned', (_) {
+        _checkActiveReservations();
+      });
+    }
+  }
+
+  void _removeReservationListeners() {
+    final socket = socketService.socket;
+    
+    if (socket != null) {
+      socket.off('reservation:updated');
+      socket.off('reservation:assigned');
+    }
+  }
+
+  Future<void> _checkActiveReservations() async {
+    if (_isCheckingReservations) return;
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    final userId = authProvider.currentUser?.id;
+    
+    if (token == null || userId == null || !authProvider.isField) {
+      return;
+    }
+
+    setState(() {
+      _isCheckingReservations = true;
+    });
+
+    try {
+      final response = await apiClient.getReservations(token);
+      
+      if (response.success && response.data != null) {
+        // Check if agent has any reservation in progress
+        final hasInProgress = response.data!.any((reservation) =>
+            reservation.agentTerrainId == userId &&
+            reservation.state == 'in_progress');
+        
+        if (mounted) {
+          setState(() {
+            _hasActiveReservation = hasInProgress;
+            _isCheckingReservations = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking active reservations: $e');
+      if (mounted) {
+        setState(() {
+          _isCheckingReservations = false;
+        });
+      }
+    }
   }
 
   Future<void> _requestPhonePermission() async {
@@ -126,8 +206,14 @@ class _HomePageState extends State<HomePage> {
     );
 
     try {
-      // Perform logout
-      await authProvider.logout();
+      // Get messaging provider
+      final messagingProvider = Provider.of<MessagingProvider>(
+        context,
+        listen: false,
+      );
+
+      // Perform logout with messaging cleanup
+      await authProvider.logout(messagingProvider: messagingProvider);
 
       // Close the loading dialog
       if (!mounted) return;
@@ -370,7 +456,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                               trailing: Switch(
                                 value: user?.isAvailable ?? false,
-                                onChanged: (value) async {
+                                onChanged: _hasActiveReservation ? null : (value) async {
                                   // Update availability via API and Socket.IO
                                   final availability = value
                                       ? 'available'
