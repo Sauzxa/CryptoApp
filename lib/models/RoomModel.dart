@@ -6,6 +6,8 @@ class RoomModel {
   final MessageModel? lastMessage;
   final String? reservationId;
   final String? roomType; // 'general' or 'reservation'
+  final String? agentCommercialId; // For reservation rooms
+  final String? agentTerrainId; // For reservation rooms
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -17,6 +19,8 @@ class RoomModel {
     this.lastMessage,
     this.reservationId,
     this.roomType,
+    this.agentCommercialId,
+    this.agentTerrainId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -36,6 +40,8 @@ class RoomModel {
           : null,
       reservationId: json['reservationId'],
       roomType: json['roomType'],
+      agentCommercialId: json['agentCommercialId'],
+      agentTerrainId: json['agentTerrainId'],
       createdAt: DateTime.parse(
         json['createdAt'] ?? DateTime.now().toIso8601String(),
       ),

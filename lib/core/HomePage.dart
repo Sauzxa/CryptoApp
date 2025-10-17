@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cryptoimmobilierapp/utils/Routes.dart';
@@ -47,13 +48,20 @@ class _HomePageState extends State<HomePage> {
     final socket = socketService.socket;
     
     if (socket != null) {
-      // Listen for reservation updates that might affect active status
+      // Listen for reservation updates
       socket.on('reservation:updated', (_) {
-        _checkActiveReservations();
+        if (mounted) _checkActiveReservations();
       });
       
+      // Listen for new assignments
       socket.on('reservation:assigned', (_) {
-        _checkActiveReservations();
+        if (mounted) _checkActiveReservations();
+      });
+      
+      // Listen for state changes (completed, cancelled, in_progress)
+      socket.on('reservation:state_changed', (data) {
+        debugPrint('📥 Reservation state changed: ${data['newState']}');
+        if (mounted) _checkActiveReservations();
       });
     }
   }
@@ -64,36 +72,55 @@ class _HomePageState extends State<HomePage> {
     if (socket != null) {
       socket.off('reservation:updated');
       socket.off('reservation:assigned');
+      socket.off('reservation:state_changed');
     }
   }
 
   Future<void> _checkActiveReservations() async {
-    if (_isCheckingReservations) return;
+    if (_isCheckingReservations || !mounted) return;
     
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.token;
-    final userId = authProvider.currentUser?.id;
-    
-    if (token == null || userId == null || !authProvider.isField) {
-      return;
-    }
-
-    setState(() {
-      _isCheckingReservations = true;
-    });
-
     try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+      var userId = authProvider.currentUser?.id;
+      
+      // If userId is null, extract from JWT token
+      if (userId == null && token != null) {
+        try {
+          final parts = token.split('.');
+          if (parts.length == 3) {
+            final payload = parts[1];
+            final normalized = base64Url.normalize(payload);
+            final decoded = utf8.decode(base64Url.decode(normalized));
+            final Map<String, dynamic> payloadMap = json.decode(decoded);
+            userId = payloadMap['userId'] as String?;
+          }
+        } catch (e) {
+          debugPrint('Error extracting userId from token: $e');
+        }
+      }
+      
+      if (token == null || userId == null || !authProvider.isField) {
+        return;
+      }
+
+      setState(() {
+        _isCheckingReservations = true;
+      });
+
       final response = await apiClient.getReservations(token);
       
       if (response.success && response.data != null) {
-        // Check if agent has any reservation in progress
-        final hasInProgress = response.data!.any((reservation) =>
+        // Check if agent has any active reservation (pending, assigned, or in_progress)
+        final hasActive = response.data!.any((reservation) =>
             reservation.agentTerrainId == userId &&
-            reservation.state == 'in_progress');
+            (reservation.state == 'pending' || 
+             reservation.state == 'assigned' || 
+             reservation.state == 'in_progress'));
         
         if (mounted) {
           setState(() {
-            _hasActiveReservation = hasInProgress;
+            _hasActiveReservation = hasActive;
             _isCheckingReservations = false;
           });
         }

@@ -138,8 +138,19 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   void _joinSocketRoom() {
     final socket = socketService.socket;
-    if (socket != null && widget.room.id.isNotEmpty) {
-      debugPrint('🔌 Joining socket room: ${widget.room.id}');
+    if (socket == null || widget.room.id.isEmpty) return;
+    
+    // Check if this is a reservation room
+    if (widget.room.roomType == 'reservation' && widget.room.reservationId != null) {
+      debugPrint('🔌 Joining RESERVATION socket room: ${widget.room.id}');
+      socket.emit('reservation_room:join', {
+        'roomId': widget.room.id,
+        'reservationId': widget.room.reservationId,
+        'agentCommercialId': widget.room.agentCommercialId,
+        'agentTerrainId': widget.room.agentTerrainId,
+      });
+    } else {
+      debugPrint('🔌 Joining NORMAL socket room: ${widget.room.id}');
       socket.emit('room:join', {'roomId': widget.room.id});
     }
   }
@@ -151,28 +162,49 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       return;
     }
 
-    debugPrint('🔌 Setting up socket listeners for room: ${widget.room.id}');
+    final isReservationRoom = widget.room.roomType == 'reservation';
+    debugPrint('🔌 Setting up ${isReservationRoom ? "RESERVATION" : "NORMAL"} socket listeners for room: ${widget.room.id}');
 
-    // Listen for new messages in this room
-    socket.on('new_message', (data) {
-      debugPrint('📨 Received new_message event: $data');
-      debugPrint('📨 Message type: ${data is Map ? data['type'] : 'unknown'}');
-      // Reload messages to show the new rapport message
-      _reloadMessages();
-    });
+    if (isReservationRoom) {
+      // Reservation room specific listeners
+      socket.on('reservation_room:message', (data) {
+        debugPrint('📨 Received reservation room message: $data');
+        _reloadMessages();
+      });
 
-    // Listen for message sent confirmation
-    socket.on('message_sent', (data) {
-      debugPrint('✅ Message sent confirmation: $data');
-      _reloadMessages();
-    });
+      socket.on('reservation_room:joined', (data) {
+        debugPrint('✅ Successfully joined reservation room: ${data['roomId']}');
+      });
+      
+      socket.on('reservation_room:error', (data) {
+        debugPrint('❌ Reservation room error: $data');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur: ${data['message']}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      });
+    } else {
+      // Normal room listeners
+      socket.on('new_message', (data) {
+        debugPrint('📨 Received new_message event: $data');
+        _reloadMessages();
+      });
 
-    // Listen for room joined confirmation
-    socket.on('room:joined', (data) {
-      debugPrint('✅ Successfully joined room: ${data['roomId']}');
-    });
+      socket.on('message_sent', (data) {
+        debugPrint('✅ Message sent confirmation: $data');
+        _reloadMessages();
+      });
+
+      socket.on('room:joined', (data) {
+        debugPrint('✅ Successfully joined room: ${data['roomId']}');
+      });
+    }
     
-    // Listen for errors
+    // Common error listener
     socket.on('error', (data) {
       debugPrint('❌ Socket error: $data');
     });
@@ -182,15 +214,31 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     final socket = socketService.socket;
     if (socket == null) return;
 
-    socket.off('new_message');
-    socket.off('message_sent');
-    socket.off('room:joined');
+    final isReservationRoom = widget.room.roomType == 'reservation';
     
-    // Leave the room
-    if (widget.room.id.isNotEmpty) {
-      socket.emit('room:leave', {'roomId': widget.room.id});
-      debugPrint('👋 Left socket room: ${widget.room.id}');
+    if (isReservationRoom) {
+      socket.off('reservation_room:message');
+      socket.off('reservation_room:joined');
+      socket.off('reservation_room:error');
+      
+      // Leave reservation room
+      if (widget.room.id.isNotEmpty) {
+        socket.emit('reservation_room:leave', {'roomId': widget.room.id});
+        debugPrint('👋 Left RESERVATION socket room: ${widget.room.id}');
+      }
+    } else {
+      socket.off('new_message');
+      socket.off('message_sent');
+      socket.off('room:joined');
+      
+      // Leave normal room
+      if (widget.room.id.isNotEmpty) {
+        socket.emit('room:leave', {'roomId': widget.room.id});
+        debugPrint('👋 Left NORMAL socket room: ${widget.room.id}');
+      }
     }
+    
+    socket.off('error');
   }
 
   Future<void> _reloadMessages() async {
@@ -1129,7 +1177,12 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         if (newReservedAt != null) 'newReservedAt': newReservedAt.toIso8601String(),
       };
       
-      socketService.socket?.emit('send_message', messageData);
+      // Use appropriate socket event based on room type
+      final isReservationRoom = widget.room.roomType == 'reservation';
+      final eventName = isReservationRoom ? 'reservation_room:send_message' : 'send_message';
+      
+      debugPrint('📤 Sending rapport via $eventName');
+      socketService.socket?.emit(eventName, messageData);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
