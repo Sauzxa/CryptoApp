@@ -119,7 +119,29 @@ class FirebaseNotificationService {
         ?.createNotificationChannel(channel);
   }
 
-  /// Send FCM token to backend
+  /// Send FCM token to backend (public method for manual calls)
+  Future<void> sendTokenToBackend(String token, String authToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiEndpoints.baseUrl}/api/notifications/fcm-token'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: json.encode({'fcmToken': token}),
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ FCM token sent to backend successfully');
+      } else {
+        print('⚠️ Failed to send FCM token: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error sending FCM token: $e');
+    }
+  }
+
+  /// Send FCM token to backend (private method for automatic calls)
   Future<void> _sendTokenToBackend(String token) async {
     try {
       final prefs = await SharedPreferences.getInstance();

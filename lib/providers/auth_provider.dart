@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
-import '../models/UserModel.dart';
+import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/socket_service.dart';
+import '../services/firebase_notification_service.dart';
 import '../api/api_client.dart';
+import '../models/UserModel.dart';
 import 'messaging_provider.dart';
 
 /// AuthProvider manages authentication state across the app
@@ -116,6 +118,9 @@ class AuthProvider with ChangeNotifier {
         debugPrint('AuthProvider: User = ${_currentUser?.name}');
         debugPrint('AuthProvider: Token exists = ${_token != null}');
         debugPrint('AuthProvider: isAuthenticated = $isAuthenticated');
+
+        // Send FCM token to backend after successful login
+        await _sendFCMTokenToBackend();
 
         // Connect to socket after successful login
         await _connectSocket();
@@ -253,6 +258,22 @@ class AuthProvider with ChangeNotifier {
   Future<void> markWelcomeAsSeen() async {
     await _authService.markWelcomeAsSeen();
     notifyListeners();
+  }
+
+  /// Send FCM token to backend after login
+  Future<void> _sendFCMTokenToBackend() async {
+    try {
+      final fcmToken = firebaseNotificationService.fcmToken;
+      if (fcmToken != null && _token != null) {
+        debugPrint('AuthProvider: Sending FCM token to backend...');
+        await firebaseNotificationService.sendTokenToBackend(fcmToken, _token!);
+        debugPrint('AuthProvider: FCM token sent successfully');
+      } else {
+        debugPrint('AuthProvider: No FCM token or auth token available');
+      }
+    } catch (e) {
+      debugPrint('AuthProvider: Error sending FCM token: $e');
+    }
   }
 
   /// Connect to Socket.IO server
