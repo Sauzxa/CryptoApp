@@ -78,6 +78,8 @@ class _SuiviPageState extends State<SuiviPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _loadReservations() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -88,37 +90,46 @@ class _SuiviPageState extends State<SuiviPage> with SingleTickerProviderStateMix
       final token = authProvider.token;
 
       if (token == null) {
-        setState(() {
-          _errorMessage = 'Session expirée';
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Session expirée';
+            _isLoading = false;
+          });
+        }
         return;
       }
 
+      debugPrint('🔄 Loading reservations for agent terrain...');
       final response = await apiClient.getReservations(token);
+      debugPrint('📥 API Response - Success: ${response.success}, Data: ${response.data?.length ?? 0} reservations');
 
       if (response.success && response.data != null) {
-        // Filter only reservations assigned to current agent terrain
-        final currentUserId = authProvider.currentUser?.id;
-        final myReservations = response.data!
-            .where((r) => r.agentTerrainId == currentUserId)
-            .toList();
-
-        setState(() {
-          _reservations = myReservations;
-          _isLoading = false;
-        });
+        // Backend already filters by agentTerrainId for field agents
+        // No need to filter again on frontend
+        if (mounted) {
+          setState(() {
+            _reservations = response.data!;
+            _isLoading = false;
+          });
+          debugPrint('✅ Loaded ${_reservations.length} reservations');
+        }
       } else {
+        debugPrint('❌ Failed to load reservations: ${response.message}');
+        if (mounted) {
+          setState(() {
+            _errorMessage = response.message ?? 'Erreur de chargement';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Exception loading reservations: $e');
+      if (mounted) {
         setState(() {
-          _errorMessage = response.message ?? 'Erreur de chargement';
+          _errorMessage = 'Erreur: ${e.toString()}';
           _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Erreur: ${e.toString()}';
-        _isLoading = false;
-      });
     }
   }
 

@@ -595,16 +595,36 @@ class ApiClient {
       );
 
       if (response.success && response.data != null) {
-        final reservationsData = response.data!['data']['reservations'] as List;
-        final reservations = reservationsData
-            .map((json) => ReservationModel.fromJson(json))
-            .toList();
+        try {
+          final reservationsData = response.data!['data']['reservations'] as List;
+          final reservations = reservationsData
+              .map((json) {
+                try {
+                  return ReservationModel.fromJson(json);
+                } catch (e) {
+                  print('❌ Error parsing reservation: $e');
+                  print('📄 JSON data: $json');
+                  return null;
+                }
+              })
+              .whereType<ReservationModel>() // Filter out nulls
+              .toList();
 
-        return ApiResponse<List<ReservationModel>>(
-          success: true,
-          data: reservations,
-          statusCode: response.statusCode,
-        );
+          print('✅ Successfully parsed ${reservations.length} reservations');
+          return ApiResponse<List<ReservationModel>>(
+            success: true,
+            data: reservations,
+            statusCode: response.statusCode,
+          );
+        } catch (e) {
+          print('❌ Error parsing reservations list: $e');
+          print('📄 Response data: ${response.data}');
+          return ApiResponse<List<ReservationModel>>(
+            success: false,
+            message: 'Erreur de format des données: ${e.toString()}',
+            statusCode: response.statusCode,
+          );
+        }
       } else {
         return ApiResponse<List<ReservationModel>>(
           success: false,
@@ -615,6 +635,7 @@ class ApiClient {
         );
       }
     } catch (e) {
+      print('❌ Exception in getReservations: $e');
       return ApiResponse<List<ReservationModel>>(
         success: false,
         message:

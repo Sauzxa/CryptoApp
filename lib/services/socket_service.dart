@@ -85,11 +85,30 @@ class SocketService {
   void disconnect() {
     if (_socket != null) {
       print('🔌 Disconnecting socket...');
-      _socket!.disconnect();
-      _socket!.dispose();
-      _socket = null;
-      _isConnected = false;
-      print('✅ Socket disconnected and disposed');
+      
+      try {
+        // Remove all listeners first
+        removeAllListeners();
+        
+        // Disconnect the socket
+        _socket!.disconnect();
+        
+        // Dispose of the socket
+        _socket!.dispose();
+        
+        // Clear the reference
+        _socket = null;
+        _isConnected = false;
+        
+        print('✅ Socket disconnected and disposed');
+      } catch (e) {
+        print('⚠️ Error during socket disconnect: $e');
+        // Force clear anyway
+        _socket = null;
+        _isConnected = false;
+      }
+    } else {
+      print('ℹ️ Socket already disconnected');
     }
   }
 

@@ -192,12 +192,16 @@ class _HomePageState extends State<HomePage> {
     // If user confirmed logout
     if (shouldLogout != true) return;
 
-    // Show loading dialog
+    // Show loading dialog and get the context
     if (!mounted) return;
+    
+    // Use a flag to track if we should close the dialog
+    bool dialogShown = true;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => WillPopScope(
+      builder: (dialogContext) => WillPopScope(
         onWillPop: () async => false,
         child: const Center(
           child: CircularProgressIndicator(color: Colors.white),
@@ -206,6 +210,8 @@ class _HomePageState extends State<HomePage> {
     );
 
     try {
+      debugPrint('🚪 Starting logout process...');
+      
       // Get messaging provider
       final messagingProvider = Provider.of<MessagingProvider>(
         context,
@@ -214,32 +220,46 @@ class _HomePageState extends State<HomePage> {
 
       // Perform logout with messaging cleanup
       await authProvider.logout(messagingProvider: messagingProvider);
+      
+      debugPrint('✅ Logout completed successfully');
 
-      // Close the loading dialog
-      if (!mounted) return;
-      Navigator.of(context).pop();
+      // Close the loading dialog FIRST
+      if (mounted && dialogShown) {
+        Navigator.of(context, rootNavigator: false).pop();
+        dialogShown = false;
+        debugPrint('✅ Loading dialog closed');
+      }
 
-      // Wait a tiny bit to ensure logout is complete
-      await Future.delayed(const Duration(milliseconds: 100));
+      // Small delay to ensure dialog is closed
+      await Future.delayed(const Duration(milliseconds: 200));
 
       // Navigate to welcome screen and clear navigation stack
-      // Manual navigation is necessary because we're on an existing route
-      if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil(AppRoutes.welcome, (route) => false);
+      if (mounted) {
+        debugPrint('🔄 Navigating to welcome screen...');
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.welcome,
+          (route) => false,
+        );
+        debugPrint('✅ Navigation complete');
+      }
     } catch (e) {
-      // Close loading dialog
-      if (!mounted) return;
-      Navigator.of(context).pop();
+      debugPrint('❌ Logout error: $e');
+      
+      // Close loading dialog if still open
+      if (mounted && dialogShown) {
+        Navigator.of(context, rootNavigator: false).pop();
+        dialogShown = false;
+      }
 
       // Show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de la déconnexion: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la déconnexion: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

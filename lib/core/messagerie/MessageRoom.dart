@@ -194,6 +194,8 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   }
 
   Future<void> _reloadMessages() async {
+    debugPrint('🔄 Reloading messages for room: ${widget.room.id}');
+    
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final messagingProvider = Provider.of<MessagingProvider>(context, listen: false);
     
@@ -203,6 +205,14 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         token: token,
         roomId: widget.room.id,
       );
+      
+      final messages = messagingProvider.getMessagesForRoom(widget.room.id);
+      debugPrint('✅ Reloaded ${messages.length} messages');
+      
+      // Log message types
+      for (var msg in messages) {
+        debugPrint('  - Message type: ${msg.type}, ID: ${msg.id}');
+      }
     }
   }
 
@@ -636,7 +646,10 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   Widget _buildMessageBubble(MessageModel message, bool isMe) {
     // Check if this is a rapport message
+    debugPrint('🔍 Building message bubble - Type: ${message.type}, isRapport: ${message.isRapport}');
+    
     if (message.isRapport) {
+      debugPrint('✅ Displaying rapport message');
       return _buildRapportMessage(message);
     }
     
@@ -1141,11 +1154,15 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   Widget _buildRapportMessage(MessageModel message) {
     // Parse rapport data from message text (JSON format)
+    debugPrint('📋 Building rapport message - Text: ${message.text}');
+    
     Map<String, dynamic> rapportData;
     try {
       // Backend sends JSON string in message.text
       rapportData = jsonDecode(message.text);
+      debugPrint('✅ Parsed rapport data: $rapportData');
     } catch (e) {
+      debugPrint('⚠️ Failed to parse rapport JSON: $e');
       // Fallback if not JSON
       rapportData = {
         'rapportMessage': message.text,
