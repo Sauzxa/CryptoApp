@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -37,7 +38,19 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     if (user != null) {
       _nameController.text = user.name;
       _emailController.text = user.email;
-      _phoneController.text = user.phone;
+      // Normalize phone number: remove country code prefix if present
+      String normalizedPhone = user.phone;
+      if (normalizedPhone.startsWith('+213')) {
+        normalizedPhone = normalizedPhone.substring(4); // Remove +213
+      } else if (normalizedPhone.startsWith('+')) {
+        // Remove any other country code
+        normalizedPhone = normalizedPhone.replaceFirst(RegExp(r'^\+\d{1,3}'), '');
+      }
+      // Remove leading zero if phone starts with 0 after removing country code
+      if (normalizedPhone.startsWith('0') && normalizedPhone.length > 10) {
+        normalizedPhone = normalizedPhone.substring(1);
+      }
+      _phoneController.text = normalizedPhone;
     }
 
     // Add listeners to detect changes
@@ -51,10 +64,21 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     final user = authProvider.currentUser;
 
     if (user != null) {
+      // Normalize the current user's phone for comparison
+      String currentUserPhone = user.phone;
+      if (currentUserPhone.startsWith('+213')) {
+        currentUserPhone = currentUserPhone.substring(4);
+      } else if (currentUserPhone.startsWith('+')) {
+        currentUserPhone = currentUserPhone.replaceFirst(RegExp(r'^\+\d{1,3}'), '');
+      }
+      if (currentUserPhone.startsWith('0') && currentUserPhone.length > 10) {
+        currentUserPhone = currentUserPhone.substring(1);
+      }
+      
       final hasChanges =
           _nameController.text != user.name ||
           _emailController.text != user.email ||
-          _phoneController.text != user.phone ||
+          _phoneController.text != currentUserPhone ||
           _selectedImage != null;
 
       if (hasChanges != _hasChanges) {
@@ -135,14 +159,32 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
 
       // Update profile data
       final user = authProvider.currentUser;
+      
+      // Normalize the current user's phone for comparison
+      String currentUserPhone = user?.phone ?? '';
+      if (currentUserPhone.startsWith('+213')) {
+        currentUserPhone = currentUserPhone.substring(4);
+      } else if (currentUserPhone.startsWith('+')) {
+        currentUserPhone = currentUserPhone.replaceFirst(RegExp(r'^\+\d{1,3}'), '');
+      }
+      if (currentUserPhone.startsWith('0') && currentUserPhone.length > 10) {
+        currentUserPhone = currentUserPhone.substring(1);
+      }
+      
       if (_nameController.text != user?.name ||
           _emailController.text != user?.email ||
-          _phoneController.text != user?.phone) {
+          _phoneController.text != currentUserPhone) {
+        // Add country code back to phone number before sending to backend
+        String phoneToSend = _phoneController.text;
+        if (!phoneToSend.startsWith('+')) {
+          phoneToSend = '+213${phoneToSend}';
+        }
+        
         final profileResponse = await apiClient.updateProfile(
           token: token,
           name: _nameController.text,
           email: _emailController.text,
-          phone: _phoneController.text,
+          phone: phoneToSend,
         );
 
         if (!profileResponse.success) {
@@ -454,13 +496,17 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                             label: 'Numéro de Téléphone',
                             controller: _phoneController,
                             icon: Icons.phone_outlined,
-                            keyboardType: TextInputType.phone,
+                            keyboardType: TextInputType.number,
                             maxLength: 10,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(10),
+                            ],
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Veuillez entrer votre numéro';
                               }
-                              // Phone number regex: only digits, max 10
+                              // Phone number regex: only digits, exactly 10
                               final phoneRegex = RegExp(r'^[0-9]{10}$');
                               if (!phoneRegex.hasMatch(value.trim())) {
                                 return 'Le numéro doit contenir exactement 10 chiffres';
@@ -552,6 +598,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
     int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,6 +617,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           keyboardType: keyboardType,
           validator: validator,
           maxLength: maxLength,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
             filled: true,
             fillColor: const Color(0xFFF9FAFB),

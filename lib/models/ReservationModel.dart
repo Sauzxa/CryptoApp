@@ -1,10 +1,31 @@
+class ProfilePhoto {
+  final String? url;
+  final String? cloudinaryId;
+
+  ProfilePhoto({this.url, this.cloudinaryId});
+
+  factory ProfilePhoto.fromJson(Map<String, dynamic> json) {
+    return ProfilePhoto(
+      url: json['url'],
+      cloudinaryId: json['cloudinaryId'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'url': url,
+      'cloudinaryId': cloudinaryId,
+    };
+  }
+}
+
 class ReservationAgent {
   final String? id;
   final String? name;
   final String? email;
   final String? phone;
   final String? role;
-  final String? profilePhoto;
+  final ProfilePhoto? profilePhoto;
 
   ReservationAgent({
     this.id,
@@ -22,7 +43,11 @@ class ReservationAgent {
       email: json['email'],
       phone: json['phone'],
       role: json['role'],
-      profilePhoto: json['profilePhoto'],
+      profilePhoto: json['profilePhoto'] != null
+          ? (json['profilePhoto'] is Map<String, dynamic>
+              ? ProfilePhoto.fromJson(json['profilePhoto'])
+              : null)
+          : null,
     );
   }
 
@@ -33,7 +58,7 @@ class ReservationAgent {
       'email': email,
       'phone': phone,
       'role': role,
-      'profilePhoto': profilePhoto,
+      'profilePhoto': profilePhoto?.toJson(),
     };
   }
 }

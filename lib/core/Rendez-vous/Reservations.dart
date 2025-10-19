@@ -558,13 +558,18 @@ class _ReservationsPageState extends State<ReservationsPage> {
                         CircleAvatar(
                           radius: 20,
                           backgroundColor: const Color(0xFF6366F1),
-                          child: Text(
-                            reservation.agentTerrain!.name?.substring(0, 1).toUpperCase() ?? 'A',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          backgroundImage: reservation.agentTerrain!.profilePhoto?.url != null
+                              ? NetworkImage(reservation.agentTerrain!.profilePhoto!.url!)
+                              : null,
+                          child: reservation.agentTerrain!.profilePhoto?.url == null
+                              ? Text(
+                                  reservation.agentTerrain!.name?.substring(0, 1).toUpperCase() ?? 'A',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
                         ),
                         const SizedBox(width: 12),
                         Expanded(

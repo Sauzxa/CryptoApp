@@ -124,16 +124,44 @@ class UserBasic {
 
 class ProfilePhoto {
   final String? url;
-  final String? publicId;
+  final String? cloudinaryId;
 
-  ProfilePhoto({this.url, this.publicId});
+  ProfilePhoto({this.url, this.cloudinaryId});
 
   factory ProfilePhoto.fromJson(Map<String, dynamic> json) {
-    return ProfilePhoto(url: json['url'], publicId: json['publicId']);
+    return ProfilePhoto(url: json['url'], cloudinaryId: json['cloudinaryId']);
   }
 
   Map<String, dynamic> toJson() {
-    return {'url': url, 'publicId': publicId};
+    return {'url': url, 'cloudinaryId': cloudinaryId};
+  }
+}
+
+class RapportData {
+  final String result; // 'rented' or 'not_rented'
+  final String rapportMessage;
+  final String reservationId;
+
+  RapportData({
+    required this.result,
+    required this.rapportMessage,
+    required this.reservationId,
+  });
+
+  factory RapportData.fromJson(Map<String, dynamic> json) {
+    return RapportData(
+      result: json['result'] ?? '',
+      rapportMessage: json['rapportMessage'] ?? '',
+      reservationId: json['reservationId'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'result': result,
+      'rapportMessage': rapportMessage,
+      'reservationId': reservationId,
+    };
   }
 }
 
@@ -141,10 +169,11 @@ class MessageModel {
   final String id;
   final String roomId;
   final UserBasic sender;
-  final String type; // 'text' or 'voice'
+  final String type; // 'text', 'voice', 'rapport', or 'system'
   final String text;
   final String? voiceUrl;
   final int? voiceDuration;
+  final RapportData? rapportData;
   final List<String> seenBy;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -157,6 +186,7 @@ class MessageModel {
     required this.text,
     this.voiceUrl,
     this.voiceDuration,
+    this.rapportData,
     required this.seenBy,
     required this.createdAt,
     required this.updatedAt,
@@ -173,6 +203,9 @@ class MessageModel {
       text: json['text'] ?? '',
       voiceUrl: json['voiceUrl'],
       voiceDuration: json['voiceDuration'],
+      rapportData: json['rapportData'] != null
+          ? RapportData.fromJson(json['rapportData'])
+          : null,
       seenBy:
           (json['seenBy'] as List<dynamic>?)
               ?.map((id) => id is String ? id : id.toString())
@@ -196,6 +229,7 @@ class MessageModel {
       'text': text,
       'voiceUrl': voiceUrl,
       'voiceDuration': voiceDuration,
+      'rapportData': rapportData?.toJson(),
       'seenBy': seenBy,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -210,6 +244,7 @@ class MessageModel {
     String? text,
     String? voiceUrl,
     int? voiceDuration,
+    RapportData? rapportData,
     List<String>? seenBy,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -222,6 +257,7 @@ class MessageModel {
       text: text ?? this.text,
       voiceUrl: voiceUrl ?? this.voiceUrl,
       voiceDuration: voiceDuration ?? this.voiceDuration,
+      rapportData: rapportData ?? this.rapportData,
       seenBy: seenBy ?? this.seenBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -235,4 +271,5 @@ class MessageModel {
   bool get isVoice => type == 'voice';
   bool get isText => type == 'text';
   bool get isRapport => type == 'rapport';
+  bool get isSystem => type == 'system';
 }
