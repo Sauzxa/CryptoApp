@@ -20,6 +20,7 @@ import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:intl/intl.dart';
 import 'package:cryptoimmobilierapp/utils/snackbar_utils.dart';
 import 'RapportBottomSheet.dart';
+import 'CommercialActionBottomSheet.dart';
 
 class MessageRoomPage extends StatefulWidget {
   final RoomModel room;
@@ -1986,151 +1987,51 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   }
 
   Future<void> _showCommercialActionDialog() async {
-    final action = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Action Commerciale'),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 20,
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Payé Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context, 'paye'),
-                  icon: const Icon(Icons.check_circle, color: Colors.white),
-                  label: const Text('Payé'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 20,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
+    try {
+      // Fetch reservation details to get client and agent info
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
 
-              // En Cours Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context, 'en_cours'),
-                  icon: const Icon(Icons.calendar_today, color: Colors.white),
-                  label: const Text('En Cours'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 20,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
+      if (token == null || widget.room.reservationId == null) return;
 
-              // Annulé Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context, 'annule'),
-                  icon: const Icon(Icons.cancel, color: Colors.white),
-                  label: const Text('Annulé'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 20,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-        ],
-      ),
-    );
+      // Get all reservations and find the current one
+      final response = await apiClient.getReservations(token);
 
-    if (action != null) {
-      if (action == 'en_cours') {
-        await _showRescheduleDatePicker();
-      } else {
-        await _executeCommercialAction(action, null);
+      if (!response.success || response.data == null) {
+        if (mounted) {
+          SnackbarUtils.showError(
+            context,
+            'Erreur lors du chargement des détails',
+          );
+        }
+        return;
       }
-    }
-  }
 
-  Future<void> _showRescheduleDatePicker() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 2)),
-      firstDate: DateTime.now().add(const Duration(days: 2)),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-      helpText: 'Sélectionner la nouvelle date',
-    );
-
-    if (date != null && mounted) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-        helpText: 'Sélectionner l\'heure',
+      // Find the reservation by ID
+      final reservation = response.data!.firstWhere(
+        (r) => r.id == widget.room.reservationId,
+        orElse: () => throw Exception('Reservation not found'),
       );
 
-      if (time != null) {
-        final newDate = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          time.hour,
-          time.minute,
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => CommercialActionBottomSheet(
+            clientName: reservation.clientFullName,
+            clientPhone: reservation.clientPhone,
+            agentCommercialName: reservation.agentCommercialName ?? 'N/A',
+            agentTerrainName: reservation.agentTerrainName ?? 'N/A',
+            onSubmit: (action, newReservedAt, message) {
+              _executeCommercialAction(action, newReservedAt, message);
+            },
+          ),
         );
-
-        // Validate: must be more than 24 hours from now
-        final twentyFourHoursLater = DateTime.now().add(
-          const Duration(hours: 24),
-        );
-        if (newDate.isBefore(twentyFourHoursLater)) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'La date doit être plus de 24 heures à partir de maintenant',
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-
-        await _executeCommercialAction('en_cours', newDate.toIso8601String());
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');
       }
     }
   }
@@ -2138,6 +2039,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   Future<void> _executeCommercialAction(
     String action,
     String? newReservedAt,
+    String? message,
   ) async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -2159,6 +2061,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         action,
         token,
         newReservedAt: newReservedAt,
+        message: message,
       );
 
       if (response.success) {

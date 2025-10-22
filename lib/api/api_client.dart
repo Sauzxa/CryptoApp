@@ -779,11 +779,13 @@ class ApiClient {
     String action,
     String token, {
     String? newReservedAt, // Required for 'en_cours' action
+    String? message, // Optional message for all actions
   }) async {
     try {
       final body = {
         'action': action,
         if (newReservedAt != null) 'newReservedAt': newReservedAt,
+        if (message != null && message.isNotEmpty) 'message': message,
       };
 
       final response = await _makeRequest(
