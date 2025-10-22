@@ -14,16 +14,17 @@ class CommercialSuiviPage extends StatefulWidget {
   State<CommercialSuiviPage> createState() => _CommercialSuiviPageState();
 }
 
-class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTickerProviderStateMixin {
+class _CommercialSuiviPageState extends State<CommercialSuiviPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
   String? _errorMessage;
-  
+
   List<ReservationModel> _payeReservations = [];
   List<ReservationModel> _annuleReservations = [];
   List<ReservationModel> _enCoursReservations = [];
   Map<String, List<ReservationModel>> _calendarReservations = {};
-  
+
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -72,7 +73,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
 
   Future<void> _loadSuiviData() async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -93,35 +94,46 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
       }
 
       debugPrint('🔄 Loading commercial suivi data...');
-      final response = await apiClient.getCommercialSuivi(token, section: 'all');
+      final response = await apiClient.getCommercialSuivi(
+        token,
+        section: 'all',
+      );
 
       if (response.success && response.data != null) {
         final sections = response.data!['sections'];
-        
+
         if (mounted) {
           setState(() {
             // Parse paye section
-            _payeReservations = (sections['paye']['reservations'] as List?)
-                ?.map((json) => ReservationModel.fromJson(json))
-                .toList() ?? [];
-            
+            _payeReservations =
+                (sections['paye']['reservations'] as List?)
+                    ?.map((json) => ReservationModel.fromJson(json))
+                    .toList() ??
+                [];
+
             // Parse annule section
-            _annuleReservations = (sections['annule']['reservations'] as List?)
-                ?.map((json) => ReservationModel.fromJson(json))
-                .toList() ?? [];
-            
+            _annuleReservations =
+                (sections['annule']['reservations'] as List?)
+                    ?.map((json) => ReservationModel.fromJson(json))
+                    .toList() ??
+                [];
+
             // Parse en_cours section
-            _enCoursReservations = (sections['en_cours']['reservations'] as List?)
-                ?.map((json) => ReservationModel.fromJson(json))
-                .toList() ?? [];
-            
+            _enCoursReservations =
+                (sections['en_cours']['reservations'] as List?)
+                    ?.map((json) => ReservationModel.fromJson(json))
+                    .toList() ??
+                [];
+
             _isLoading = false;
           });
-          
+
           // Load calendar data
           await _loadCalendarData();
-          
-          debugPrint('✅ Loaded suivi: Payé=${_payeReservations.length}, Annulé=${_annuleReservations.length}, En cours=${_enCoursReservations.length}');
+
+          debugPrint(
+            '✅ Loaded suivi: Payé=${_payeReservations.length}, Annulé=${_annuleReservations.length}, En cours=${_enCoursReservations.length}',
+          );
         }
       } else {
         debugPrint('❌ Failed to load suivi: ${response.message}');
@@ -156,8 +168,9 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
       );
 
       if (response.success && response.data != null) {
-        final groupedByDate = response.data!['groupedByDate'] as Map<String, dynamic>?;
-        
+        final groupedByDate =
+            response.data!['groupedByDate'] as Map<String, dynamic>?;
+
         if (mounted && groupedByDate != null) {
           setState(() {
             _calendarReservations = groupedByDate.map((key, value) {
@@ -194,34 +207,46 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, size: 60, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(_errorMessage!),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadSuiviData,
-                        child: const Text('Réessayer'),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(_errorMessage!),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadSuiviData,
+                    child: const Text('Réessayer'),
                   ),
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildReservationList(_payeReservations, 'Payé', Colors.green),
-                    _buildReservationList(_annuleReservations, 'Annulé', Colors.red),
-                    _buildReservationList(_enCoursReservations, 'En Cours', Colors.orange),
-                    _buildCalendarView(),
-                  ],
+                ],
+              ),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildReservationList(_payeReservations, 'Payé', Colors.green),
+                _buildReservationList(
+                  _annuleReservations,
+                  'Annulé',
+                  Colors.red,
                 ),
+                _buildReservationList(
+                  _enCoursReservations,
+                  'En Cours',
+                  Colors.orange,
+                ),
+                _buildCalendarView(),
+              ],
+            ),
     );
   }
 
-  Widget _buildReservationList(List<ReservationModel> reservations, String title, Color color) {
+  Widget _buildReservationList(
+    List<ReservationModel> reservations,
+    String title,
+    Color color,
+  ) {
     if (reservations.isEmpty) {
       return Center(
         child: Column(
@@ -250,7 +275,10 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
     );
   }
 
-  Widget _buildReservationCard(ReservationModel reservation, Color accentColor) {
+  Widget _buildReservationCard(
+    ReservationModel reservation,
+    Color accentColor,
+  ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
@@ -265,14 +293,19 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: accentColor),
                   ),
                   child: Text(
-                    reservation.stateDisplayName,
+                    reservation.commercialActionDisplay.isNotEmpty
+                        ? reservation.commercialActionDisplay
+                        : reservation.stateDisplayName,
                     style: TextStyle(
                       color: accentColor,
                       fontWeight: FontWeight.bold,
@@ -287,7 +320,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // Client info
             Row(
               children: [
@@ -299,18 +332,24 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                     children: [
                       Text(
                         reservation.clientFullName,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       Text(
                         reservation.clientPhone,
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            
+
             // Agent Terrain info
             if (reservation.agentTerrain != null) ...[
               const SizedBox(height: 12),
@@ -326,7 +365,10 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                       radius: 20,
                       backgroundColor: const Color(0xFF6366F1),
                       child: Text(
-                        reservation.agentTerrain!.name?.substring(0, 1).toUpperCase() ?? 'A',
+                        reservation.agentTerrain!.name
+                                ?.substring(0, 1)
+                                .toUpperCase() ??
+                            'A',
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),
@@ -337,11 +379,17 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                         children: [
                           Text(
                             'Agent Terrain',
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
                           Text(
                             reservation.agentTerrain!.name ?? 'N/A',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
                           ),
                         ],
                       ),
@@ -350,7 +398,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                 ),
               ),
             ],
-            
+
             // Rapport info
             if (reservation.rapportState != null) ...[
               const SizedBox(height: 12),
@@ -364,9 +412,13 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      reservation.rapportState == 'potentiel' ? Icons.thumb_up : Icons.thumb_down,
+                      reservation.rapportState == 'potentiel'
+                          ? Icons.thumb_up
+                          : Icons.thumb_down,
                       size: 16,
-                      color: reservation.rapportState == 'potentiel' ? Colors.green : Colors.red,
+                      color: reservation.rapportState == 'potentiel'
+                          ? Colors.green
+                          : Colors.red,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -375,7 +427,10 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                         children: [
                           Text(
                             'Rapport: ${reservation.rapportStateDisplay}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                           if (reservation.rapportMessage != null) ...[
                             const SizedBox(height: 4),
@@ -411,7 +466,10 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                 icon: const Icon(Icons.chevron_left, color: Colors.white),
                 onPressed: () {
                   setState(() {
-                    _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1);
+                    _focusedDay = DateTime(
+                      _focusedDay.year,
+                      _focusedDay.month - 1,
+                    );
                   });
                   _loadCalendarData();
                 },
@@ -428,7 +486,10 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                 icon: const Icon(Icons.chevron_right, color: Colors.white),
                 onPressed: () {
                   setState(() {
-                    _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1);
+                    _focusedDay = DateTime(
+                      _focusedDay.year,
+                      _focusedDay.month + 1,
+                    );
                   });
                   _loadCalendarData();
                 },
@@ -436,7 +497,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
             ],
           ),
         ),
-        
+
         // Simple calendar grid
         Padding(
           padding: const EdgeInsets.all(8),
@@ -446,32 +507,36 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-                    .map((day) => Expanded(
-                          child: Center(
-                            child: Text(
-                              day,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade600,
-                              ),
+                    .map(
+                      (day) => Expanded(
+                        child: Center(
+                          child: Text(
+                            day,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade600,
                             ),
                           ),
-                        ))
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
               const SizedBox(height: 8),
-              
+
               // Calendar days grid
               _buildCalendarGrid(),
             ],
           ),
         ),
-        
+
         const Divider(),
         Expanded(
           child: _selectedDay == null
               ? const Center(
-                  child: Text('Sélectionnez une date pour voir les rendez-vous'),
+                  child: Text(
+                    'Sélectionnez une date pour voir les rendez-vous',
+                  ),
                 )
               : _buildDayReservations(_selectedDay!),
         ),
@@ -496,13 +561,16 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
     for (int day = 1; day <= daysInMonth; day++) {
       final date = DateTime(_focusedDay.year, _focusedDay.month, day);
       final dateKey = DateFormat('yyyy-MM-dd').format(date);
-      final hasReservations = _calendarReservations.containsKey(dateKey) &&
+      final hasReservations =
+          _calendarReservations.containsKey(dateKey) &&
           _calendarReservations[dateKey]!.isNotEmpty;
-      final isSelected = _selectedDay != null &&
+      final isSelected =
+          _selectedDay != null &&
           date.year == _selectedDay!.year &&
           date.month == _selectedDay!.month &&
           date.day == _selectedDay!.day;
-      final isToday = date.year == DateTime.now().year &&
+      final isToday =
+          date.year == DateTime.now().year &&
           date.month == DateTime.now().month &&
           date.day == DateTime.now().day;
 
@@ -519,8 +587,8 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
               color: isSelected
                   ? const Color(0xFF6366F1)
                   : isToday
-                      ? Colors.blue.withOpacity(0.2)
-                      : null,
+                  ? Colors.blue.withOpacity(0.2)
+                  : null,
               shape: BoxShape.circle,
               border: hasReservations
                   ? Border.all(color: Colors.red, width: 2)
@@ -531,7 +599,9 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
                 '$day',
                 style: TextStyle(
                   color: isSelected ? Colors.white : Colors.black,
-                  fontWeight: hasReservations ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: hasReservations
+                      ? FontWeight.bold
+                      : FontWeight.normal,
                 ),
               ),
             ),
@@ -553,9 +623,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage> with SingleTi
     final reservations = _calendarReservations[dateKey] ?? [];
 
     if (reservations.isEmpty) {
-      return const Center(
-        child: Text('Aucun rendez-vous ce jour'),
-      );
+      return const Center(child: Text('Aucun rendez-vous ce jour'));
     }
 
     return ListView.builder(
