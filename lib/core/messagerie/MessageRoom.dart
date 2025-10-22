@@ -1120,7 +1120,8 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           'roomId': widget.room.id,
           'type': 'rapport',
           'text': rapportMessage ?? 'Rapport soumis',
-          'result': result,
+          'result': result, // For reservation state
+          'rapportState': rapportState, // Actual rapport state for display
           'reservationId': reservationId,
         });
 

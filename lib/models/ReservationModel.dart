@@ -5,17 +5,11 @@ class ProfilePhoto {
   ProfilePhoto({this.url, this.cloudinaryId});
 
   factory ProfilePhoto.fromJson(Map<String, dynamic> json) {
-    return ProfilePhoto(
-      url: json['url'],
-      cloudinaryId: json['cloudinaryId'],
-    );
+    return ProfilePhoto(url: json['url'], cloudinaryId: json['cloudinaryId']);
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'url': url,
-      'cloudinaryId': cloudinaryId,
-    };
+    return {'url': url, 'cloudinaryId': cloudinaryId};
   }
 }
 
@@ -45,8 +39,8 @@ class ReservationAgent {
       role: json['role'],
       profilePhoto: json['profilePhoto'] != null
           ? (json['profilePhoto'] is Map<String, dynamic>
-              ? ProfilePhoto.fromJson(json['profilePhoto'])
-              : null)
+                ? ProfilePhoto.fromJson(json['profilePhoto'])
+                : null)
           : null,
     );
   }
@@ -73,11 +67,12 @@ class ReservationModel {
   final String clientPhone;
   final String? message;
   final DateTime reservedAt;
-  final String state; // 'pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'missed'
+  final String
+  state; // 'pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'missed'
   final String? callDirection; // 'client_to_agent', 'agent_to_client'
-  final String? result; // 'rented', 'not_rented'
   final String? rapportMessage;
   final String? rapportState; // 'potentiel', 'non_potentiel'
+  final String? commercialAction; // 'paye', 'en_cours', 'annulee'
   final DateTime? assignedAt;
   final DateTime? completedAt;
   final DateTime? rapportSentAt;
@@ -99,9 +94,9 @@ class ReservationModel {
     required this.reservedAt,
     this.state = 'pending',
     this.callDirection,
-    this.result,
     this.rapportMessage,
     this.rapportState,
+    this.commercialAction,
     this.assignedAt,
     this.completedAt,
     this.rapportSentAt,
@@ -116,12 +111,16 @@ class ReservationModel {
   factory ReservationModel.fromJson(Map<String, dynamic> json) {
     return ReservationModel(
       id: json['_id'] ?? json['id'],
-      agentCommercialId: json['agentCommercialId'] is String 
-          ? json['agentCommercialId'] 
-          : (json['agentCommercialId'] is Map ? json['agentCommercialId']['_id'] : null),
-      agentTerrainId: json['agentTerrainId'] is String 
-          ? json['agentTerrainId'] 
-          : (json['agentTerrainId'] is Map ? json['agentTerrainId']['_id'] : null),
+      agentCommercialId: json['agentCommercialId'] is String
+          ? json['agentCommercialId']
+          : (json['agentCommercialId'] is Map
+                ? json['agentCommercialId']['_id']
+                : null),
+      agentTerrainId: json['agentTerrainId'] is String
+          ? json['agentTerrainId']
+          : (json['agentTerrainId'] is Map
+                ? json['agentTerrainId']['_id']
+                : null),
       agentCommercial: json['agentCommercialId'] is Map<String, dynamic>
           ? ReservationAgent.fromJson(json['agentCommercialId'])
           : null,
@@ -134,17 +133,29 @@ class ReservationModel {
       reservedAt: DateTime.parse(json['reservedAt']),
       state: json['state'] ?? 'pending',
       callDirection: json['callDirection'],
-      result: json['result'],
       rapportMessage: json['rapportMessage'],
       rapportState: json['rapportState'],
-      assignedAt: json['assignedAt'] != null ? DateTime.parse(json['assignedAt']) : null,
-      completedAt: json['completedAt'] != null ? DateTime.parse(json['completedAt']) : null,
-      rapportSentAt: json['rapportSentAt'] != null ? DateTime.parse(json['rapportSentAt']) : null,
-      rescheduledAt: json['rescheduledAt'] != null ? DateTime.parse(json['rescheduledAt']) : null,
+      commercialAction: json['commercialAction'],
+      assignedAt: json['assignedAt'] != null
+          ? DateTime.parse(json['assignedAt'])
+          : null,
+      completedAt: json['completedAt'] != null
+          ? DateTime.parse(json['completedAt'])
+          : null,
+      rapportSentAt: json['rapportSentAt'] != null
+          ? DateTime.parse(json['rapportSentAt'])
+          : null,
+      rescheduledAt: json['rescheduledAt'] != null
+          ? DateTime.parse(json['rescheduledAt'])
+          : null,
       agentCanToggleAvailability: json['agentCanToggleAvailability'],
       notificationSent3h: json['notificationSent3h'] ?? false,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : null,
     );
   }
 
@@ -180,9 +191,9 @@ class ReservationModel {
     DateTime? reservedAt,
     String? state,
     String? callDirection,
-    String? result,
     String? rapportMessage,
     String? rapportState,
+    String? commercialAction,
     DateTime? assignedAt,
     DateTime? completedAt,
     DateTime? rapportSentAt,
@@ -204,14 +215,15 @@ class ReservationModel {
       reservedAt: reservedAt ?? this.reservedAt,
       state: state ?? this.state,
       callDirection: callDirection ?? this.callDirection,
-      result: result ?? this.result,
       rapportMessage: rapportMessage ?? this.rapportMessage,
       rapportState: rapportState ?? this.rapportState,
+      commercialAction: commercialAction ?? this.commercialAction,
       assignedAt: assignedAt ?? this.assignedAt,
       completedAt: completedAt ?? this.completedAt,
       rapportSentAt: rapportSentAt ?? this.rapportSentAt,
       rescheduledAt: rescheduledAt ?? this.rescheduledAt,
-      agentCanToggleAvailability: agentCanToggleAvailability ?? this.agentCanToggleAvailability,
+      agentCanToggleAvailability:
+          agentCanToggleAvailability ?? this.agentCanToggleAvailability,
       notificationSent3h: notificationSent3h ?? this.notificationSent3h,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -248,13 +260,13 @@ class ReservationModel {
   String? get agentCommercialName => agentCommercial?.name;
   String? get agentTerrainName => agentTerrain?.name;
 
-  bool get hasRapport => result != null && rapportMessage != null;
-  
+  bool get hasRapport => rapportState != null && rapportMessage != null;
+
   // Rapport state helpers
   bool get hasPotentielRapport => rapportState == 'potentiel';
   bool get hasNonPotentielRapport => rapportState == 'non_potentiel';
   bool get isRescheduled => rescheduledAt != null;
-  
+
   String get rapportStateDisplay {
     if (rapportState == 'potentiel') {
       return 'Potentiel';
@@ -273,11 +285,13 @@ class ReservationModel {
     return '';
   }
 
-  String get resultDisplay {
-    if (result == 'rented') {
-      return 'Loué';
-    } else if (result == 'not_rented') {
-      return 'Non loué';
+  String get commercialActionDisplay {
+    if (commercialAction == 'paye') {
+      return 'Payé';
+    } else if (commercialAction == 'en_cours') {
+      return 'En Cours';
+    } else if (commercialAction == 'annulee') {
+      return 'Annulé';
     }
     return '';
   }

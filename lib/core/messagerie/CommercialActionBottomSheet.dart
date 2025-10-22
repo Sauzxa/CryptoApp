@@ -33,7 +33,7 @@ class _CommercialActionBottomSheetState
   final Map<String, String> _actionLabels = {
     'en_cours': 'En Cours',
     'paye': 'Payé (Terminé)',
-    'annule': 'Annulée',
+    'annulee': 'Annulée',
   };
 
   @override
@@ -130,7 +130,7 @@ class _CommercialActionBottomSheetState
                           icon = Icons.schedule;
                           color = Colors.orange;
                           break;
-                        case 'annule':
+                        case 'annulee':
                           icon = Icons.cancel;
                           color = Colors.red;
                           break;
@@ -249,7 +249,7 @@ class _CommercialActionBottomSheetState
 
               // Message input for all actions
               const Text(
-                'Message (optionnel)',
+                'Message (requis)',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -270,6 +270,7 @@ class _CommercialActionBottomSheetState
                     hintText: 'Ajouter un commentaire...',
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.all(16),
+                    errorText: null,
                   ),
                 ),
               ),
@@ -380,12 +381,15 @@ class _CommercialActionBottomSheetState
   bool _canSubmit() {
     if (_selectedAction == null) return false;
 
+    // Message is always required
+    if (_messageController.text.trim().isEmpty) return false;
+
     // For "en_cours", date and time are required
     if (_selectedAction == 'en_cours') {
       return _selectedDate != null && _selectedTime != null;
     }
 
-    // For "paye" and "annule", just action is enough
+    // For "paye" and "annulee", action and message are enough
     return true;
   }
 
@@ -407,10 +411,8 @@ class _CommercialActionBottomSheetState
       newReservedAt = newDate.toIso8601String();
     }
 
-    // Call the callback with message
-    final message = _messageController.text.trim().isEmpty
-        ? null
-        : _messageController.text.trim();
+    // Call the callback with message (always required now)
+    final message = _messageController.text.trim();
 
     widget.onSubmit(_selectedAction!, newReservedAt, message);
 
