@@ -596,29 +596,25 @@ class ApiClient {
 
       if (response.success && response.data != null) {
         try {
-          final reservationsData = response.data!['data']['reservations'] as List;
+          final reservationsData =
+              response.data!['data']['reservations'] as List;
           final reservations = reservationsData
               .map((json) {
                 try {
                   return ReservationModel.fromJson(json);
                 } catch (e) {
-                  print('❌ Error parsing reservation: $e');
-                  print('📄 JSON data: $json');
                   return null;
                 }
               })
               .whereType<ReservationModel>() // Filter out nulls
               .toList();
 
-          print('✅ Successfully parsed ${reservations.length} reservations');
           return ApiResponse<List<ReservationModel>>(
             success: true,
             data: reservations,
             statusCode: response.statusCode,
           );
         } catch (e) {
-          print('❌ Error parsing reservations list: $e');
-          print('📄 Response data: ${response.data}');
           return ApiResponse<List<ReservationModel>>(
             success: false,
             message: 'Erreur de format des données: ${e.toString()}',
@@ -635,7 +631,6 @@ class ApiClient {
         );
       }
     } catch (e) {
-      print('❌ Exception in getReservations: $e');
       return ApiResponse<List<ReservationModel>>(
         success: false,
         message:
@@ -689,6 +684,230 @@ class ApiClient {
       return ApiResponse<ReservationModel>(
         success: false,
         message: 'Erreur lors de la mise à jour de l\'état: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Reject reservation and reassign to next agent (Agent Terrain only)
+  Future<ApiResponse<ReservationModel>> rejectReservation(
+    String reservationId,
+    String token,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'POST',
+        '${ApiEndpoints.reservations}/$reservationId/reject',
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final reservationData = response.data!['data']['reservation'];
+        if (reservationData != null) {
+          final reservation = ReservationModel.fromJson(reservationData);
+          return ApiResponse<ReservationModel>(
+            success: true,
+            data: reservation,
+            message:
+                response.data!['message'] ?? 'Réservation rejetée avec succès',
+            statusCode: response.statusCode,
+          );
+        }
+      }
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: response.message ?? 'Erreur lors du rejet de la réservation',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: 'Erreur lors du rejet: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Submit rapport after meeting (Agent Terrain only)
+  Future<ApiResponse<ReservationModel>> submitRapport(
+    String reservationId,
+    String rapportState, // 'potentiel' or 'non_potentiel'
+    String? rapportMessage,
+    String token,
+  ) async {
+    try {
+      final body = {
+        'rapportState': rapportState,
+        if (rapportMessage != null && rapportMessage.isNotEmpty)
+          'rapportMessage': rapportMessage,
+      };
+
+      final response = await _makeRequest(
+        'PUT',
+        '${ApiEndpoints.reservations}/$reservationId/rapport',
+        body: body,
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final reservationData = response.data!['data']['reservation'];
+        if (reservationData != null) {
+          final reservation = ReservationModel.fromJson(reservationData);
+          return ApiResponse<ReservationModel>(
+            success: true,
+            data: reservation,
+            message: response.data!['message'] ?? 'Rapport envoyé avec succès',
+            statusCode: response.statusCode,
+          );
+        }
+      }
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: response.message ?? 'Erreur lors de l\'envoi du rapport',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: 'Erreur lors de l\'envoi du rapport: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Take commercial action on rapport (Agent Commercial only)
+  /// Actions: 'paye', 'en_cours', 'annule'
+  Future<ApiResponse<ReservationModel>> takeCommercialAction(
+    String reservationId,
+    String action,
+    String token, {
+    String? newReservedAt, // Required for 'en_cours' action
+  }) async {
+    try {
+      final body = {
+        'action': action,
+        if (newReservedAt != null) 'newReservedAt': newReservedAt,
+      };
+
+      final response = await _makeRequest(
+        'PUT',
+        '${ApiEndpoints.reservations}/$reservationId/commercial-action',
+        body: body,
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final reservationData = response.data!['data']['reservation'];
+        if (reservationData != null) {
+          final reservation = ReservationModel.fromJson(reservationData);
+          return ApiResponse<ReservationModel>(
+            success: true,
+            data: reservation,
+            message:
+                response.data!['message'] ?? 'Action effectuée avec succès',
+            statusCode: response.statusCode,
+          );
+        }
+      }
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: response.message ?? 'Erreur lors de l\'action commerciale',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: 'Erreur lors de l\'action: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get commercial suivi dashboard data (Agent Commercial only)
+  Future<ApiResponse<Map<String, dynamic>>> getCommercialSuivi(
+    String token, {
+    String? section, // 'paye', 'annule', 'en_cours', or 'all'
+    String? agentId,
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (section != null) queryParams['section'] = section;
+      if (agentId != null) queryParams['agentId'] = agentId;
+      if (startDate != null) queryParams['startDate'] = startDate;
+      if (endDate != null) queryParams['endDate'] = endDate;
+
+      final uri = Uri.parse(
+        ApiEndpoints.getFullUrl(
+          '${ApiEndpoints.reservations}/commercial/suivi',
+        ),
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      final response = await _client
+          .get(uri, headers: _getAuthHeaders(token))
+          .timeout(const Duration(seconds: 30));
+
+      final responseData = _handleResponse(response);
+
+      if (responseData.success && responseData.data != null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: responseData.data!['data'],
+          message: responseData.data!['message'],
+          statusCode: responseData.statusCode,
+        );
+      }
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: responseData.message ?? 'Erreur lors du chargement du suivi',
+        statusCode: responseData.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Erreur lors du chargement du suivi: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get commercial calendar view (Agent Commercial only)
+  Future<ApiResponse<Map<String, dynamic>>> getCommercialCalendar(
+    String token, {
+    int? month,
+    int? year,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (month != null) queryParams['month'] = month.toString();
+      if (year != null) queryParams['year'] = year.toString();
+
+      final uri = Uri.parse(
+        ApiEndpoints.getFullUrl(
+          '${ApiEndpoints.reservations}/commercial/calendar',
+        ),
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      final response = await _client
+          .get(uri, headers: _getAuthHeaders(token))
+          .timeout(const Duration(seconds: 30));
+
+      final responseData = _handleResponse(response);
+
+      if (responseData.success && responseData.data != null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: responseData.data!['data'],
+          message: responseData.data!['message'],
+          statusCode: responseData.statusCode,
+        );
+      }
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message:
+            responseData.message ?? 'Erreur lors du chargement du calendrier',
+        statusCode: responseData.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Erreur lors du chargement du calendrier: ${e.toString()}',
       );
     }
   }

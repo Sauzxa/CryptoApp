@@ -367,10 +367,7 @@ class MessagingService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'room': RoomModel.fromJson(data['data']),
-        };
+        return {'success': true, 'room': RoomModel.fromJson(data['data'])};
       } else {
         return {
           'success': false,
@@ -450,6 +447,49 @@ class MessagingService {
       }
     } catch (e) {
       print('Error finding/creating direct room: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // Create reservation room
+  static Future<Map<String, dynamic>> createReservationRoom({
+    required String token,
+    required String reservationId,
+    required String agentCommercialId,
+    required String agentTerrainId,
+    required String clientName,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '${ApiEndpoints.baseUrl}/api/messages/rooms/reservation',
+      );
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'reservationId': reservationId,
+          'agentCommercialId': agentCommercialId,
+          'agentTerrainId': agentTerrainId,
+          'clientName': clientName,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'room': RoomModel.fromJson(data['data'])};
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to create reservation room',
+        };
+      }
+    } catch (e) {
+      print('Error creating reservation room: $e');
       return {'success': false, 'message': 'Error: $e'};
     }
   }

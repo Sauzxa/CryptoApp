@@ -77,8 +77,12 @@ class ReservationModel {
   final String? callDirection; // 'client_to_agent', 'agent_to_client'
   final String? result; // 'rented', 'not_rented'
   final String? rapportMessage;
+  final String? rapportState; // 'potentiel', 'non_potentiel'
   final DateTime? assignedAt;
   final DateTime? completedAt;
+  final DateTime? rapportSentAt;
+  final DateTime? rescheduledAt;
+  final bool? agentCanToggleAvailability;
   final bool notificationSent3h;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -97,8 +101,12 @@ class ReservationModel {
     this.callDirection,
     this.result,
     this.rapportMessage,
+    this.rapportState,
     this.assignedAt,
     this.completedAt,
+    this.rapportSentAt,
+    this.rescheduledAt,
+    this.agentCanToggleAvailability,
     this.notificationSent3h = false,
     this.createdAt,
     this.updatedAt,
@@ -128,8 +136,12 @@ class ReservationModel {
       callDirection: json['callDirection'],
       result: json['result'],
       rapportMessage: json['rapportMessage'],
+      rapportState: json['rapportState'],
       assignedAt: json['assignedAt'] != null ? DateTime.parse(json['assignedAt']) : null,
       completedAt: json['completedAt'] != null ? DateTime.parse(json['completedAt']) : null,
+      rapportSentAt: json['rapportSentAt'] != null ? DateTime.parse(json['rapportSentAt']) : null,
+      rescheduledAt: json['rescheduledAt'] != null ? DateTime.parse(json['rescheduledAt']) : null,
+      agentCanToggleAvailability: json['agentCanToggleAvailability'],
       notificationSent3h: json['notificationSent3h'] ?? false,
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
@@ -170,8 +182,12 @@ class ReservationModel {
     String? callDirection,
     String? result,
     String? rapportMessage,
+    String? rapportState,
     DateTime? assignedAt,
     DateTime? completedAt,
+    DateTime? rapportSentAt,
+    DateTime? rescheduledAt,
+    bool? agentCanToggleAvailability,
     bool? notificationSent3h,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -190,8 +206,12 @@ class ReservationModel {
       callDirection: callDirection ?? this.callDirection,
       result: result ?? this.result,
       rapportMessage: rapportMessage ?? this.rapportMessage,
+      rapportState: rapportState ?? this.rapportState,
       assignedAt: assignedAt ?? this.assignedAt,
       completedAt: completedAt ?? this.completedAt,
+      rapportSentAt: rapportSentAt ?? this.rapportSentAt,
+      rescheduledAt: rescheduledAt ?? this.rescheduledAt,
+      agentCanToggleAvailability: agentCanToggleAvailability ?? this.agentCanToggleAvailability,
       notificationSent3h: notificationSent3h ?? this.notificationSent3h,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -229,6 +249,20 @@ class ReservationModel {
   String? get agentTerrainName => agentTerrain?.name;
 
   bool get hasRapport => result != null && rapportMessage != null;
+  
+  // Rapport state helpers
+  bool get hasPotentielRapport => rapportState == 'potentiel';
+  bool get hasNonPotentielRapport => rapportState == 'non_potentiel';
+  bool get isRescheduled => rescheduledAt != null;
+  
+  String get rapportStateDisplay {
+    if (rapportState == 'potentiel') {
+      return 'Potentiel';
+    } else if (rapportState == 'non_potentiel') {
+      return 'Non Potentiel';
+    }
+    return '';
+  }
 
   String get callDirectionDisplay {
     if (callDirection == 'client_to_agent') {

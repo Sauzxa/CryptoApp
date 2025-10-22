@@ -69,6 +69,10 @@ class RoomModel {
     UserBasic? creator,
     List<UserBasic>? members,
     MessageModel? lastMessage,
+    String? reservationId,
+    String? roomType,
+    String? agentCommercialId,
+    String? agentTerrainId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -78,6 +82,10 @@ class RoomModel {
       creator: creator ?? this.creator,
       members: members ?? this.members,
       lastMessage: lastMessage ?? this.lastMessage,
+      reservationId: reservationId ?? this.reservationId,
+      roomType: roomType ?? this.roomType,
+      agentCommercialId: agentCommercialId ?? this.agentCommercialId,
+      agentTerrainId: agentTerrainId ?? this.agentTerrainId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

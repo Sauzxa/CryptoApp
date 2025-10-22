@@ -25,20 +25,18 @@ class _NotificationPanelState extends State<NotificationPanel>
   @override
   void initState() {
     super.initState();
-    print('🎨 NotificationPanel initialized');
-    print('📋 Notifications: ${widget.notifications.length}');
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
     _animationController.forward();
   }
 
@@ -85,7 +83,9 @@ class _NotificationPanelState extends State<NotificationPanel>
                       maxHeight: MediaQuery.of(context).size.height * 0.7,
                     ),
                     decoration: BoxDecoration(
-                      color: isDarkMode ? const Color(0xFF1F2937) : Colors.white,
+                      color: isDarkMode
+                          ? const Color(0xFF1F2937)
+                          : Colors.white,
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(16),
                         bottomRight: Radius.circular(16),
@@ -119,7 +119,9 @@ class _NotificationPanelState extends State<NotificationPanel>
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: isDarkMode ? Colors.white : const Color(0xFF1F2937),
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : const Color(0xFF1F2937),
                                 ),
                               ),
                               const Spacer(),
@@ -137,7 +139,9 @@ class _NotificationPanelState extends State<NotificationPanel>
                               IconButton(
                                 icon: Icon(
                                   Icons.close,
-                                  color: isDarkMode ? Colors.white70 : Colors.grey.shade600,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.grey.shade600,
                                 ),
                                 onPressed: _close,
                               ),
@@ -151,7 +155,9 @@ class _NotificationPanelState extends State<NotificationPanel>
                               ? _buildEmptyState(isDarkMode)
                               : ListView(
                                   shrinkWrap: true,
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
                                   children: [
                                     // Unread notifications
                                     if (unreadNotifications.isNotEmpty) ...[
@@ -173,11 +179,12 @@ class _NotificationPanelState extends State<NotificationPanel>
                                         ),
                                       ),
                                       ...unreadNotifications.map(
-                                        (notification) => _buildNotificationItem(
-                                          notification,
-                                          isDarkMode,
-                                          isUnread: true,
-                                        ),
+                                        (notification) =>
+                                            _buildNotificationItem(
+                                              notification,
+                                              isDarkMode,
+                                              isUnread: true,
+                                            ),
                                       ),
                                     ],
 
@@ -201,11 +208,12 @@ class _NotificationPanelState extends State<NotificationPanel>
                                         ),
                                       ),
                                       ...readNotifications.map(
-                                        (notification) => _buildNotificationItem(
-                                          notification,
-                                          isDarkMode,
-                                          isUnread: false,
-                                        ),
+                                        (notification) =>
+                                            _buildNotificationItem(
+                                              notification,
+                                              isDarkMode,
+                                              isUnread: false,
+                                            ),
                                       ),
                                     ],
                                   ],
@@ -277,8 +285,8 @@ class _NotificationPanelState extends State<NotificationPanel>
         decoration: BoxDecoration(
           color: isUnread
               ? (isDarkMode
-                  ? const Color(0xFF6366F1).withOpacity(0.1)
-                  : const Color(0xFF6366F1).withOpacity(0.05))
+                    ? const Color(0xFF6366F1).withOpacity(0.1)
+                    : const Color(0xFF6366F1).withOpacity(0.05))
               : Colors.transparent,
           border: Border(
             bottom: BorderSide(
@@ -321,7 +329,9 @@ class _NotificationPanelState extends State<NotificationPanel>
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: isDarkMode ? Colors.white : const Color(0xFF1F2937),
+                            color: isDarkMode
+                                ? Colors.white
+                                : const Color(0xFF1F2937),
                           ),
                         ),
                       ),
@@ -350,14 +360,18 @@ class _NotificationPanelState extends State<NotificationPanel>
                       Icon(
                         Icons.access_time,
                         size: 14,
-                        color: isDarkMode ? Colors.white38 : Colors.grey.shade500,
+                        color: isDarkMode
+                            ? Colors.white38
+                            : Colors.grey.shade500,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         timeAgo,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDarkMode ? Colors.white38 : Colors.grey.shade500,
+                          color: isDarkMode
+                              ? Colors.white38
+                              : Colors.grey.shade500,
                         ),
                       ),
                     ],
@@ -409,15 +423,11 @@ void showNotificationPanel(
   required Function(String) onMarkAsRead,
   required VoidCallback onClearAll,
 }) {
-  print('📱 showNotificationPanel called');
-  print('📊 Notifications to show: ${notifications.length}');
-  
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (context) {
-      print('🎬 Building NotificationPanel widget');
       return DraggableScrollableSheet(
         initialChildSize: 0.7,
         minChildSize: 0.3,
@@ -453,7 +463,10 @@ void showNotificationPanel(
                 ),
                 // Header
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
@@ -476,7 +489,9 @@ void showNotificationPanel(
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : const Color(0xFF1F2937),
+                          color: isDarkMode
+                              ? Colors.white
+                              : const Color(0xFF1F2937),
                         ),
                       ),
                       const Spacer(),
@@ -622,8 +637,8 @@ Widget _buildNotificationItemSimple(
       decoration: BoxDecoration(
         color: isUnread
             ? (isDarkMode
-                ? const Color(0xFF6366F1).withOpacity(0.1)
-                : const Color(0xFF6366F1).withOpacity(0.05))
+                  ? const Color(0xFF6366F1).withOpacity(0.1)
+                  : const Color(0xFF6366F1).withOpacity(0.05))
             : Colors.transparent,
         border: Border(
           bottom: BorderSide(
@@ -645,11 +660,7 @@ Widget _buildNotificationItemSimple(
               color: const Color(0xFF6366F1).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.person,
-              color: Color(0xFF6366F1),
-              size: 24,
-            ),
+            child: const Icon(Icons.person, color: Color(0xFF6366F1), size: 24),
           ),
           const SizedBox(width: 12),
           // Content
@@ -665,7 +676,9 @@ Widget _buildNotificationItemSimple(
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: isDarkMode ? Colors.white : const Color(0xFF1F2937),
+                          color: isDarkMode
+                              ? Colors.white
+                              : const Color(0xFF1F2937),
                         ),
                       ),
                     ),
@@ -701,7 +714,9 @@ Widget _buildNotificationItemSimple(
                       timeAgo,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDarkMode ? Colors.white38 : Colors.grey.shade500,
+                        color: isDarkMode
+                            ? Colors.white38
+                            : Colors.grey.shade500,
                       ),
                     ),
                   ],

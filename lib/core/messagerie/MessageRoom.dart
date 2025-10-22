@@ -18,6 +18,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:intl/intl.dart';
+import 'package:cryptoimmobilierapp/utils/snackbar_utils.dart';
 import 'RapportBottomSheet.dart';
 
 class MessageRoomPage extends StatefulWidget {
@@ -65,9 +66,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
     // Listen for audio player state changes
     _audioPlayer.onPlayerStateChanged.listen((ap.PlayerState state) {
-      print('🎵 Audio player state changed: $state');
       if (state == ap.PlayerState.completed) {
-        print('✅ Playback completed - stopping player');
         if (mounted) {
           setState(() {
             _currentlyPlayingMessageId = null;
@@ -80,12 +79,10 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     _audioPlayerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((
       _,
     ) {
-      print('🎵 Audio player onComplete event fired');
       if (mounted) {
         setState(() {
           _currentlyPlayingMessageId = null;
         });
-        print('✅ Audio playback stopped and UI updated');
       }
     });
 
@@ -139,10 +136,15 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   void _joinSocketRoom() {
     final socket = socketService.socket;
     if (socket == null || widget.room.id.isEmpty) return;
-    
+
+    print('🔌 Joining socket room: ${widget.room.id}');
+    print('🔌 Room type: ${widget.room.roomType}');
+    print('🔌 Reservation ID: ${widget.room.reservationId}');
+
     // Check if this is a reservation room
-    if (widget.room.roomType == 'reservation' && widget.room.reservationId != null) {
-      debugPrint('🔌 Joining RESERVATION socket room: ${widget.room.id}');
+    if (widget.room.roomType == 'reservation' &&
+        widget.room.reservationId != null) {
+      print('🔌 Joining reservation room via socket');
       socket.emit('reservation_room:join', {
         'roomId': widget.room.id,
         'reservationId': widget.room.reservationId,
@@ -150,7 +152,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         'agentTerrainId': widget.room.agentTerrainId,
       });
     } else {
-      debugPrint('🔌 Joining NORMAL socket room: ${widget.room.id}');
+      print('🔌 Joining normal room via socket');
       socket.emit('room:join', {'roomId': widget.room.id});
     }
   }
@@ -158,55 +160,44 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   void _setupSocketListeners() {
     final socket = socketService.socket;
     if (socket == null) {
-      debugPrint('⚠️ Socket is null, cannot setup listeners');
       return;
     }
 
     final isReservationRoom = widget.room.roomType == 'reservation';
-    debugPrint('🔌 Setting up ${isReservationRoom ? "RESERVATION" : "NORMAL"} socket listeners for room: ${widget.room.id}');
 
     if (isReservationRoom) {
       // Reservation room specific listeners
       socket.on('reservation_room:message', (data) {
-        debugPrint('📨 Received reservation room message: $data');
         _reloadMessages();
       });
 
-      socket.on('reservation_room:joined', (data) {
-        debugPrint('✅ Successfully joined reservation room: ${data['roomId']}');
-      });
-      
+      socket.on('reservation_room:joined', (data) {});
+
       socket.on('reservation_room:error', (data) {
-        debugPrint('❌ Reservation room error: $data');
+        print('❌ Socket error: ${data['message']}');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erreur: ${data['message']}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          SnackbarUtils.showError(context, 'Erreur: ${data['message']}');
         }
       });
     } else {
       // Normal room listeners
       socket.on('new_message', (data) {
-        debugPrint('📨 Received new_message event: $data');
         _reloadMessages();
       });
 
       socket.on('message_sent', (data) {
-        debugPrint('✅ Message sent confirmation: $data');
         _reloadMessages();
       });
 
-      socket.on('room:joined', (data) {
-        debugPrint('✅ Successfully joined room: ${data['roomId']}');
-      });
+      socket.on('room:joined', (data) {});
     }
-    
+
     // Common error listener
     socket.on('error', (data) {
-      debugPrint('❌ Socket error: $data');
+      print('❌ General socket error: ${data['message']}');
+      if (mounted) {
+        SnackbarUtils.showError(context, 'Erreur: ${data['message']}');
+      }
     });
   }
 
@@ -215,52 +206,45 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     if (socket == null) return;
 
     final isReservationRoom = widget.room.roomType == 'reservation';
-    
+
     if (isReservationRoom) {
       socket.off('reservation_room:message');
       socket.off('reservation_room:joined');
       socket.off('reservation_room:error');
-      
+
       // Leave reservation room
       if (widget.room.id.isNotEmpty) {
         socket.emit('reservation_room:leave', {'roomId': widget.room.id});
-        debugPrint('👋 Left RESERVATION socket room: ${widget.room.id}');
       }
     } else {
       socket.off('new_message');
       socket.off('message_sent');
       socket.off('room:joined');
-      
+
       // Leave normal room
       if (widget.room.id.isNotEmpty) {
         socket.emit('room:leave', {'roomId': widget.room.id});
-        debugPrint('👋 Left NORMAL socket room: ${widget.room.id}');
       }
     }
-    
+
     socket.off('error');
   }
 
   Future<void> _reloadMessages() async {
-    debugPrint('🔄 Reloading messages for room: ${widget.room.id}');
-    
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final messagingProvider = Provider.of<MessagingProvider>(context, listen: false);
-    
+    final messagingProvider = Provider.of<MessagingProvider>(
+      context,
+      listen: false,
+    );
+
     final token = authProvider.token;
     if (token != null) {
       await messagingProvider.fetchRoomMessages(
         token: token,
         roomId: widget.room.id,
       );
-      
-      final messages = messagingProvider.getMessagesForRoom(widget.room.id);
-      debugPrint('✅ Reloaded ${messages.length} messages');
-      
-      // Log message types
-      for (var msg in messages) {
-        debugPrint('  - Message type: ${msg.type}, ID: ${msg.id}');
-      }
+
+      messagingProvider.getMessagesForRoom(widget.room.id);
     }
   }
 
@@ -307,11 +291,9 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur lors de l\'envoi du message'),
-              backgroundColor: Colors.red,
-            ),
+          SnackbarUtils.showError(
+            context,
+            'Erreur lors de l\'envoi du message',
           );
         }
       }
@@ -326,92 +308,59 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   Future<void> _startRecording() async {
     try {
-      print('🔍 Checking microphone permission...');
-
       // Check microphone permission status first
       final micStatus = await Permission.microphone.status;
-      print('  Microphone status: $micStatus');
 
       // Request permission if not already granted
       if (!micStatus.isGranted) {
-        print('  Requesting microphone permission...');
         final result = await Permission.microphone.request();
-        print('  Permission result: $result');
 
         if (!result.isGranted) {
-          print('❌ Microphone permission denied by user');
           if (!mounted) return;
 
           // Show different message for permanently denied
           if (result.isPermanentlyDenied) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text(
-                  'Permission microphone refusée définitivement. Veuillez l\'activer dans les paramètres de l\'application.',
-                ),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 5),
-                action: SnackBarAction(
-                  label: 'Ouvrir Paramètres',
-                  textColor: Colors.white,
-                  onPressed: () => openAppSettings(),
-                ),
-              ),
+            SnackbarUtils.showError(
+              context,
+              'Permission microphone refusée définitivement. Veuillez l\'activer dans les paramètres de l\'application.',
+              duration: const Duration(seconds: 5),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Permission microphone requise pour enregistrer des messages vocaux.',
-                ),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 3),
-              ),
+            SnackbarUtils.showWarning(
+              context,
+              'Permission microphone requise pour enregistrer des messages vocaux.',
             );
           }
           return;
         }
       }
 
-      print('✅ Microphone permission granted');
-
       // Check storage permission for Android 12 and below
       if (Platform.isAndroid) {
         final storageStatus = await Permission.storage.status;
-        print('  Storage status: $storageStatus');
 
         if (!storageStatus.isGranted) {
-          print('  Requesting storage permission...');
-          final result = await Permission.storage.request();
-          print('  Storage permission result: $result');
+          await Permission.storage.request();
         }
       }
 
       // Double check with audio recorder
       final hasPermission = await _audioRecorder.hasPermission();
-      print('  Audio recorder hasPermission: $hasPermission');
 
       if (!hasPermission) {
-        print('❌ Audio recorder reports no permission');
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erreur: Permission microphone non disponible'),
-            backgroundColor: Colors.red,
-          ),
+        SnackbarUtils.showError(
+          context,
+          'Erreur: Permission microphone non disponible',
         );
         return;
       }
 
       // Permission granted, start recording
-      print('✅ All permissions granted, starting recording...');
 
       final directory = await getTemporaryDirectory();
       final path =
           '${directory.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
-      print('🎙️ Recording to: $path');
-      print('  Directory exists: ${await directory.exists()}');
 
       // Start both audio recorder and waveform recorder
       await Future.wait([
@@ -430,10 +379,6 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         _recorderController.record(path: path),
       ]);
 
-      print('✅ Recording started successfully');
-      print('  Is recording: ${await _audioRecorder.isRecording()}');
-      print('  Waveform recording: ${_recorderController.isRecording}');
-
       if (!mounted) return;
 
       setState(() {
@@ -445,11 +390,8 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       // Update duration every second
       _updateRecordingDuration();
     } catch (e) {
-      print('❌ Error starting recording: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
-      );
+      SnackbarUtils.showError(context, 'Erreur: $e');
     }
   }
 
@@ -468,8 +410,6 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   Future<void> _stopRecording() async {
     try {
-      print('⏹️ Stopping recording...');
-
       // Stop both audio recorder and waveform recorder
       final results = await Future.wait([
         _audioRecorder.stop(),
@@ -477,7 +417,6 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       ]);
 
       final path = results[0];
-      print('  Recorded file path: $path');
 
       if (!mounted) return;
 
@@ -489,31 +428,21 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         // Check file size to verify audio was captured
         final file = File(path);
         if (await file.exists()) {
-          final fileSize = await file.length();
-          print('  File size: ${fileSize} bytes');
-
-          if (fileSize < 1000) {
-            print('⚠️ Warning: File size is very small, might be empty/silent');
-          }
+          await file.length();
         }
 
         await _sendVoiceMessage(path);
-      } else {
-        print('❌ No recording path returned');
-      }
+      } else {}
     } catch (e) {
-      print('❌ Error stopping recording: $e');
       if (!mounted) return;
 
       setState(() {
         _isRecording = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de l\'arrêt de l\'enregistrement: $e'),
-          backgroundColor: Colors.red,
-        ),
+      SnackbarUtils.showError(
+        context,
+        'Erreur lors de l\'arrêt de l\'enregistrement: $e',
       );
     }
   }
@@ -542,7 +471,6 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         }
       }
     } catch (e) {
-      print('Error canceling recording: $e');
       if (!mounted) return;
 
       setState(() {
@@ -551,12 +479,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         _recordingDuration = 0;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de l\'annulation: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      SnackbarUtils.showError(context, 'Erreur lors de l\'annulation: $e');
     }
   }
 
@@ -612,24 +535,16 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           }
         } else {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Erreur lors de l\'envoi du message vocal'),
-                backgroundColor: Colors.red,
-              ),
+            SnackbarUtils.showError(
+              context,
+              'Erreur lors de l\'envoi du message vocal',
             );
           }
         }
       }
     } catch (e) {
-      print('Error sending voice message: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');
       }
     } finally {
       if (mounted) {
@@ -651,7 +566,6 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         setState(() {
           _currentlyPlayingMessageId = null;
         });
-        print('⏸️ Audio playback stopped');
       } else {
         // Stop any currently playing audio first
         if (_currentlyPlayingMessageId != null) {
@@ -666,19 +580,14 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               ? voiceUrl
               : '${ApiEndpoints.baseUrl}$voiceUrl';
 
-          print('🔊 Playing voice message from: $fullUrl');
-
           await _audioPlayer.play(ap.UrlSource(fullUrl));
           if (!mounted) return;
           setState(() {
             _currentlyPlayingMessageId = message.id;
           });
-
-          print('✅ Voice message playing');
         }
       }
     } catch (e) {
-      print('❌ Error playing voice message: $e');
       if (!mounted) return;
       setState(() {
         _currentlyPlayingMessageId = null;
@@ -694,18 +603,16 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   Widget _buildMessageBubble(MessageModel message, bool isMe) {
     // Check if this is a rapport message
-    debugPrint('🔍 Building message bubble - Type: ${message.type}, isRapport: ${message.isRapport}');
-    
     if (message.isRapport) {
-      debugPrint('✅ Displaying rapport message');
       return _buildRapportMessage(message);
     }
-    
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Profile picture for other users (left side)
@@ -1048,7 +955,11 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                   color: Color(0xFF6366F1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.description, color: Colors.white, size: 24),
+                child: const Icon(
+                  Icons.description,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -1096,8 +1007,8 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   // Helper methods for rapport functionality
   bool _isReservationRoom() {
-    return widget.room.roomType == 'reservation' && 
-           widget.room.reservationId != null;
+    return widget.room.roomType == 'reservation' &&
+        widget.room.reservationId != null;
   }
 
   bool _isAgentTerrain() {
@@ -1110,12 +1021,12 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       // Fetch all reservations to find the current one
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
-      
+
       if (token == null || widget.room.reservationId == null) return;
-      
+
       // Get all reservations and find the current one
       final response = await apiClient.getReservations(token);
-      
+
       if (!response.success || response.data == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1127,13 +1038,13 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         }
         return;
       }
-      
+
       // Find the reservation by ID
       final reservation = response.data!.firstWhere(
         (r) => r.id == widget.room.reservationId,
         orElse: () => throw Exception('Reservation not found'),
       );
-      
+
       if (mounted) {
         showModalBottomSheet(
           context: context,
@@ -1144,97 +1055,133 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             clientPhone: reservation.clientPhone,
             agentCommercialName: reservation.agentCommercialName ?? 'N/A',
             agentTerrainName: reservation.agentTerrainName ?? 'N/A',
-            currentState: reservation.state,
-            onSubmit: (result, message, newReservedAt) {
-              _sendRapportMessage(result, message, newReservedAt);
+            onSubmit: (rapportState, rapportMessage) {
+              _submitRapport(reservation.id!, rapportState, rapportMessage);
             },
           ),
         );
       }
     } catch (e) {
-      print('Error showing rapport sheet: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');
       }
     }
   }
 
-  void _sendRapportMessage(String result, String rapportMessage, DateTime? newReservedAt) {
+  Future<void> _submitRapport(
+    String reservationId,
+    String rapportState,
+    String? rapportMessage,
+  ) async {
     try {
-      final socketService = SocketService();
-      
-      final messageData = {
-        'roomId': widget.room.id,
-        'text': rapportMessage,
-        'type': 'rapport',
-        'result': result,
-        'reservationId': widget.room.reservationId,
-        if (newReservedAt != null) 'newReservedAt': newReservedAt.toIso8601String(),
-      };
-      
-      // Use appropriate socket event based on room type
-      final isReservationRoom = widget.room.roomType == 'reservation';
-      final eventName = isReservationRoom ? 'reservation_room:send_message' : 'send_message';
-      
-      debugPrint('📤 Sending rapport via $eventName');
-      socketService.socket?.emit(eventName, messageData);
-      
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      if (token == null) return;
+
+      // Show loading
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Rapport envoyé'),
-            backgroundColor: Colors.green,
+            content: Text('Envoi du rapport...'),
+            duration: Duration(seconds: 1),
           ),
         );
       }
-    } catch (e) {
-      print('Error sending rapport: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+
+      // Send rapport as a message via socket (this creates the message in chat)
+      final socket = socketService.socket;
+      if (socket != null) {
+        print('📤 Sending rapport via socket');
+        print('📤 Room ID: ${widget.room.id}');
+        print('📤 Room type: ${widget.room.roomType}');
+        print('📤 Reservation ID: $reservationId');
+        print('📤 Rapport state: $rapportState');
+        print('📤 Rapport message: $rapportMessage');
+
+        // Map rapport state to result
+        String result;
+        switch (rapportState) {
+          case 'potentiel':
+            result = 'completed'; // Potentiel means client is interested
+            break;
+          case 'non_potentiel':
+            result = 'cancelled'; // Non potentiel means not interested
+            break;
+          default:
+            result = 'cancelled';
+        }
+
+        print('📤 Mapped result: $result');
+
+        // Send rapport message via socket
+        socket.emit('reservation_room:send_message', {
+          'roomId': widget.room.id,
+          'type': 'rapport',
+          'text': rapportMessage ?? 'Rapport soumis',
+          'result': result,
+          'reservationId': reservationId,
+        });
+
+        print('📤 Rapport sent via socket');
+
+        if (mounted) {
+          SnackbarUtils.showSuccess(context, 'Rapport envoyé avec succès');
+        }
+      } else {
+        // Fallback to API if socket not available
+        final response = await apiClient.submitRapport(
+          reservationId,
+          rapportState,
+          rapportMessage,
+          token,
         );
+
+        if (response.success) {
+          if (mounted) {
+            SnackbarUtils.showSuccess(
+              context,
+              response.message ?? 'Rapport envoyé avec succès',
+            );
+          }
+        } else {
+          if (mounted) {
+            SnackbarUtils.showError(
+              context,
+              response.message ?? 'Erreur lors de l\'envoi',
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');
       }
     }
   }
 
   Widget _buildRapportMessage(MessageModel message) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isCommercial = authProvider.isCommercial;
+
     // Parse rapport data from message text (JSON format)
-    debugPrint('📋 Building rapport message - Text: ${message.text}');
-    
     Map<String, dynamic> rapportData;
     try {
-      // Backend sends JSON string in message.text
       rapportData = jsonDecode(message.text);
-      debugPrint('✅ Parsed rapport data: $rapportData');
     } catch (e) {
-      debugPrint('⚠️ Failed to parse rapport JSON: $e');
-      // Fallback if not JSON
       rapportData = {
         'rapportMessage': message.text,
-        'result': 'completed',
+        'rapportState': 'potentiel',
       };
     }
-    
-    final result = rapportData['result'] ?? 'completed';
+
+    final rapportState = rapportData['rapportState'] ?? 'potentiel';
     final rapportMessage = rapportData['rapportMessage'] ?? message.text;
-    final isCompleted = result == 'completed';
-    final isCancelled = result == 'cancelled';
-    
-    Color bgColor = isCompleted ? Colors.green.shade50 : 
-                    isCancelled ? Colors.red.shade50 : 
-                    Colors.blue.shade50;
-    Color borderColor = isCompleted ? Colors.green : 
-                        isCancelled ? Colors.red : 
-                        Colors.blue;
-    
+    final isPotentiel = rapportState == 'potentiel';
+
+    Color bgColor = isPotentiel ? Colors.green.shade50 : Colors.red.shade50;
+    Color borderColor = isPotentiel ? Colors.green : Colors.red;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -1264,16 +1211,14 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           Row(
             children: [
               Icon(
-                isCompleted ? Icons.check_circle : 
-                isCancelled ? Icons.cancel : 
-                Icons.refresh,
+                isPotentiel ? Icons.thumb_up : Icons.thumb_down,
                 color: borderColor,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Résultat: ${isCompleted ? "TERMINÉ (LOUÉ)" : isCancelled ? "ANNULÉ" : "EN COURS"}',
+                  'État: ${isPotentiel ? "POTENTIEL" : "NON POTENTIEL"}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: borderColor,
@@ -1282,16 +1227,45 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            rapportMessage.toString(),
-            style: const TextStyle(fontSize: 14),
-          ),
+          if (rapportMessage.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              rapportMessage.toString(),
+              style: const TextStyle(fontSize: 14),
+            ),
+          ],
           const SizedBox(height: 8),
           Text(
             DateFormat('dd/MM/yyyy à HH:mm').format(message.createdAt),
             style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
           ),
+
+          // Commercial action button (only for commercial and potentiel)
+          if (isCommercial && isPotentiel) ...[
+            const SizedBox(height: 12),
+            const Divider(),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showCommercialActionDialog(),
+                icon: const Icon(Icons.business_center, size: 18),
+                label: const Text('Actions Commerciales'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 20,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1301,7 +1275,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   void dispose() {
     // Remove socket listeners and leave room
     _removeSocketListeners();
-    
+
     _messageController.dispose();
     _scrollController.dispose();
     _audioRecorder.dispose();
@@ -1327,9 +1301,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         );
         messagingProvider.leaveRoom(widget.room.id);
       }
-    } catch (e) {
-      print('Error leaving room on dispose: $e');
-    }
+    } catch (e) {}
 
     super.dispose();
   }
@@ -1344,115 +1316,125 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(56),
         child: AppBar(
-              backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black.withOpacity(0.9)
-                  : Colors.white.withOpacity(0.95),
-              elevation: 0,
-              leading: IconButton(
-                icon: Icon(
-                  Icons.arrow_back,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.black.withOpacity(0.9)
+              : Colors.white.withOpacity(0.95),
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : const Color(0xFF6366F1),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.room.name,
+                style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white
                       : const Color(0xFF6366F1),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
-                onPressed: () => Navigator.pop(context),
               ),
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.room.name,
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : const Color(0xFF6366F1),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '${widget.room.members.length} membres',
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white70
-                          : const Color(0xFF6366F1).withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+              Text(
+                '${widget.room.members.length} membres',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : const Color(0xFF6366F1).withOpacity(0.7),
+                  fontSize: 12,
+                ),
               ),
-              actions: [
-                PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white
-                        : const Color(0xFF6366F1),
-                  ),
-            onSelected: (value) {
-              if (value == 'leave') {
-                _showLeaveRoomDialog();
-              } else if (value == 'info') {
-                _showRoomInfo();
-              } else if (value == 'delete') {
-                _showDeleteRoomDialog();
-              } else if (value == 'add_members') {
-                _showAddMembersDialog();
-              }
-            },
-            itemBuilder: (context) {
-              final authProvider = Provider.of<AuthProvider>(context, listen: false);
-              final isCreator = widget.room.creator.id == authProvider.currentUser?.id;
-
-              return [
-                const PopupMenuItem(
-                  value: 'info',
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline),
-                      SizedBox(width: 8),
-                      Text('Informations'),
-                    ],
-                  ),
-                ),
-                if (isCreator) ...[
-                  const PopupMenuItem(
-                    value: 'add_members',
-                    child: Row(
-                      children: [
-                        Icon(Icons.person_add, color: Color(0xFF6366F1)),
-                        SizedBox(width: 8),
-                        Text('Ajouter des membres', style: TextStyle(color: Color(0xFF6366F1))),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Supprimer la conversation', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
-                const PopupMenuItem(
-                  value: 'leave',
-                  child: Row(
-                    children: [
-                      Icon(Icons.exit_to_app, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Quitter', style: TextStyle(color: Colors.red)),
-                    ],
-                  ),
-                ),
-              ];
-            },
+            ],
           ),
-              ],
+          actions: [
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : const Color(0xFF6366F1),
+              ),
+              onSelected: (value) {
+                if (value == 'leave') {
+                  _showLeaveRoomDialog();
+                } else if (value == 'info') {
+                  _showRoomInfo();
+                } else if (value == 'delete') {
+                  _showDeleteRoomDialog();
+                } else if (value == 'add_members') {
+                  _showAddMembersDialog();
+                }
+              },
+              itemBuilder: (context) {
+                final authProvider = Provider.of<AuthProvider>(
+                  context,
+                  listen: false,
+                );
+                final isCreator =
+                    widget.room.creator.id == authProvider.currentUser?.id;
+
+                return [
+                  const PopupMenuItem(
+                    value: 'info',
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline),
+                        SizedBox(width: 8),
+                        Text('Informations'),
+                      ],
+                    ),
+                  ),
+                  if (isCreator) ...[
+                    const PopupMenuItem(
+                      value: 'add_members',
+                      child: Row(
+                        children: [
+                          Icon(Icons.person_add, color: Color(0xFF6366F1)),
+                          SizedBox(width: 8),
+                          Text(
+                            'Ajouter des membres',
+                            style: TextStyle(color: Color(0xFF6366F1)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text(
+                            'Supprimer la conversation',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const PopupMenuItem(
+                    value: 'leave',
+                    child: Row(
+                      children: [
+                        Icon(Icons.exit_to_app, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Quitter', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ];
+              },
             ),
+          ],
         ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -1669,7 +1651,8 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             ),
             const SizedBox(height: 12),
             ...widget.room.members.map((member) {
-              final hasProfilePhoto = member.profilePhoto != null &&
+              final hasProfilePhoto =
+                  member.profilePhoto != null &&
                   member.profilePhoto!.url != null;
               final isMemberCreator = widget.room.creator.id == member.id;
 
@@ -1718,15 +1701,18 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                         ),
                       )
                     : (isCreator
-                        ? IconButton(
-                            icon: const Icon(Icons.remove_circle, color: Colors.red),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _showRemoveMemberDialog(member);
-                            },
-                            tooltip: 'Retirer',
-                          )
-                        : null),
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.remove_circle,
+                                color: Colors.red,
+                              ),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showRemoveMemberDialog(member);
+                              },
+                              tooltip: 'Retirer',
+                            )
+                          : null),
               );
             }).toList(),
           ],
@@ -1839,7 +1825,9 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text('Ajouter des membres'),
           content: SizedBox(
             width: double.maxFinite,
@@ -1920,7 +1908,9 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Erreur lors de l\'ajout des membres'),
+                            content: Text(
+                              'Erreur lors de l\'ajout des membres',
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -1993,5 +1983,209 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _showCommercialActionDialog() async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Action Commerciale'),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: 20,
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Payé Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, 'paye'),
+                  icon: const Icon(Icons.check_circle, color: Colors.white),
+                  label: const Text('Payé'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // En Cours Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, 'en_cours'),
+                  icon: const Icon(Icons.calendar_today, color: Colors.white),
+                  label: const Text('En Cours'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Annulé Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, 'annule'),
+                  icon: const Icon(Icons.cancel, color: Colors.white),
+                  label: const Text('Annulé'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+        ],
+      ),
+    );
+
+    if (action != null) {
+      if (action == 'en_cours') {
+        await _showRescheduleDatePicker();
+      } else {
+        await _executeCommercialAction(action, null);
+      }
+    }
+  }
+
+  Future<void> _showRescheduleDatePicker() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 2)),
+      firstDate: DateTime.now().add(const Duration(days: 2)),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      helpText: 'Sélectionner la nouvelle date',
+    );
+
+    if (date != null && mounted) {
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
+        helpText: 'Sélectionner l\'heure',
+      );
+
+      if (time != null) {
+        final newDate = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time.hour,
+          time.minute,
+        );
+
+        // Validate: must be more than 24 hours from now
+        final twentyFourHoursLater = DateTime.now().add(
+          const Duration(hours: 24),
+        );
+        if (newDate.isBefore(twentyFourHoursLater)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'La date doit être plus de 24 heures à partir de maintenant',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        await _executeCommercialAction('en_cours', newDate.toIso8601String());
+      }
+    }
+  }
+
+  Future<void> _executeCommercialAction(
+    String action,
+    String? newReservedAt,
+  ) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      if (token == null || widget.room.reservationId == null) return;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Traitement en cours...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
+      final response = await apiClient.takeCommercialAction(
+        widget.room.reservationId!,
+        action,
+        token,
+        newReservedAt: newReservedAt,
+      );
+
+      if (response.success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? '✅ Action effectuée avec succès',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Erreur lors de l\'action'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');
+      }
+    }
   }
 }

@@ -19,9 +19,6 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
         IconButton(
           icon: const Icon(Icons.notifications_outlined),
           onPressed: () {
-            print('🔔 Notification bell tapped');
-            print('📊 Notifications count: ${notificationService.notifications.length}');
-            
             showNotificationPanel(
               context,
               notifications: notificationService.notifications,
@@ -46,17 +43,11 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
             top: 8,
             child: Container(
               padding: const EdgeInsets.all(4),
-              constraints: const BoxConstraints(
-                minWidth: 18,
-                minHeight: 18,
-              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               decoration: BoxDecoration(
                 color: const Color(0xFFEF4444),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: Colors.white,
-                  width: 2,
-                ),
+                border: Border.all(color: Colors.white, width: 2),
               ),
               child: Text(
                 unreadCount > 99 ? '99+' : '$unreadCount',

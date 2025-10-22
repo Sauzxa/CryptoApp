@@ -10,6 +10,7 @@ import 'package:cryptoimmobilierapp/core/Rendez-vous/Reservations.dart';
 import 'package:cryptoimmobilierapp/core/AgentTerrain.dart';
 import 'package:cryptoimmobilierapp/core/Profile/ProfileSettings.dart';
 import 'package:cryptoimmobilierapp/core/Suivi/SuiviPage.dart';
+import 'package:cryptoimmobilierapp/core/Suivi/CommercialSuiviPage.dart';
 
 class AppRoutes {
   // Route names
@@ -24,6 +25,7 @@ class AppRoutes {
   static const String agentTerrain = '/agent-terrain';
   static const String profileSettings = '/profile-settings';
   static const String suivi = '/suivi';
+  static const String commercialSuivi = '/commercial-suivi';
 
   // Route generator
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -52,6 +54,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ProfileSettingsPage());
       case suivi:
         return MaterialPageRoute(builder: (_) => const SuiviPage());
+      case commercialSuivi:
+        return MaterialPageRoute(builder: (_) => const CommercialSuiviPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

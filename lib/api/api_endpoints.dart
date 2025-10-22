@@ -1,7 +1,7 @@
 class ApiEndpoints {
   // Base URL for your backend server
   // Using PC's IP address for real device testing on same network
-  static const String baseUrl = 'http://192.168.1.89:3000';
+  static const String baseUrl = 'http://192.168.1.91:3000';
 
   // API version prefix
   static const String apiPrefix = '/api';

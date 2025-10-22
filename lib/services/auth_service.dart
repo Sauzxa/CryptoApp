@@ -35,17 +35,11 @@ class AuthService {
     final userData = prefs.getString(_userKey);
     _hasSeenWelcome = prefs.getBool(_hasSeenWelcomeKey) ?? false;
 
-    print('🔍 Loading stored data...');
-    print('   Token exists: ${_token != null}');
-    print('   User data exists: ${userData != null}');
-
     if (userData != null) {
       try {
         final userJson = jsonDecode(userData);
         _currentUser = UserModel.fromJson(userJson);
-        print('✅ User loaded from storage: ${_currentUser!.name}');
       } catch (e) {
-        print('❌ Error loading user data: $e');
         // Clear invalid data
         await clearAuth();
       }
@@ -94,10 +88,6 @@ class AuthService {
       final response = await apiClient.login(email, password);
 
       if (response.success && response.data != null) {
-        // Debug: Print the actual response structure
-        print('DEBUG - Response data keys: ${response.data!.keys}');
-        print('DEBUG - Full response data: ${response.data}');
-
         final data = response.data!;
         _token = data['token'];
 
@@ -161,13 +151,11 @@ class AuthService {
 
     if (_token != null) {
       await prefs.setString(_tokenKey, _token!);
-      print('✅ Token saved to storage');
     }
 
     if (_currentUser != null) {
       final userJson = jsonEncode(_currentUser!.toJson());
       await prefs.setString(_userKey, userJson);
-      print('✅ User data saved to storage: ${_currentUser!.name}');
     }
   }
 
@@ -186,8 +174,6 @@ class AuthService {
 
     _token = null;
     _currentUser = null;
-    
-    print('🗑️ Auth data cleared from storage');
   }
 
   // Logout
@@ -195,22 +181,21 @@ class AuthService {
     // Call backend logout endpoint if token exists
     if (_token != null) {
       try {
-        await apiClient.logout(_token!).timeout(
-          const Duration(seconds: 3),
-          onTimeout: () {
-            print('Logout API call timed out');
-            return ApiResponse(success: false, message: 'Timeout');
-          },
-        );
+        await apiClient
+            .logout(_token!)
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () {
+                return ApiResponse(success: false, message: 'Timeout');
+              },
+            );
       } catch (e) {
         // Continue with local logout even if API call fails
-        print('Logout API call failed: $e');
       }
     }
 
     // Clear local authentication data
     await clearAuth();
-    print('✅ Local auth data cleared');
   }
 
   // Check if token is valid

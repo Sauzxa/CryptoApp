@@ -26,7 +26,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   bool _isLoading = false;
   String? _errorMessage;
   List<UserModel> _agents = [];
-  
+
   // Timer for updating elapsed time display
   Timer? _updateTimer;
 
@@ -35,9 +35,9 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
     super.initState();
     _fetchAgents();
     _setupSocketListeners();
-    
-    // Update UI every second to refresh elapsed time
-    _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+
+    // Update UI every 30 seconds to refresh elapsed time (more efficient)
+    _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
         setState(() {
           // This will rebuild the UI and update all time displays
@@ -52,7 +52,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
       final agentId = data['agentId'] as String?;
       final availability = data['availability'] as String?;
       final dateAvailableStr = data['dateAvailable'] as String?;
-      
+
       if (agentId != null && availability != null) {
         setState(() {
           // Find and update the agent in the list
@@ -61,7 +61,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
             final agent = _agents[index];
             _agents[index] = agent.copyWith(
               availability: availability,
-              dateAvailable: dateAvailableStr != null 
+              dateAvailable: dateAvailableStr != null
                   ? DateTime.parse(dateAvailableStr)
                   : null,
             );
@@ -113,9 +113,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
 
   List<UserModel> get _filteredAgents {
     // First, filter to only show field agents (role = 'field')
-    var fieldAgents = _agents
-        .where((agent) => agent.role == 'field')
-        .toList();
+    var fieldAgents = _agents.where((agent) => agent.role == 'field').toList();
 
     // Apply search filter if there's a search query
     if (_searchQuery.isNotEmpty) {
@@ -133,7 +131,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
       // 1. Available agents come before unavailable agents
       final aAvailable = a.availability == 'available';
       final bAvailable = b.availability == 'available';
-      
+
       if (aAvailable && !bAvailable) return -1;
       if (!aAvailable && bAvailable) return 1;
 
@@ -237,9 +235,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
         // Navigate to the message room
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => MessageRoomPage(room: room),
-          ),
+          MaterialPageRoute(builder: (context) => MessageRoomPage(room: room)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -285,7 +281,10 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   Widget _buildAgentCard(UserModel agent) {
     final bool isAvailable = agent.availability == 'available';
     final bool hasPhoto = agent.profilePhoto?.url != null;
-    final String availabilityText = _formatAvailabilityTime(agent.dateAvailable, isAvailable);
+    final String availabilityText = _formatAvailabilityTime(
+      agent.dateAvailable,
+      isAvailable,
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -351,10 +350,11 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                         availabilityText,
                         style: TextStyle(
                           fontSize: 11,
-                          color: (isAvailable
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFFEF4444))
-                              .withOpacity(0.8),
+                          color:
+                              (isAvailable
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFFEF4444))
+                                  .withOpacity(0.8),
                         ),
                       ),
                     ],
@@ -461,10 +461,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                     const SizedBox(height: 4),
                     const Text(
                       'Messagerie',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF6366F1),
-                      ),
+                      style: TextStyle(fontSize: 10, color: Color(0xFF6366F1)),
                     ),
                   ],
                 ),
@@ -691,12 +688,12 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                   backgroundColor: Colors.transparent,
                   selectedItemColor:
                       Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : const Color(0xFF6366F1),
+                      ? Colors.white
+                      : const Color(0xFF6366F1),
                   unselectedItemColor:
                       Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white60
-                          : const Color(0xFF6366F1).withOpacity(0.5),
+                      ? Colors.white60
+                      : const Color(0xFF6366F1).withOpacity(0.5),
                   selectedFontSize: 10,
                   unselectedFontSize: 9,
                   currentIndex: _selectedIndex,

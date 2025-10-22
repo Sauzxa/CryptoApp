@@ -22,7 +22,7 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _permissionRequested =
       false; // Track if permission was already requested
-  bool _hasActiveReservation = false; // Track if agent has reservation in progress
+  bool _canToggleAvailability = true; // Track if agent can toggle availability
   bool _isCheckingReservations = false;
 
   @override
@@ -46,44 +46,135 @@ class _HomePageState extends State<HomePage> {
 
   void _setupReservationListeners() {
     final socket = socketService.socket;
-    
+
     if (socket != null) {
       // Listen for reservation updates
       socket.on('reservation:updated', (_) {
         if (mounted) _checkActiveReservations();
       });
-      
+
       // Listen for new assignments
       socket.on('reservation:assigned', (_) {
         if (mounted) _checkActiveReservations();
       });
-      
+
       // Listen for state changes (completed, cancelled, in_progress)
       socket.on('reservation:state_changed', (data) {
-        debugPrint('📥 Reservation state changed: ${data['newState']}');
         if (mounted) _checkActiveReservations();
+      });
+
+      // Listen for reservation rejected (agent can toggle availability again)
+      socket.on('reservation:rejected', (data) {
+        if (mounted) {
+          // If backend explicitly says toggle is enabled, force it
+          if (data['availabilityToggleEnabled'] == true) {
+            setState(() {
+              _canToggleAvailability = true;
+            });
+            // Delay check to allow backend to update
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) _checkActiveReservations();
+            });
+          } else {
+            // Normal check without delay
+            _checkActiveReservations();
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? 'Réservation rejetée'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      });
+
+      // Listen for availability toggle enabled
+      socket.on('agent:availability_toggle_enabled', (data) {
+        if (mounted) {
+          // Force toggle enabled from backend
+          if (data['enabled'] == true) {
+            setState(() {
+              _canToggleAvailability = true;
+            });
+            // Delay check to allow backend to update
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) _checkActiveReservations();
+            });
+          } else {
+            // Normal check without delay
+            _checkActiveReservations();
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                data['message'] ?? 'Vous pouvez modifier votre disponibilité',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      });
+
+      // Listen for agent status changed (availability updated from backend)
+      socket.on('agent:status_changed', (data) {
+        if (mounted) {
+          final availability = data['availability'];
+          if (availability != null) {
+            // Update user availability in AuthProvider
+            final authProvider = Provider.of<AuthProvider>(
+              context,
+              listen: false,
+            );
+            final currentUser = authProvider.currentUser;
+
+            if (currentUser != null) {
+              // Update user with new availability
+              final updatedUser = currentUser.copyWith(
+                availability: availability,
+                dateAvailable: DateTime.now(),
+              );
+              authProvider.updateUser(updatedUser);
+
+              // Enable/disable toggle based on availability
+              if (availability == 'available') {
+                // Enable toggle when agent becomes available
+                setState(() {
+                  _canToggleAvailability = true;
+                });
+              } else if (availability == 'not_available') {
+                // Check reservations to see if toggle should be disabled
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (mounted) _checkActiveReservations();
+                });
+              }
+            }
+          }
+        }
       });
     }
   }
 
   void _removeReservationListeners() {
     final socket = socketService.socket;
-    
+
     if (socket != null) {
       socket.off('reservation:updated');
       socket.off('reservation:assigned');
       socket.off('reservation:state_changed');
+      socket.off('reservation:rejected');
+      socket.off('agent:availability_toggle_enabled');
+      socket.off('agent:status_changed');
     }
   }
 
   Future<void> _checkActiveReservations() async {
     if (_isCheckingReservations || !mounted) return;
-    
+
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
       var userId = authProvider.currentUser?.id;
-      
+
       // If userId is null, extract from JWT token
       if (userId == null && token != null) {
         try {
@@ -95,11 +186,9 @@ class _HomePageState extends State<HomePage> {
             final Map<String, dynamic> payloadMap = json.decode(decoded);
             userId = payloadMap['userId'] as String?;
           }
-        } catch (e) {
-          debugPrint('Error extracting userId from token: $e');
-        }
+        } catch (e) {}
       }
-      
+
       if (token == null || userId == null || !authProvider.isField) {
         return;
       }
@@ -109,26 +198,82 @@ class _HomePageState extends State<HomePage> {
       });
 
       final response = await apiClient.getReservations(token);
-      
+
       if (response.success && response.data != null) {
-        // Check if agent has any active reservation (pending, assigned, or in_progress)
-        final hasActive = response.data!.any((reservation) =>
-            reservation.agentTerrainId == userId &&
-            (reservation.state == 'pending' || 
-             reservation.state == 'assigned' || 
-             reservation.state == 'in_progress'));
-        
+        // Find agent's reservations
+        final agentReservations = response.data!
+            .where((reservation) => reservation.agentTerrainId == userId)
+            .toList();
+
+        debugPrint(
+          '🔍 Checking agent reservations: Found ${agentReservations.length} total reservations',
+        );
+
+        // Determine if agent can toggle availability based on workflow rules
+        bool canToggle = true;
+
+        if (agentReservations.isEmpty) {
+          // NO reservations → Agent CAN toggle availability
+          canToggle = true;
+          debugPrint('✅ No reservations found → Toggle ENABLED');
+        } else {
+          // Agent has reservations → Check if any are blocking (assigned or in_progress)
+          final blockingReservations = agentReservations
+              .where(
+                (reservation) =>
+                    reservation.state == 'assigned' ||
+                    reservation.state == 'in_progress',
+              )
+              .toList();
+
+          debugPrint(
+            '🔍 Found ${blockingReservations.length} blocking reservations (assigned/in_progress)',
+          );
+
+          if (blockingReservations.isEmpty) {
+            // All reservations are completed/cancelled → Agent CAN toggle
+            canToggle = true;
+            debugPrint('✅ No blocking reservations → Toggle ENABLED');
+          } else {
+            // Agent has assigned or in_progress reservations → CANNOT toggle
+            canToggle = false;
+            debugPrint('🔒 Has blocking reservations → Toggle DISABLED');
+            for (var reservation in blockingReservations) {
+              debugPrint(
+                '   - ${reservation.clientFullName} (${reservation.state})',
+              );
+            }
+          }
+        }
+
         if (mounted) {
           setState(() {
-            _hasActiveReservation = hasActive;
+            _canToggleAvailability = canToggle;
+            _isCheckingReservations = false;
+          });
+          debugPrint(
+            '🎯 Final toggle state: ${canToggle ? "ENABLED" : "DISABLED"}',
+          );
+        }
+      } else {
+        // API call failed or no data - enable toggle by default
+        debugPrint(
+          '⚠️ API call failed or no data - Enabling toggle by default',
+        );
+        if (mounted) {
+          setState(() {
+            _canToggleAvailability =
+                true; // Changed: Enable by default on error
             _isCheckingReservations = false;
           });
         }
       }
     } catch (e) {
-      debugPrint('Error checking active reservations: $e');
+      debugPrint('❌ Error checking reservations: $e');
+      debugPrint('⚠️ Enabling toggle by default due to error');
       if (mounted) {
         setState(() {
+          _canToggleAvailability = true; // Enable by default on error
           _isCheckingReservations = false;
         });
       }
@@ -159,12 +304,9 @@ class _HomePageState extends State<HomePage> {
           }
         } catch (e) {
           // Handle any permission-related errors silently
-          debugPrint('Permission request error: $e');
         }
       });
-    } catch (e) {
-      debugPrint('Error in _requestPhonePermission: $e');
-    }
+    } catch (e) {}
   }
 
   void _showPermissionSettingsDialog() {
@@ -221,10 +363,10 @@ class _HomePageState extends State<HomePage> {
 
     // Show loading dialog and get the context
     if (!mounted) return;
-    
+
     // Use a flag to track if we should close the dialog
     bool dialogShown = true;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -237,8 +379,6 @@ class _HomePageState extends State<HomePage> {
     );
 
     try {
-      debugPrint('🚪 Starting logout process...');
-      
       // Get messaging provider
       final messagingProvider = Provider.of<MessagingProvider>(
         context,
@@ -247,14 +387,11 @@ class _HomePageState extends State<HomePage> {
 
       // Perform logout with messaging cleanup
       await authProvider.logout(messagingProvider: messagingProvider);
-      
-      debugPrint('✅ Logout completed successfully');
 
       // Close the loading dialog FIRST
       if (mounted && dialogShown) {
         Navigator.of(context, rootNavigator: false).pop();
         dialogShown = false;
-        debugPrint('✅ Loading dialog closed');
       }
 
       // Small delay to ensure dialog is closed
@@ -262,16 +399,11 @@ class _HomePageState extends State<HomePage> {
 
       // Navigate to welcome screen and clear navigation stack
       if (mounted) {
-        debugPrint('🔄 Navigating to welcome screen...');
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.welcome,
-          (route) => false,
-        );
-        debugPrint('✅ Navigation complete');
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil(AppRoutes.welcome, (route) => false);
       }
     } catch (e) {
-      debugPrint('❌ Logout error: $e');
-      
       // Close loading dialog if still open
       if (mounted && dialogShown) {
         Navigator.of(context, rootNavigator: false).pop();
@@ -360,523 +492,515 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        key: _scaffoldKey,
-        backgroundColor: const Color(0xFFF5F5F5),
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(70),
-          child: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: AppBar(
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.black.withOpacity(0.3)
-                    : Colors.white.withOpacity(0.3),
-                elevation: 0,
-                leading: IconButton(
-                  icon: Icon(
-                    Icons.menu,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white
-                        : const Color(0xFF6366F1),
-                  ),
-                  onPressed: () {
-                    _scaffoldKey.currentState?.openDrawer();
-                  },
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(70),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: AppBar(
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.3),
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.menu,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF6366F1),
                 ),
-                title: Text(
-                  'Accueil',
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white
-                        : const Color(0xFF6366F1),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                actions: const [
-                  NotificationBellButton(),
-                ],
+                onPressed: () {
+                  _scaffoldKey.currentState?.openDrawer();
+                },
               ),
+              title: Text(
+                'Accueil',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF6366F1),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              actions: const [NotificationBellButton()],
             ),
           ),
         ),
-        drawer: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
-            final user = authProvider.currentUser;
-            final isFieldAgent = authProvider.isField;
+      ),
+      drawer: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          final user = authProvider.currentUser;
+          final isFieldAgent = authProvider.isField;
 
-            // Debug: Print user data when drawer rebuilds
-            debugPrint('HomePage Drawer - User: ${user?.name}');
-            debugPrint('HomePage Drawer - Role: ${user?.role}');
-            debugPrint('HomePage Drawer - isField: $isFieldAgent');
-            debugPrint('HomePage Drawer - isCommercial: ${authProvider.isCommercial}');
-            debugPrint('HomePage Drawer - isAdmin: ${authProvider.isAdmin}');
-            debugPrint(
-              'HomePage Drawer - Profile Photo URL: ${user?.profilePhoto?.url}',
-            );
-            debugPrint(
-              'HomePage Drawer - isAuthenticated: ${authProvider.isAuthenticated}',
-            );
-
-            return Drawer(
-              child: Column(
-                children: [
-                  // Drawer Header with profile
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + 20,
-                      bottom: 20,
-                      left: 20,
-                      right: 20,
-                    ),
-                    decoration: const BoxDecoration(color: Color(0xFF6366F1)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 35,
-                          backgroundColor: Colors.white,
-                          backgroundImage: user?.profilePhoto?.url != null
-                              ? NetworkImage(user!.profilePhoto!.url!)
-                              : null,
-                          child: user?.profilePhoto?.url == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 40,
-                                  color: Color(0xFF6366F1),
-                                )
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          user?.name ?? 'Utilisateur',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          user?.roleDisplayName ?? '',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+          return Drawer(
+            child: Column(
+              children: [
+                // Drawer Header with profile
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 20,
+                    bottom: 20,
+                    left: 20,
+                    right: 20,
                   ),
-
-                  // Scrollable content
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 16),
-
-                          // Change State (Only for field agents)
-                          if (isFieldAgent)
-                            ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 4,
-                              ),
-                              title: const Text(
-                                'Changer l\'état',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Text(
-                                user?.isAvailable == true
-                                    ? 'Disponible'
-                                    : 'Indisponible',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: user?.isAvailable == true
-                                      ? const Color(0xFF059669)
-                                      : const Color(0xFFE11D48),
-                                ),
-                              ),
-                              trailing: Switch(
-                                value: user?.isAvailable ?? false,
-                                onChanged: _hasActiveReservation ? null : (value) async {
-                                  // Update availability via API and Socket.IO
-                                  final availability = value
-                                      ? 'available'
-                                      : 'not_available';
-
-                                  // Show loading indicator
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Mise à jour du statut...'),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-
-                                  // Call the provider method
-                                  final success = await authProvider
-                                      .updateAvailability(availability);
-
-                                  if (success) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            value
-                                                ? 'Vous êtes maintenant disponible'
-                                                : 'Vous êtes maintenant indisponible',
-                                          ),
-                                          backgroundColor: const Color(
-                                            0xFF059669,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  } else {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            authProvider.errorMessage ??
-                                                'Erreur lors de la mise à jour',
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                                activeColor: const Color(0xFF059669),
-                              ),
-                            ),
-
-                          if (isFieldAgent) const SizedBox(height: 8),
-                          
-                          // Suivi (Only for field agents)
-                          if (isFieldAgent) ...[
-                            Builder(
-                              builder: (context) {
-                                debugPrint('🔵 SUIVI MENU ITEM IS BEING RENDERED');
-                                return const SizedBox.shrink();
-                              },
-                            ),
-                            ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 4,
-                              ),
-                              leading: const Icon(
-                                Icons.assignment_outlined,
+                  decoration: const BoxDecoration(color: Color(0xFF6366F1)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 35,
+                        backgroundColor: Colors.white,
+                        backgroundImage: user?.profilePhoto?.url != null
+                            ? NetworkImage(user!.profilePhoto!.url!)
+                            : null,
+                        child: user?.profilePhoto?.url == null
+                            ? const Icon(
+                                Icons.person,
+                                size: 40,
                                 color: Color(0xFF6366F1),
-                              ),
-                              title: const Text(
-                                'Suivi',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: const Text(
-                                'Mes rendez-vous assignés',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                              onTap: () {
-                                Navigator.pop(context); // Close drawer
-                                Navigator.pushNamed(context, AppRoutes.suivi);
-                              },
-                            ),
-                          ],
-                          
-                          if (isFieldAgent) const SizedBox(height: 8),
-                          if (isFieldAgent)
-                            const Divider(height: 1, indent: 20, endIndent: 20),
-                          if (isFieldAgent) const SizedBox(height: 8),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        user?.name ?? 'Utilisateur',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user?.roleDisplayName ?? '',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                          // Change Language (Disabled)
-                          Opacity(
-                            opacity: 0.5,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 4,
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 16),
+
+                        // Change State (Only for field agents)
+                        if (isFieldAgent) ...[
+                          Builder(
+                            builder: (context) {
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 4,
+                            ),
+                            title: const Text(
+                              'Changer l\'état',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
                               ),
-                              leading: const Icon(Icons.language),
-                              title: const Text(
-                                'Changer la langue',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            ),
+                            subtitle: Text(
+                              !_canToggleAvailability
+                                  ? 'Verrouillé (Rendez-vous en cours)'
+                                  : (user?.isAvailable == true
+                                        ? 'Disponible'
+                                        : 'Indisponible'),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: !_canToggleAvailability
+                                    ? Colors.grey.shade600
+                                    : (user?.isAvailable == true
+                                          ? const Color(0xFF059669)
+                                          : const Color(0xFFE11D48)),
                               ),
-                              subtitle: const Text(
-                                'Français (Bientôt)',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                              enabled: false,
+                            ),
+                            trailing: Switch(
+                              value: user?.isAvailable ?? false,
+                              onChanged: !_canToggleAvailability
+                                  ? null // Disabled - cannot change
+                                  : (value) async {
+                                      // Enabled - can change availability
+                                      if (!mounted) return;
+
+                                      final availability = value
+                                          ? 'available'
+                                          : 'not_available';
+
+                                      // Call the provider method
+                                      await authProvider.updateAvailability(
+                                        availability,
+                                      );
+
+                                      // Check for active reservations after change
+                                      _checkActiveReservations();
+                                    },
+                              activeColor: const Color(0xFF059669),
                             ),
                           ),
+                        ],
 
-                          const SizedBox(height: 8),
-                          const Divider(height: 1, indent: 20, endIndent: 20),
-                          const SizedBox(height: 8),
+                        if (isFieldAgent) const SizedBox(height: 8),
 
-                          // Dark Mode (Disabled)
-                          Opacity(
-                            opacity: 0.5,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 4,
-                              ),
-                              leading: const Icon(Icons.dark_mode_outlined),
-                              title: const Text(
-                                'Mode sombre',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              trailing: Switch(value: false, onChanged: null),
-                              enabled: false,
-                            ),
+                        // Suivi (Only for field agents)
+                        if (isFieldAgent) ...[
+                          Builder(
+                            builder: (context) {
+                              return const SizedBox.shrink();
+                            },
                           ),
-
-                          const SizedBox(height: 8),
-                          const Divider(height: 1, indent: 20, endIndent: 20),
-                          const SizedBox(height: 8),
-
-                          // Profile Settings
                           ListTile(
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 4,
                             ),
                             leading: const Icon(
-                              Icons.account_circle_outlined,
+                              Icons.assignment_outlined,
                               color: Color(0xFF6366F1),
                             ),
                             title: const Text(
-                              'Paramètres du profil',
+                              'Suivi',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                            subtitle: const Text(
+                              'Mes rendez-vous assignés',
+                              style: TextStyle(fontSize: 13),
+                            ),
                             onTap: () {
-                              Navigator.pop(context);
+                              Navigator.pop(context); // Close drawer
+                              Navigator.pushNamed(context, AppRoutes.suivi);
+                            },
+                          ),
+                        ],
+
+                        if (isFieldAgent) const SizedBox(height: 8),
+                        if (isFieldAgent)
+                          const Divider(height: 1, indent: 20, endIndent: 20),
+                        if (isFieldAgent) const SizedBox(height: 8),
+
+                        // Suivi Commercial (Only for commercial users)
+                        if (authProvider.isCommercial) ...[
+                          ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 4,
+                            ),
+                            leading: const Icon(
+                              Icons.assignment_outlined,
+                              color: Color(0xFF6366F1),
+                            ),
+                            title: const Text(
+                              'Suivi',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Suivi des rendez-vous',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                            onTap: () {
+                              Navigator.pop(context); // Close drawer
                               Navigator.pushNamed(
                                 context,
-                                AppRoutes.profileSettings,
+                                AppRoutes.commercialSuivi,
                               );
                             },
                           ),
-
                           const SizedBox(height: 8),
                           const Divider(height: 1, indent: 20, endIndent: 20),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 8),
+                        ],
 
-                          // Logout Button
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () => _handleLogout(authProvider),
-                                icon: const Icon(Icons.logout, size: 20),
-                                label: const Text('Déconnexion'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
+                        // Change Language (Disabled)
+                        Opacity(
+                          opacity: 0.5,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 4,
+                            ),
+                            leading: const Icon(Icons.language),
+                            title: const Text(
+                              'Changer la langue',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Français (Bientôt)',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                            enabled: false,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+                        const Divider(height: 1, indent: 20, endIndent: 20),
+                        const SizedBox(height: 8),
+
+                        // Dark Mode (Disabled)
+                        Opacity(
+                          opacity: 0.5,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 4,
+                            ),
+                            leading: const Icon(Icons.dark_mode_outlined),
+                            title: const Text(
+                              'Mode sombre',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            trailing: Switch(value: false, onChanged: null),
+                            enabled: false,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+                        const Divider(height: 1, indent: 20, endIndent: 20),
+                        const SizedBox(height: 8),
+
+                        // Profile Settings
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 4,
+                          ),
+                          leading: const Icon(
+                            Icons.account_circle_outlined,
+                            color: Color(0xFF6366F1),
+                          ),
+                          title: const Text(
+                            'Paramètres du profil',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.profileSettings,
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 8),
+                        const Divider(height: 1, indent: 20, endIndent: 20),
+                        const SizedBox(height: 20),
+
+                        // Logout Button
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _handleLogout(authProvider),
+                              icon: const Icon(Icons.logout, size: 20),
+                              label: const Text('Déconnexion'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
                             ),
                           ),
+                        ),
 
-                          const SizedBox(height: 20),
-                        ],
-                      ),
+                        const SizedBox(height: 20),
+                      ],
                     ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 30),
+              // Grid of cards
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.85,
+                children: [
+                  _buildCard(
+                    title: 'Réserver un\nrendez-vous',
+                    subtitle: 'Prenez un rendez-vous\npour un client',
+                    color: const Color(0xFF93C5FD),
+                    icon: Icons.edit_calendar_outlined,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.reserverRendezVous,
+                      );
+                    },
+                  ),
+                  _buildCard(
+                    title: 'Voir les\nrendez-vous',
+                    subtitle: 'Voir les rendez-vous de\nvos clients',
+                    color: const Color(0xFF7DD3FC),
+                    icon: Icons.content_paste_outlined,
+                    onTap: () {
+                      Navigator.pushNamed(context, AppRoutes.reservations);
+                    },
+                  ),
+                  _buildCard(
+                    title: 'Voir\ndocuments',
+                    subtitle:
+                        'Voir les documents pour\nles traitements des\nréservations',
+                    color: const Color(0xFF475569),
+                    icon: Icons.article_outlined,
+                    textColor: Colors.white,
+                  ),
+                  _buildCard(
+                    title: 'Statistiques',
+                    subtitle: 'Voir vos statistiques\net performances',
+                    color: const Color(0xFF6366F1),
+                    icon: Icons.analytics_outlined,
+                    textColor: Colors.white,
                   ),
                 ],
               ),
-            );
-          },
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 30),
-                // Grid of cards
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.85,
-                  children: [
-                    _buildCard(
-                      title: 'Réserver un\nrendez-vous',
-                      subtitle: 'Prenez un rendez-vous\npour un client',
-                      color: const Color(0xFF93C5FD),
-                      icon: Icons.edit_calendar_outlined,
-                      onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.reserverRendezVous,
-                        );
-                      },
-                    ),
-                    _buildCard(
-                      title: 'Voir les\nrendez-vous',
-                      subtitle: 'Voir les rendez-vous de\nvos clients',
-                      color: const Color(0xFF7DD3FC),
-                      icon: Icons.content_paste_outlined,
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.reservations);
-                      },
-                    ),
-                    _buildCard(
-                      title: 'Voir\ndocuments',
-                      subtitle:
-                          'Voir les documents pour\nles traitements des\nréservations',
-                      color: const Color(0xFF475569),
-                      icon: Icons.article_outlined,
-                      textColor: Colors.white,
-                    ),
-                    _buildCard(
-                      title: 'Statistiques',
-                      subtitle: 'Voir vos statistiques\net performances',
-                      color: const Color(0xFF6366F1),
-                      icon: Icons.analytics_outlined,
-                      textColor: Colors.white,
-                    ),
-                  ],
-                ),
-                const SizedBox(
-                  height: 100,
-                ), // Extra space for floating navigation
-              ],
-            ),
+              const SizedBox(
+                height: 100,
+              ), // Extra space for floating navigation
+            ],
           ),
         ),
-        bottomNavigationBar: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
-            final isFieldAgent = authProvider.isField;
+      ),
+      bottomNavigationBar: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          final isFieldAgent = authProvider.isField;
 
-            return Padding(
-              padding: const EdgeInsets.only(
-                left: 7.0,
-                right: 7.0,
-                bottom: 16.0,
+          return Padding(
+            padding: const EdgeInsets.only(left: 7.0, right: 7.0, bottom: 16.0),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                    spreadRadius: 0,
+                  ),
+                ],
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                      spreadRadius: 0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: Theme.of(context).brightness == Brightness.dark
+                            ? [
+                                Colors.black.withOpacity(0.4),
+                                Colors.black.withOpacity(0.3),
+                              ]
+                            : [
+                                Colors.white.withOpacity(0.4),
+                                Colors.white.withOpacity(0.3),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.white.withOpacity(0.5),
+                        width: 1.5,
+                      ),
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: Theme.of(context).brightness == Brightness.dark
-                              ? [
-                                  Colors.black.withOpacity(0.4),
-                                  Colors.black.withOpacity(0.3),
-                                ]
-                              : [
-                                  Colors.white.withOpacity(0.4),
-                                  Colors.white.withOpacity(0.3),
-                                ],
+                    child: BottomNavigationBar(
+                      type: BottomNavigationBarType.fixed,
+                      backgroundColor: Colors.transparent,
+                      selectedItemColor:
+                          Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : const Color(0xFF6366F1),
+                      unselectedItemColor:
+                          Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white60
+                          : const Color(0xFF6366F1).withOpacity(0.5),
+                      selectedFontSize: 10,
+                      unselectedFontSize: 9,
+                      currentIndex: _selectedIndex,
+                      onTap: _onItemTapped,
+                      elevation: 0,
+                      items: [
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.home_outlined),
+                          activeIcon: Icon(Icons.home),
+                          label: 'Accueil',
                         ),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white.withOpacity(0.2)
-                              : Colors.white.withOpacity(0.5),
-                          width: 1.5,
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.chat_outlined),
+                          activeIcon: Icon(Icons.chat),
+                          label: 'Messagerie',
                         ),
-                      ),
-                      child: BottomNavigationBar(
-                        type: BottomNavigationBarType.fixed,
-                        backgroundColor: Colors.transparent,
-                        selectedItemColor:
-                            Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white
-                                : const Color(0xFF6366F1),
-                        unselectedItemColor:
-                            Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white60
-                                : const Color(0xFF6366F1).withOpacity(0.5),
-                        selectedFontSize: 10,
-                        unselectedFontSize: 9,
-                        currentIndex: _selectedIndex,
-                        onTap: _onItemTapped,
-                        elevation: 0,
-                        items: [
-                          const BottomNavigationBarItem(
-                            icon: Icon(Icons.home_outlined),
-                            activeIcon: Icon(Icons.home),
-                            label: 'Accueil',
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.support_agent_outlined),
+                          activeIcon: Icon(Icons.support_agent),
+                          label: 'Gestion des appels',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Opacity(
+                            opacity: isFieldAgent ? 0.3 : 1.0,
+                            child: const Icon(Icons.people_outline),
                           ),
-                          const BottomNavigationBarItem(
-                            icon: Icon(Icons.chat_outlined),
-                            activeIcon: Icon(Icons.chat),
-                            label: 'Messagerie',
+                          activeIcon: Opacity(
+                            opacity: isFieldAgent ? 0.3 : 1.0,
+                            child: const Icon(Icons.people),
                           ),
-                          const BottomNavigationBarItem(
-                            icon: Icon(Icons.support_agent_outlined),
-                            activeIcon: Icon(Icons.support_agent),
-                            label: 'Gestion des appels',
-                          ),
-                          BottomNavigationBarItem(
-                            icon: Opacity(
-                              opacity: isFieldAgent ? 0.3 : 1.0,
-                              child: const Icon(Icons.people_outline),
-                            ),
-                            activeIcon: Opacity(
-                              opacity: isFieldAgent ? 0.3 : 1.0,
-                              child: const Icon(Icons.people),
-                            ),
-                            label: 'Agents Terrain',
-                          ),
-                        ],
-                      ),
+                          label: 'Agents Terrain',
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
+      ),
     );
   }
 

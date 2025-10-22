@@ -35,8 +35,6 @@ class NotificationService {
     if (!isAllowed) {
       await AwesomeNotifications().requestPermissionToSendNotifications();
     }
-
-    print('✅ Notification service initialized');
   }
 
   /// Show agent available notification
@@ -46,7 +44,9 @@ class NotificationService {
     required String dateAvailable,
   }) async {
     try {
-      final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+      final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(
+        100000,
+      );
 
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
@@ -74,11 +74,7 @@ class NotificationService {
         'timestamp': DateTime.now().toIso8601String(),
         'read': false,
       });
-
-      print('✅ Agent available notification shown: $agentName');
-    } catch (e) {
-      print('❌ Error showing notification: $e');
-    }
+    } catch (e) {}
   }
 
   /// Mark notification as read

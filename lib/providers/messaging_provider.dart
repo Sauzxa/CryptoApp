@@ -41,7 +41,7 @@ class MessagingProvider with ChangeNotifier {
   /// Clear all messaging data (call on logout)
   void clearMessagingData() {
     debugPrint('🧹 MessagingProvider: Clearing all messaging data...');
-    
+
     // Clear all state
     _rooms = [];
     _roomMessages = {};
@@ -49,7 +49,7 @@ class MessagingProvider with ChangeNotifier {
     _isLoading = false;
     _errorMessage = null;
     _currentRoomId = null;
-    
+
     // Remove all socket listeners
     if (_socketService.socket != null) {
       final socket = _socketService.socket!;
@@ -63,7 +63,7 @@ class MessagingProvider with ChangeNotifier {
       socket.off('message_sent');
       debugPrint('✅ MessagingProvider: All socket listeners removed');
     }
-    
+
     notifyListeners();
     debugPrint('✅ MessagingProvider: Data cleared successfully');
   }
@@ -564,6 +564,39 @@ class MessagingProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('Error finding/creating direct room: $e');
       return null;
+    }
+  }
+
+  /// Create a reservation room between agent terrain and agent commercial
+  Future<Map<String, dynamic>> createReservationRoom({
+    required String token,
+    required String reservationId,
+    required String agentCommercialId,
+    required String agentTerrainId,
+    required String clientName,
+  }) async {
+    try {
+      final result = await MessagingService.createReservationRoom(
+        token: token,
+        reservationId: reservationId,
+        agentCommercialId: agentCommercialId,
+        agentTerrainId: agentTerrainId,
+        clientName: clientName,
+      );
+
+      if (result['success']) {
+        final room = result['room'] as RoomModel;
+
+        // Add to rooms list
+        _rooms.add(room);
+        notifyListeners();
+
+        return {'success': true, 'room': room};
+      } else {
+        return result;
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
     }
   }
 

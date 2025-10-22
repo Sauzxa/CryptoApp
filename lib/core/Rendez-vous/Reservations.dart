@@ -26,8 +26,8 @@ class _ReservationsPageState extends State<ReservationsPage> {
   void initState() {
     super.initState();
     _loadReservations();
-    // Update countdown every second
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Update countdown every 10 seconds (more efficient)
+    _countdownTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) {
         setState(() {
           // Just trigger rebuild to update countdowns
@@ -542,7 +542,7 @@ class _ReservationsPageState extends State<ReservationsPage> {
                     ),
                   ],
                 ),
-                
+
                 // Show assigned agent terrain if available
                 if (reservation.agentTerrain != null) ...[
                   const SizedBox(height: 16),
@@ -558,12 +558,21 @@ class _ReservationsPageState extends State<ReservationsPage> {
                         CircleAvatar(
                           radius: 20,
                           backgroundColor: const Color(0xFF6366F1),
-                          backgroundImage: reservation.agentTerrain!.profilePhoto?.url != null
-                              ? NetworkImage(reservation.agentTerrain!.profilePhoto!.url!)
+                          backgroundImage:
+                              reservation.agentTerrain!.profilePhoto?.url !=
+                                  null
+                              ? NetworkImage(
+                                  reservation.agentTerrain!.profilePhoto!.url!,
+                                )
                               : null,
-                          child: reservation.agentTerrain!.profilePhoto?.url == null
+                          child:
+                              reservation.agentTerrain!.profilePhoto?.url ==
+                                  null
                               ? Text(
-                                  reservation.agentTerrain!.name?.substring(0, 1).toUpperCase() ?? 'A',
+                                  reservation.agentTerrain!.name
+                                          ?.substring(0, 1)
+                                          .toUpperCase() ??
+                                      'A',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -613,9 +622,10 @@ class _ReservationsPageState extends State<ReservationsPage> {
                     ),
                   ),
                 ],
-                
+
                 // Show pending message if no agent assigned
-                if (reservation.state == 'pending' && reservation.agentTerrain == null) ...[
+                if (reservation.state == 'pending' &&
+                    reservation.agentTerrain == null) ...[
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),

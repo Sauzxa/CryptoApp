@@ -16,14 +16,10 @@ class SocketService {
   /// Initialize and connect to Socket.IO server
   Future<void> connect(String token) async {
     if (_isConnected && _socket != null) {
-      print('✅ Socket already connected');
       return;
     }
 
     try {
-      print('🔌 Connecting to Socket.IO server...');
-      print('🔑 Using token: ${token.substring(0, 20)}...');
-
       _socket = IO.io(
         ApiEndpoints.baseUrl,
         IO.OptionBuilder()
@@ -41,42 +37,29 @@ class SocketService {
       // Connection event handlers
       _socket!.onConnect((_) {
         _isConnected = true;
-        print('✅ Socket connected successfully');
-        print('📡 Socket ID: ${_socket!.id}');
       });
 
       _socket!.onDisconnect((_) {
         _isConnected = false;
-        print('❌ Socket disconnected');
       });
 
       _socket!.onConnectError((error) {
         _isConnected = false;
-        print('❌ Socket connection error: $error');
       });
 
-      _socket!.onError((error) {
-        print('❌ Socket error: $error');
-      });
+      _socket!.onError((error) {});
 
-      _socket!.onReconnect((attempt) {
-        print('🔄 Socket reconnecting... Attempt: $attempt');
-      });
+      _socket!.onReconnect((attempt) {});
 
-      _socket!.onReconnectError((error) {
-        print('❌ Socket reconnection error: $error');
-      });
+      _socket!.onReconnectError((error) {});
 
-      _socket!.onReconnectFailed((_) {
-        print('❌ Socket reconnection failed after multiple attempts');
-      });
+      _socket!.onReconnectFailed((_) {});
 
       // Connect manually if not auto-connected
       if (!_socket!.connected) {
         _socket!.connect();
       }
     } catch (e) {
-      print('❌ Error initializing socket: $e');
       _isConnected = false;
     }
   }
@@ -84,49 +67,38 @@ class SocketService {
   /// Disconnect from Socket.IO server
   void disconnect() {
     if (_socket != null) {
-      print('🔌 Disconnecting socket...');
-      
       try {
         // Remove all listeners first
         removeAllListeners();
-        
+
         // Disconnect the socket
         _socket!.disconnect();
-        
+
         // Dispose of the socket
         _socket!.dispose();
-        
+
         // Clear the reference
         _socket = null;
         _isConnected = false;
-        
-        print('✅ Socket disconnected and disposed');
       } catch (e) {
-        print('⚠️ Error during socket disconnect: $e');
         // Force clear anyway
         _socket = null;
         _isConnected = false;
       }
-    } else {
-      print('ℹ️ Socket already disconnected');
-    }
+    } else {}
   }
 
   /// Emit agent status change event
   void emitStatusChange(String availability) {
     if (_socket != null && _isConnected) {
-      print('📤 Emitting agent status: $availability');
       _socket!.emit('agent:set-status', {'availability': availability});
-    } else {
-      print('❌ Cannot emit status: Socket not connected');
-    }
+    } else {}
   }
 
   /// Listen for agent status updates from other clients
   void onAgentStatusUpdate(Function(Map<String, dynamic>) callback) {
     if (_socket != null) {
       _socket!.on('agent:status', (data) {
-        print('📥 Received agent status update: $data');
         if (data is Map<String, dynamic>) {
           callback(data);
         }
@@ -138,7 +110,6 @@ class SocketService {
   void onNotification(Function(Map<String, dynamic>) callback) {
     if (_socket != null) {
       _socket!.on('notification', (data) {
-        print('📥 Received notification: $data');
         if (data is Map<String, dynamic>) {
           callback(data);
         }
@@ -150,7 +121,6 @@ class SocketService {
   void onReservationCreated(Function(Map<String, dynamic>) callback) {
     if (_socket != null) {
       _socket!.on('reservation:created', (data) {
-        print('📥 Received reservation created: $data');
         if (data is Map<String, dynamic>) {
           callback(data);
         }
@@ -162,7 +132,6 @@ class SocketService {
   void onReservationUpdated(Function(Map<String, dynamic>) callback) {
     if (_socket != null) {
       _socket!.on('reservation:updated', (data) {
-        print('📥 Received reservation updated: $data');
         if (data is Map<String, dynamic>) {
           callback(data);
         }
@@ -173,7 +142,6 @@ class SocketService {
   /// Acknowledge notification
   void acknowledgeNotification(String notificationId) {
     if (_socket != null && _isConnected) {
-      print('📤 Acknowledging notification: $notificationId');
       _socket!.emit('ack:notification', {'notificationId': notificationId});
     }
   }
@@ -182,7 +150,83 @@ class SocketService {
   void onAgentAvailable(Function(Map<String, dynamic>) callback) {
     if (_socket != null) {
       _socket!.on('agent_available', (data) {
-        print('📥 Received agent_available notification: $data');
+        if (data is Map<String, dynamic>) {
+          callback(data);
+        }
+      });
+    }
+  }
+
+  /// Listen for reservation rejected event (Agent Terrain)
+  void onReservationRejected(Function(Map<String, dynamic>) callback) {
+    if (_socket != null) {
+      _socket!.on('reservation:rejected', (data) {
+        if (data is Map<String, dynamic>) {
+          callback(data);
+        }
+      });
+    }
+  }
+
+  /// Listen for reservation assigned event (Agent Terrain)
+  void onReservationAssigned(Function(Map<String, dynamic>) callback) {
+    if (_socket != null) {
+      _socket!.on('reservation:assigned', (data) {
+        if (data is Map<String, dynamic>) {
+          callback(data);
+        }
+      });
+    }
+  }
+
+  /// Listen for reservation reassigned event (Agent Commercial)
+  void onReservationReassigned(Function(Map<String, dynamic>) callback) {
+    if (_socket != null) {
+      _socket!.on('reservation:reassigned', (data) {
+        if (data is Map<String, dynamic>) {
+          callback(data);
+        }
+      });
+    }
+  }
+
+  /// Listen for rapport submitted event (Agent Commercial)
+  void onRapportSubmitted(Function(Map<String, dynamic>) callback) {
+    if (_socket != null) {
+      _socket!.on('rapport:submitted', (data) {
+        if (data is Map<String, dynamic>) {
+          callback(data);
+        }
+      });
+    }
+  }
+
+  /// Listen for availability toggle enabled event (Agent Terrain)
+  void onAvailabilityToggleEnabled(Function(Map<String, dynamic>) callback) {
+    if (_socket != null) {
+      _socket!.on('agent:availability_toggle_enabled', (data) {
+        if (data is Map<String, dynamic>) {
+          callback(data);
+        }
+      });
+    }
+  }
+
+  /// Listen for commercial action event (Both agents)
+  void onCommercialAction(Function(Map<String, dynamic>) callback) {
+    if (_socket != null) {
+      _socket!.on('reservation:commercial_action', (data) {
+        if (data is Map<String, dynamic>) {
+          callback(data);
+        }
+      });
+    }
+  }
+
+  /// Listen for reservation rescheduled event (Agent Terrain)
+  void onReservationRescheduled(Function(Map<String, dynamic>) callback) {
+    if (_socket != null) {
+      _socket!.on('reservation:rescheduled', (data) {
         if (data is Map<String, dynamic>) {
           callback(data);
         }
@@ -198,7 +242,14 @@ class SocketService {
       _socket!.off('reservation:created');
       _socket!.off('reservation:updated');
       _socket!.off('agent_available');
-      print('🧹 Removed all socket listeners');
+      // New events
+      _socket!.off('reservation:rejected');
+      _socket!.off('reservation:assigned');
+      _socket!.off('reservation:reassigned');
+      _socket!.off('rapport:submitted');
+      _socket!.off('agent:availability_toggle_enabled');
+      _socket!.off('reservation:commercial_action');
+      _socket!.off('reservation:rescheduled');
     }
   }
 }

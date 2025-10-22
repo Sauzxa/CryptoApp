@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class RapportBottomSheet extends StatefulWidget {
-  final Function(String result, String message, DateTime? newReservedAt) onSubmit;
+  final Function(String rapportState, String? rapportMessage) onSubmit;
   final String clientName;
   final String clientPhone;
   final String agentCommercialName;
   final String agentTerrainName;
-  final String currentState;
 
   const RapportBottomSheet({
     Key? key,
@@ -16,7 +14,6 @@ class RapportBottomSheet extends StatefulWidget {
     required this.clientPhone,
     required this.agentCommercialName,
     required this.agentTerrainName,
-    required this.currentState,
   }) : super(key: key);
 
   @override
@@ -24,15 +21,12 @@ class RapportBottomSheet extends StatefulWidget {
 }
 
 class _RapportBottomSheetState extends State<RapportBottomSheet> {
-  String _result = 'completed';
+  String _rapportState = 'potentiel';
   final TextEditingController _messageController = TextEditingController();
-  DateTime? _newReservedAt;
-  final TextEditingController _dateController = TextEditingController();
 
   @override
   void dispose() {
     _messageController.dispose();
-    _dateController.dispose();
     super.dispose();
   }
 
@@ -87,9 +81,9 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
           const Divider(),
           const SizedBox(height: 20),
           
-          // Result Selection Dropdown
+          // Rapport State Selection
           const Text(
-            'État du rendez-vous:',
+            'État du rapport:',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -104,62 +98,55 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
               borderRadius: BorderRadius.circular(12),
               color: Colors.grey.shade50,
             ),
-            child: DropdownButtonFormField<String>(
-              value: _result,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'completed',
-                  child: Row(
+            child: Column(
+              children: [
+                RadioListTile<String>(
+                  value: 'potentiel',
+                  groupValue: _rapportState,
+                  onChanged: (value) {
+                    setState(() {
+                      _rapportState = value!;
+                    });
+                  },
+                  title: const Row(
                     children: [
-                      Icon(Icons.check_circle, color: Colors.green, size: 20),
+                      Icon(Icons.thumb_up, color: Colors.green, size: 20),
                       SizedBox(width: 8),
-                      Text('Terminé (Loué)'),
+                      Text('Potentiel'),
                     ],
                   ),
+                  subtitle: const Text('Client intéressé, vente possible'),
                 ),
-                DropdownMenuItem(
-                  value: 'cancelled',
-                  child: Row(
+                const Divider(height: 1),
+                RadioListTile<String>(
+                  value: 'non_potentiel',
+                  groupValue: _rapportState,
+                  onChanged: (value) {
+                    setState(() {
+                      _rapportState = value!;
+                    });
+                  },
+                  title: const Row(
                     children: [
-                      Icon(Icons.cancel, color: Colors.red, size: 20),
+                      Icon(Icons.thumb_down, color: Colors.red, size: 20),
                       SizedBox(width: 8),
-                      Text('Annulé (Non loué)'),
+                      Text('Non Potentiel'),
                     ],
                   ),
-                ),
-                DropdownMenuItem(
-                  value: 'in_progress',
-                  child: Row(
-                    children: [
-                      Icon(Icons.refresh, color: Colors.blue, size: 20),
-                      SizedBox(width: 8),
-                      Text('En cours (Nouveau RDV)'),
-                    ],
-                  ),
+                  subtitle: const Text('Client non intéressé'),
                 ),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _result = value!;
-                  if (_result != 'in_progress') {
-                    _newReservedAt = null;
-                    _dateController.clear();
-                  }
-                });
-              },
             ),
           ),
           
           const SizedBox(height: 20),
           
-          // Message Input
-          const Text(
-            'Message du rapport:',
-            style: TextStyle(
+          // Message Input (required for potentiel)
+          Text(
+            _rapportState == 'potentiel' 
+                ? 'Message du rapport: *'
+                : 'Message du rapport: (optionnel)',
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -171,7 +158,9 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
             controller: _messageController,
             maxLines: 4,
             decoration: InputDecoration(
-              hintText: 'Décrivez le résultat du rendez-vous...',
+              hintText: _rapportState == 'potentiel'
+                  ? 'Décrivez l\'intérêt du client... (requis)'
+                  : 'Raison du refus... (optionnel)',
               hintStyle: TextStyle(color: Colors.grey.shade400),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -192,73 +181,6 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
           ),
           
           const SizedBox(height: 20),
-          
-          // Conditional: New Reservation Date (only if in_progress)
-          if (_result == 'in_progress') ...[
-            const Text(
-              'Nouveau rendez-vous:',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _dateController,
-              readOnly: true,
-              decoration: InputDecoration(
-                hintText: 'Sélectionner date et heure',
-                hintStyle: TextStyle(color: Colors.grey.shade400),
-                prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF6366F1)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-              ),
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now().add(const Duration(days: 1)),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 30)),
-                );
-                
-                if (date != null && mounted) {
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  
-                  if (time != null) {
-                    final newDate = DateTime(
-                      date.year,
-                      date.month,
-                      date.day,
-                      time.hour,
-                      time.minute,
-                    );
-                    
-                    setState(() {
-                      _newReservedAt = newDate;
-                      _dateController.text = DateFormat('dd/MM/yyyy à HH:mm').format(newDate);
-                    });
-                  }
-                }
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
           
           // Action Buttons
           Row(
@@ -287,29 +209,21 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    // Validation
-                    if (_messageController.text.trim().isEmpty) {
+                    // Validation: Message required for potentiel
+                    if (_rapportState == 'potentiel' && _messageController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Veuillez ajouter un message'),
+                          content: Text('Le message est requis pour un rapport potentiel'),
                           backgroundColor: Colors.red,
                         ),
                       );
                       return;
                     }
                     
-                    // If in_progress, require new date
-                    if (_result == 'in_progress' && _newReservedAt == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Veuillez sélectionner une date pour le nouveau rendez-vous'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
-                    
-                    widget.onSubmit(_result, _messageController.text.trim(), _newReservedAt);
+                    widget.onSubmit(
+                      _rapportState,
+                      _messageController.text.trim().isEmpty ? null : _messageController.text.trim(),
+                    );
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
