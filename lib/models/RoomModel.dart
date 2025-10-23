@@ -8,6 +8,12 @@ class RoomModel {
   final String? roomType; // 'general' or 'reservation'
   final String? agentCommercialId; // For reservation rooms
   final String? agentTerrainId; // For reservation rooms
+  final UserBasic? agentCommercial; // Populated agent commercial data
+  final UserBasic? agentTerrain; // Populated agent terrain data
+  final String? clientFullName; // For reservation rooms
+  final String? clientPhone; // For reservation rooms
+  final String? commercialAction; // For reservation rooms
+  final String? rapportState; // For reservation rooms
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -21,6 +27,12 @@ class RoomModel {
     this.roomType,
     this.agentCommercialId,
     this.agentTerrainId,
+    this.agentCommercial,
+    this.agentTerrain,
+    this.clientFullName,
+    this.clientPhone,
+    this.commercialAction,
+    this.rapportState,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -38,10 +50,30 @@ class RoomModel {
       lastMessage: json['lastMessage'] != null
           ? MessageModel.fromJson(json['lastMessage'])
           : null,
-      reservationId: json['reservationId'],
+      reservationId: json['reservationId'] is String
+          ? json['reservationId']
+          : json['reservationId']?['_id']?.toString(),
       roomType: json['roomType'],
-      agentCommercialId: json['agentCommercialId'],
-      agentTerrainId: json['agentTerrainId'],
+      agentCommercialId: json['agentCommercialId'] is String
+          ? json['agentCommercialId']
+          : json['agentCommercialId']?['_id']?.toString(),
+      agentTerrainId: json['agentTerrainId'] is String
+          ? json['agentTerrainId']
+          : json['agentTerrainId']?['_id']?.toString(),
+      agentCommercial: json['agentCommercial'] != null
+          ? UserBasic.fromJson(json['agentCommercial'])
+          : null,
+      agentTerrain: json['agentTerrain'] != null
+          ? UserBasic.fromJson(json['agentTerrain'])
+          : null,
+      clientFullName:
+          json['clientFullName'] ?? json['reservationId']?['clientFullName'],
+      clientPhone: json['clientPhone'] ?? json['reservationId']?['clientPhone'],
+      commercialAction:
+          json['commercialAction'] ??
+          json['reservationId']?['commercialAction'],
+      rapportState:
+          json['rapportState'] ?? json['reservationId']?['rapportState'],
       createdAt: DateTime.parse(
         json['createdAt'] ?? DateTime.now().toIso8601String(),
       ),
@@ -73,6 +105,12 @@ class RoomModel {
     String? roomType,
     String? agentCommercialId,
     String? agentTerrainId,
+    UserBasic? agentCommercial,
+    UserBasic? agentTerrain,
+    String? clientFullName,
+    String? clientPhone,
+    String? commercialAction,
+    String? rapportState,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -86,6 +124,12 @@ class RoomModel {
       roomType: roomType ?? this.roomType,
       agentCommercialId: agentCommercialId ?? this.agentCommercialId,
       agentTerrainId: agentTerrainId ?? this.agentTerrainId,
+      agentCommercial: agentCommercial ?? this.agentCommercial,
+      agentTerrain: agentTerrain ?? this.agentTerrain,
+      clientFullName: clientFullName ?? this.clientFullName,
+      clientPhone: clientPhone ?? this.clientPhone,
+      commercialAction: commercialAction ?? this.commercialAction,
+      rapportState: rapportState ?? this.rapportState,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
