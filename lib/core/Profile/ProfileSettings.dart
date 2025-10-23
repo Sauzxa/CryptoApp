@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../api/api_client.dart';
+import '../../utils/colors.dart';
 
 class ProfileSettingsPage extends StatefulWidget {
   const ProfileSettingsPage({Key? key}) : super(key: key);
@@ -44,7 +45,10 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
         normalizedPhone = normalizedPhone.substring(4); // Remove +213
       } else if (normalizedPhone.startsWith('+')) {
         // Remove any other country code
-        normalizedPhone = normalizedPhone.replaceFirst(RegExp(r'^\+\d{1,3}'), '');
+        normalizedPhone = normalizedPhone.replaceFirst(
+          RegExp(r'^\+\d{1,3}'),
+          '',
+        );
       }
       // Remove leading zero if phone starts with 0 after removing country code
       if (normalizedPhone.startsWith('0') && normalizedPhone.length > 10) {
@@ -69,12 +73,15 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       if (currentUserPhone.startsWith('+213')) {
         currentUserPhone = currentUserPhone.substring(4);
       } else if (currentUserPhone.startsWith('+')) {
-        currentUserPhone = currentUserPhone.replaceFirst(RegExp(r'^\+\d{1,3}'), '');
+        currentUserPhone = currentUserPhone.replaceFirst(
+          RegExp(r'^\+\d{1,3}'),
+          '',
+        );
       }
       if (currentUserPhone.startsWith('0') && currentUserPhone.length > 10) {
         currentUserPhone = currentUserPhone.substring(1);
       }
-      
+
       final hasChanges =
           _nameController.text != user.name ||
           _emailController.text != user.email ||
@@ -159,18 +166,21 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
 
       // Update profile data
       final user = authProvider.currentUser;
-      
+
       // Normalize the current user's phone for comparison
       String currentUserPhone = user?.phone ?? '';
       if (currentUserPhone.startsWith('+213')) {
         currentUserPhone = currentUserPhone.substring(4);
       } else if (currentUserPhone.startsWith('+')) {
-        currentUserPhone = currentUserPhone.replaceFirst(RegExp(r'^\+\d{1,3}'), '');
+        currentUserPhone = currentUserPhone.replaceFirst(
+          RegExp(r'^\+\d{1,3}'),
+          '',
+        );
       }
       if (currentUserPhone.startsWith('0') && currentUserPhone.length > 10) {
         currentUserPhone = currentUserPhone.substring(1);
       }
-      
+
       if (_nameController.text != user?.name ||
           _emailController.text != user?.email ||
           _phoneController.text != currentUserPhone) {
@@ -179,7 +189,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
         if (!phoneToSend.startsWith('+')) {
           phoneToSend = '+213${phoneToSend}';
         }
-        
+
         final profileResponse = await apiClient.updateProfile(
           token: token,
           name: _nameController.text,
@@ -270,7 +280,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                 Navigator.of(context).pop(); // Go back to home
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
+                backgroundColor: AppColors.primaryPurple,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -327,7 +337,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: ClipRRect(
@@ -335,15 +345,13 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: AppBar(
               backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.white.withOpacity(0.3),
+                  ? AppColors.glassEffectDark
+                  : AppColors.glassEffectLight,
               elevation: 0,
               leading: IconButton(
                 icon: Icon(
                   Icons.arrow_back,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
+                  color: Theme.of(context).iconTheme.color,
                 ),
                 onPressed: () {
                   Navigator.pop(context);
@@ -351,13 +359,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
               ),
               title: Text(
                 'Modifier les Données Personale',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
           ),
@@ -365,7 +367,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+              child: CircularProgressIndicator(color: AppColors.primaryPurple),
             )
           : SingleChildScrollView(
               child: Form(
@@ -376,7 +378,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 32),
-                      color: Colors.white,
+                      color: Theme.of(context).cardTheme.color,
                       child: Column(
                         children: [
                           Stack(
@@ -385,7 +387,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: const Color(0xFF6366F1),
+                                    color: AppColors.primaryPurple,
                                     width: 3,
                                   ),
                                 ),
@@ -419,7 +421,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                                   child: Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF6366F1),
+                                      color: AppColors.primaryPurple,
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: Colors.white,
@@ -447,7 +449,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                       margin: const EdgeInsets.symmetric(horizontal: 20),
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardTheme.color,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -558,23 +560,33 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                               onPressed: _isLoading || !_hasChanges
                                   ? null
                                   : _saveChanges,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF6366F1),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                                disabledBackgroundColor: Colors.grey.shade300,
-                              ),
+                              style:
+                                  ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF4CAF50),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                    disabledBackgroundColor:
+                                        Colors.grey.shade300,
+                                  ).copyWith(
+                                    backgroundColor: MaterialStateProperty.all(
+                                      const Color(0xFF4CAF50),
+                                    ),
+                                    foregroundColor: MaterialStateProperty.all(
+                                      Colors.white,
+                                    ),
+                                  ),
                               child: const Text(
                                 'Sauvegarder',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
@@ -618,6 +630,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           validator: validator,
           maxLength: maxLength,
           inputFormatters: inputFormatters,
+          style: TextStyle(color: Colors.black87, fontSize: 16),
           decoration: InputDecoration(
             filled: true,
             fillColor: const Color(0xFFF9FAFB),
@@ -633,7 +646,10 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+              borderSide: const BorderSide(
+                color: AppColors.primaryPurple,
+                width: 2,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

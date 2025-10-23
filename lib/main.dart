@@ -3,6 +3,7 @@ import 'package:CryptoApp/utils/Routes.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import 'package:CryptoApp/providers/messaging_provider.dart';
 import 'package:CryptoApp/providers/notification_provider.dart';
+import 'package:CryptoApp/providers/theme_provider.dart';
 import 'package:CryptoApp/core/HomePage.dart';
 import 'package:CryptoApp/services/firebase_notification_service.dart';
 import 'package:flutter/material.dart';
@@ -30,12 +31,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => MessagingProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
-      child: Consumer<AuthProvider>(
-        builder: (context, authProvider, _) {
+      child: Consumer2<ThemeProvider, AuthProvider>(
+        builder: (context, themeProvider, authProvider, _) {
           // Initialize messaging when authenticated
           if (authProvider.isAuthenticated) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -50,7 +52,7 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Crypto Immobilier',
-            theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Roboto'),
+            theme: themeProvider.currentTheme,
             home: _getInitialScreen(authProvider),
             onGenerateRoute: AppRoutes.generateRoute,
           );

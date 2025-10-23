@@ -241,13 +241,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _nameController,
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Entrez votre nom complet',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFFF5F5F5),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF9333EA),
+                                    width: 2,
+                                  ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -289,7 +311,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       color: const Color(0xFFF5F5F5),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: _hasAttemptedSubmit && _selectedUserType == null
+                                        color:
+                                            _hasAttemptedSubmit &&
+                                                _selectedUserType == null
                                             ? Colors.red.withOpacity(0.3)
                                             : Colors.transparent,
                                       ),
@@ -434,7 +458,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ],
                               ],
                             ),
-                            if (_hasAttemptedSubmit && _selectedUserType == null)
+                            if (_hasAttemptedSubmit &&
+                                _selectedUserType == null)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
                                 child: Text(
@@ -458,13 +483,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             TextFormField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Entrez votre email',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFFF5F5F5),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF9333EA),
+                                    width: 2,
+                                  ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -538,17 +585,39 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   child: TextFormField(
                                     controller: _phoneController,
                                     keyboardType: TextInputType.number,
+                                    style: TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 16,
+                                    ),
                                     inputFormatters: [
                                       FilteringTextInputFormatter.digitsOnly,
                                       LengthLimitingTextInputFormatter(10),
                                     ],
                                     decoration: InputDecoration(
                                       hintText: 'Numéro (10 chiffres)',
+                                      hintStyle: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 14,
+                                      ),
                                       filled: true,
                                       fillColor: const Color(0xFFF5F5F5),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide.none,
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey.shade300,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF9333EA),
+                                          width: 2,
+                                        ),
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
@@ -582,13 +651,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Choisir un mot de pass',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFFF5F5F5),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF9333EA),
+                                    width: 2,
+                                  ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -599,6 +690,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     _obscurePassword
                                         ? Icons.visibility_off
                                         : Icons.visibility,
+                                    color: Colors.grey.shade600,
                                   ),
                                   onPressed: () => setState(
                                     () => _obscurePassword = !_obscurePassword,
@@ -626,13 +718,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             TextFormField(
                               controller: _confirmPasswordController,
                               obscureText: _obscureConfirmPassword,
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Confirmer votre mot de pass',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFFF5F5F5),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF9333EA),
+                                    width: 2,
+                                  ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -643,6 +757,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     _obscureConfirmPassword
                                         ? Icons.visibility_off
                                         : Icons.visibility,
+                                    color: Colors.grey.shade600,
                                   ),
                                   onPressed: () => setState(
                                     () => _obscureConfirmPassword =

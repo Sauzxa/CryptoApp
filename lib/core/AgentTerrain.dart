@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../providers/messaging_provider.dart';
 import '../core/messagerie/MessageRoom.dart';
 import '../services/socket_service.dart';
+import '../utils/colors.dart';
 
 class AgentTerrainPage extends StatefulWidget {
   const AgentTerrainPage({Key? key}) : super(key: key);
@@ -536,7 +537,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: ClipRRect(
@@ -544,15 +545,13 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: AppBar(
               backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.white.withOpacity(0.3),
+                  ? AppColors.glassEffectDark
+                  : AppColors.glassEffectLight,
               elevation: 0,
               leading: IconButton(
                 icon: Icon(
                   Icons.arrow_back,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
+                  color: Theme.of(context).iconTheme.color,
                 ),
                 onPressed: () {
                   Navigator.pop(context);
@@ -560,13 +559,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
               ),
               title: Text(
                 'Voir état des agents',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
           ),
@@ -746,14 +739,10 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                 child: BottomNavigationBar(
                   type: BottomNavigationBarType.fixed,
                   backgroundColor: Colors.transparent,
-                  selectedItemColor:
-                      Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
-                  unselectedItemColor:
-                      Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white60
-                      : const Color(0xFF6366F1).withOpacity(0.5),
+                  selectedItemColor: AppColors.primaryPurple,
+                  unselectedItemColor: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.color,
                   selectedFontSize: 10,
                   unselectedFontSize: 9,
                   currentIndex: _selectedIndex,

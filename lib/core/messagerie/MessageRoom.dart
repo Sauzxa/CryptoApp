@@ -633,7 +633,11 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isMe ? const Color(0xFF6366F1) : Colors.white,
+                color: isMe
+                    ? const Color(0xFF6366F1)
+                    : Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade800
+                    : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -671,7 +675,11 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                     Text(
                       message.text,
                       style: TextStyle(
-                        color: isMe ? Colors.white : const Color(0xFF1F2937),
+                        color: isMe
+                            ? Colors.white
+                            : Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : const Color(0xFF1F2937),
                         fontSize: 15,
                       ),
                     )
@@ -916,7 +924,10 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey.shade900
+            : Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -931,13 +942,30 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(24),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade900
+                    : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: TextField(
                 controller: _messageController,
-                decoration: const InputDecoration(
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black87,
+                  fontSize: 16,
+                ),
+                decoration: InputDecoration(
                   hintText: 'Tapez votre message...',
+                  hintStyle: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.6)
+                        : Colors.grey.shade600,
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade900
+                      : Colors.grey.shade100,
                   border: InputBorder.none,
                 ),
                 maxLines: null,
@@ -970,11 +998,23 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             onLongPressStart: (_) => _startRecording(),
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: Color(0xFF6366F1),
+              decoration: BoxDecoration(
+                color: _isRecording
+                    ? Colors.grey.shade300
+                    : Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade700
+                    : Colors.grey.shade400,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.mic, color: Colors.white, size: 24),
+              child: Icon(
+                Icons.mic,
+                color: _isRecording
+                    ? Colors.grey.shade600
+                    : Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+                size: 24,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -986,7 +1026,9 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               decoration: BoxDecoration(
                 color: _messageController.text.trim().isEmpty
                     ? Colors.grey.shade300
-                    : const Color(0xFF6366F1),
+                    : Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade700
+                    : Colors.grey.shade400,
                 shape: BoxShape.circle,
               ),
               child: _isSendingMessage
@@ -998,7 +1040,13 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Icon(Icons.send, color: Colors.white, size: 24),
+                  : Icon(
+                      Icons.send,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black87,
+                      size: 24,
+                    ),
             ),
           ),
         ],
@@ -1314,7 +1362,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     final currentUserId = authProvider.currentUser?.id ?? '';
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(56),
         child: AppBar(

@@ -6,6 +6,7 @@ import '../../models/ReservationModel.dart';
 import '../../api/api_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/socket_service.dart';
+import '../../utils/colors.dart';
 
 class CommercialSuiviPage extends StatefulWidget {
   const CommercialSuiviPage({Key? key}) : super(key: key);
@@ -315,7 +316,10 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                 ),
                 Text(
                   DateFormat('dd/MM/yyyy HH:mm').format(reservation.reservedAt),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
                 ),
               ],
             ),
@@ -332,16 +336,17 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                     children: [
                       Text(
                         reservation.clientFullName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: Theme.of(context).textTheme.titleMedium?.color,
                         ),
                       ),
                       Text(
                         reservation.clientPhone,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                         ),
                       ),
                     ],
@@ -356,8 +361,16 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkCardBackground.withOpacity(0.7)
+                      : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.grey.shade300,
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -381,14 +394,22 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                             'Agent Terrain',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white.withOpacity(0.8)
+                                  : Colors.grey.shade700,
                             ),
                           ),
                           Text(
                             reservation.agentTerrain!.name ?? 'N/A',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
+                              color: Theme.of(
+                                context,
+                              ).textTheme.titleMedium?.color,
                             ),
                           ),
                         ],
@@ -405,8 +426,16 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkCardBackground.withOpacity(0.7)
+                      : Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.blue.shade200,
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,16 +456,28 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                         children: [
                           Text(
                             'Rapport: ${reservation.rapportStateDisplay}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white.withOpacity(0.9)
+                                  : Colors.grey.shade800,
                             ),
                           ),
                           if (reservation.rapportMessage != null) ...[
                             const SizedBox(height: 4),
                             Text(
                               reservation.rapportMessage!,
-                              style: const TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withOpacity(0.7)
+                                    : Colors.grey.shade700,
+                              ),
                             ),
                           ],
                         ],
@@ -514,7 +555,11 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                             day,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade600,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white.withOpacity(0.8)
+                                  : Colors.grey.shade700,
                             ),
                           ),
                         ),
@@ -533,9 +578,15 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
         const Divider(),
         Expanded(
           child: _selectedDay == null
-              ? const Center(
+              ? Center(
                   child: Text(
                     'Sélectionnez une date pour voir les rendez-vous',
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white.withOpacity(0.7)
+                          : Colors.grey.shade600,
+                      fontSize: 16,
+                    ),
                   ),
                 )
               : _buildDayReservations(_selectedDay!),
@@ -598,7 +649,11 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
               child: Text(
                 '$day',
                 style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black,
+                  color: isSelected
+                      ? Colors.white
+                      : Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withOpacity(0.9)
+                      : Colors.black87,
                   fontWeight: hasReservations
                       ? FontWeight.bold
                       : FontWeight.normal,
@@ -623,7 +678,17 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
     final reservations = _calendarReservations[dateKey] ?? [];
 
     if (reservations.isEmpty) {
-      return const Center(child: Text('Aucun rendez-vous ce jour'));
+      return Center(
+        child: Text(
+          'Aucun rendez-vous ce jour',
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withOpacity(0.7)
+                : Colors.grey.shade600,
+            fontSize: 16,
+          ),
+        ),
+      );
     }
 
     return ListView.builder(

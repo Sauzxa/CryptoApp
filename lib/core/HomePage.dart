@@ -5,10 +5,12 @@ import 'package:provider/provider.dart';
 import 'package:CryptoApp/utils/Routes.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import 'package:CryptoApp/providers/messaging_provider.dart';
+import 'package:CryptoApp/providers/theme_provider.dart';
 import 'package:CryptoApp/api/api_client.dart';
 import 'package:CryptoApp/services/socket_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:CryptoApp/widgets/notification_bell_button.dart';
+import '../utils/colors.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -493,7 +495,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: ClipRRect(
@@ -501,15 +503,13 @@ class _HomePageState extends State<HomePage> {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: AppBar(
               backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.white.withOpacity(0.3),
+                  ? AppColors.glassEffectDark
+                  : AppColors.glassEffectLight,
               elevation: 0,
               leading: IconButton(
                 icon: Icon(
                   Icons.menu,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
+                  color: Theme.of(context).iconTheme.color,
                 ),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
@@ -517,13 +517,7 @@ class _HomePageState extends State<HomePage> {
               ),
               title: Text(
                 'Accueil',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               actions: const [NotificationBellButton()],
             ),
@@ -547,7 +541,7 @@ class _HomePageState extends State<HomePage> {
                     left: 20,
                     right: 20,
                   ),
-                  decoration: const BoxDecoration(color: Color(0xFF6366F1)),
+                  decoration: BoxDecoration(color: AppColors.statisticsPurple),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -558,10 +552,10 @@ class _HomePageState extends State<HomePage> {
                             ? NetworkImage(user!.profilePhoto!.url!)
                             : null,
                         child: user?.profilePhoto?.url == null
-                            ? const Icon(
+                            ? Icon(
                                 Icons.person,
                                 size: 40,
-                                color: Color(0xFF6366F1),
+                                color: AppColors.statisticsPurple,
                               )
                             : null,
                       ),
@@ -666,9 +660,9 @@ class _HomePageState extends State<HomePage> {
                               horizontal: 20,
                               vertical: 4,
                             ),
-                            leading: const Icon(
+                            leading: Icon(
                               Icons.assignment_outlined,
-                              color: Color(0xFF6366F1),
+                              color: AppColors.statisticsPurple,
                             ),
                             title: const Text(
                               'Suivi',
@@ -700,9 +694,9 @@ class _HomePageState extends State<HomePage> {
                               horizontal: 20,
                               vertical: 4,
                             ),
-                            leading: const Icon(
+                            leading: Icon(
                               Icons.assignment_outlined,
-                              color: Color(0xFF6366F1),
+                              color: AppColors.statisticsPurple,
                             ),
                             title: const Text(
                               'Suivi',
@@ -756,25 +750,54 @@ class _HomePageState extends State<HomePage> {
                         const Divider(height: 1, indent: 20, endIndent: 20),
                         const SizedBox(height: 8),
 
-                        // Dark Mode (Disabled)
-                        Opacity(
-                          opacity: 0.5,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 4,
-                            ),
-                            leading: const Icon(Icons.dark_mode_outlined),
-                            title: const Text(
-                              'Mode sombre',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
+                        // Dark Mode Toggle
+                        Consumer<ThemeProvider>(
+                          builder: (context, themeProvider, child) {
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
                               ),
-                            ),
-                            trailing: Switch(value: false, onChanged: null),
-                            enabled: false,
-                          ),
+                              leading: Icon(
+                                themeProvider.isDarkMode
+                                    ? Icons.dark_mode
+                                    : Icons.light_mode,
+                                color: AppColors.statisticsPurple,
+                              ),
+                              title: Text(
+                                'Mode sombre',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium?.color,
+                                ),
+                              ),
+                              subtitle: Text(
+                                themeProvider.isDarkMode
+                                    ? 'Actuellement en mode sombre'
+                                    : 'Actuellement en mode clair',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodySmall?.color,
+                                ),
+                              ),
+                              trailing: Switch(
+                                value: themeProvider.isDarkMode,
+                                onChanged: (value) =>
+                                    themeProvider.toggleTheme(),
+                                activeColor: AppColors.statisticsPurple,
+                                activeTrackColor: AppColors.statisticsPurple
+                                    .withOpacity(0.3),
+                                inactiveThumbColor: Colors.grey[300],
+                                inactiveTrackColor: Colors.grey[200],
+                              ),
+                              onTap: () => themeProvider.toggleTheme(),
+                            );
+                          },
                         ),
 
                         const SizedBox(height: 8),
@@ -787,9 +810,9 @@ class _HomePageState extends State<HomePage> {
                             horizontal: 20,
                             vertical: 4,
                           ),
-                          leading: const Icon(
+                          leading: Icon(
                             Icons.account_circle_outlined,
-                            color: Color(0xFF6366F1),
+                            color: AppColors.statisticsPurple,
                           ),
                           title: const Text(
                             'Paramètres du profil',
@@ -952,14 +975,10 @@ class _HomePageState extends State<HomePage> {
                     child: BottomNavigationBar(
                       type: BottomNavigationBarType.fixed,
                       backgroundColor: Colors.transparent,
-                      selectedItemColor:
-                          Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : const Color(0xFF6366F1),
-                      unselectedItemColor:
-                          Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white60
-                          : const Color(0xFF6366F1).withOpacity(0.5),
+                      selectedItemColor: AppColors.primaryPurple,
+                      unselectedItemColor: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color,
                       selectedFontSize: 10,
                       unselectedFontSize: 9,
                       currentIndex: _selectedIndex,

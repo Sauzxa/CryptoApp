@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../utils/colors.dart';
 
 class CommercialActionBottomSheet extends StatefulWidget {
   final String clientName;
@@ -42,9 +43,9 @@ class _CommercialActionBottomSheetState
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SingleChildScrollView(
         child: Padding(
@@ -57,18 +58,16 @@ class _CommercialActionBottomSheetState
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     '💼 Action Commerciale',
-                    style: TextStyle(
-                      fontSize: 20,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                    color: Colors.grey.shade600,
+                    icon: Icon(Icons.close),
+                    color: Theme.of(context).iconTheme.color,
                   ),
                 ],
               ),
@@ -96,12 +95,12 @@ class _CommercialActionBottomSheetState
               const SizedBox(height: 20),
 
               // État de suivi Dropdown
-              const Text(
+              Text(
                 'État de suivi',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Theme.of(context).textTheme.titleMedium?.color,
                 ),
               ),
               const SizedBox(height: 12),
@@ -168,12 +167,12 @@ class _CommercialActionBottomSheetState
                 const SizedBox(height: 20),
                 const Divider(),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Nouvelle date du rendez-vous',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Theme.of(context).textTheme.titleMedium?.color,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -203,7 +202,9 @@ class _CommercialActionBottomSheetState
                             fontSize: 16,
                             color: _selectedDate == null
                                 ? Colors.grey.shade600
-                                : Colors.black87,
+                                : Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium?.color,
                           ),
                         ),
                       ],
@@ -234,7 +235,9 @@ class _CommercialActionBottomSheetState
                             fontSize: 16,
                             color: _selectedTime == null
                                 ? Colors.grey.shade600
-                                : Colors.black87,
+                                : Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium?.color,
                           ),
                         ),
                       ],
@@ -248,20 +251,24 @@ class _CommercialActionBottomSheetState
               const SizedBox(height: 20),
 
               // Message input for all actions
-              const Text(
+              Text(
                 'Message (requis)',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Theme.of(context).textTheme.titleMedium?.color,
                 ),
               ),
               const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.grey.shade300,
+                  ),
                   borderRadius: BorderRadius.circular(12),
-                  color: Colors.white,
+                  color: Theme.of(context).cardTheme.color,
                 ),
                 child: TextField(
                   controller: _messageController,
@@ -283,7 +290,7 @@ class _CommercialActionBottomSheetState
                 child: ElevatedButton(
                   onPressed: _canSubmit() ? _handleSubmit : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
+                    backgroundColor: AppColors.primaryPurple,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -317,28 +324,35 @@ class _CommercialActionBottomSheetState
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+            color: Theme.of(context).textTheme.bodySmall?.color,
           ),
         ),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkCardBackground.withOpacity(0.5)
+                : AppColors.lightCardBackground,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.grey.shade300,
+            ),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 18, color: Colors.grey.shade600),
+              Icon(icon, size: 18, color: Theme.of(context).iconTheme.color),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   value,
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
               ),
             ],

@@ -281,7 +281,12 @@ class _SuiviPageState extends State<SuiviPage>
             const SizedBox(height: 16),
             Text(
               'Aucun rendez-vous',
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withOpacity(0.7)
+                    : Colors.grey.shade600,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -349,7 +354,9 @@ class _SuiviPageState extends State<SuiviPage>
                     ).format(reservation.reservedAt),
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey.shade700,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white.withOpacity(0.7)
+                          : Colors.grey.shade700,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -389,10 +396,14 @@ class _SuiviPageState extends State<SuiviPage>
                         children: [
                           Text(
                             reservation.clientFullName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 17,
-                              color: Color(0xFF1E293B),
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white.withOpacity(0.9)
+                                  : Colors.grey.shade800,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -400,7 +411,11 @@ class _SuiviPageState extends State<SuiviPage>
                             reservation.clientPhone,
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey.shade700,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white.withOpacity(0.7)
+                                  : Colors.grey.shade700,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -432,14 +447,18 @@ class _SuiviPageState extends State<SuiviPage>
                             ? Icons.call_received
                             : Icons.call_made,
                         size: 16,
-                        color: Colors.blue.shade700,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withOpacity(0.8)
+                            : Colors.blue.shade800,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         reservation.callDirectionDisplay,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.blue.shade700,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withOpacity(0.8)
+                              : Colors.blue.shade800,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -484,17 +503,25 @@ class _SuiviPageState extends State<SuiviPage>
                               'Agent Commercial',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withOpacity(0.8)
+                                    : Colors.grey.shade700,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               reservation.agentCommercial!.name ?? 'N/A',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
-                                color: Color(0xFF1E293B),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withOpacity(0.9)
+                                    : Colors.grey.shade800,
                               ),
                             ),
                             if (reservation.agentCommercial!.phone != null) ...[
@@ -503,7 +530,11 @@ class _SuiviPageState extends State<SuiviPage>
                                 reservation.agentCommercial!.phone!,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey.shade700,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white.withOpacity(0.7)
+                                      : Colors.grey.shade700,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -546,9 +577,12 @@ class _SuiviPageState extends State<SuiviPage>
                       Expanded(
                         child: Text(
                           reservation.message!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF1E293B),
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white.withOpacity(0.9)
+                                : Colors.grey.shade800,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

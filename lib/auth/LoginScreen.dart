@@ -194,13 +194,35 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextFormField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Entrez votre email',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFFF5F5F5),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF9333EA),
+                                    width: 2,
+                                  ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -232,13 +254,35 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Entrez votre mot de passe',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFFF5F5F5),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF9333EA),
+                                    width: 2,
+                                  ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -249,6 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     _obscurePassword
                                         ? Icons.visibility_off
                                         : Icons.visibility,
+                                    color: Colors.grey.shade600,
                                   ),
                                   onPressed: () => setState(
                                     () => _obscurePassword = !_obscurePassword,

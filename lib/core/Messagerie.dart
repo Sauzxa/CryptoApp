@@ -8,6 +8,7 @@ import 'package:CryptoApp/core/messagerie/CreateRoomPage.dart';
 import 'package:CryptoApp/core/messagerie/MessageRoom.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:intl/intl.dart';
+import '../utils/colors.dart';
 
 class MessageriePage extends StatefulWidget {
   const MessageriePage({Key? key}) : super(key: key);
@@ -366,7 +367,7 @@ class _MessageriePageState extends State<MessageriePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: ClipRRect(
@@ -374,15 +375,13 @@ class _MessageriePageState extends State<MessageriePage> {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: AppBar(
               backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.white.withOpacity(0.3),
+                  ? AppColors.glassEffectDark
+                  : AppColors.glassEffectLight,
               elevation: 0,
               leading: IconButton(
                 icon: Icon(
                   Icons.arrow_back,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
+                  color: Theme.of(context).iconTheme.color,
                 ),
                 onPressed: () {
                   Navigator.pop(context);
@@ -390,13 +389,7 @@ class _MessageriePageState extends State<MessageriePage> {
               ),
               title: Text(
                 'Messagerie',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
           ),
@@ -536,14 +529,10 @@ class _MessageriePageState extends State<MessageriePage> {
                     child: BottomNavigationBar(
                       type: BottomNavigationBarType.fixed,
                       backgroundColor: Colors.transparent,
-                      selectedItemColor:
-                          Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : const Color(0xFF6366F1),
-                      unselectedItemColor:
-                          Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white60
-                          : const Color(0xFF6366F1).withOpacity(0.5),
+                      selectedItemColor: AppColors.primaryPurple,
+                      unselectedItemColor: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color,
                       selectedFontSize: 10,
                       unselectedFontSize: 9,
                       currentIndex: _selectedIndex,
