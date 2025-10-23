@@ -27,7 +27,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   String? _errorMessage;
   List<UserModel> _agents = [];
 
-  // Timer for real-time elapsed time counter (updates every second)
+  // Timer for real-time elapsed time counter (synchronized with backend data)
   Timer? _updateTimer;
 
   @override
@@ -36,16 +36,23 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
     _fetchAgents();
     _setupSocketListeners();
 
+    // Start real-time counter that updates every second
+    _startRealTimeCounter();
+  }
+
+  void _startRealTimeCounter() {
     // Update UI every second for real-time elapsed time counter
     _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         // Only update if there are available agents to optimize performance
         final hasAvailableAgents = _agents.any(
-          (agent) => agent.availability == 'available',
+          (agent) =>
+              agent.availability == 'available' && agent.dateAvailable != null,
         );
         if (hasAvailableAgents) {
           setState(() {
             // This will rebuild the UI and update all time displays in real-time
+            // The elapsed time is calculated based on actual backend timestamps
           });
         }
       }
@@ -73,8 +80,19 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
             );
           }
         });
+
+        // Restart the real-time counter to ensure synchronization
+        _restartRealTimeCounter();
       }
     });
+  }
+
+  void _restartRealTimeCounter() {
+    // Cancel existing timer
+    _updateTimer?.cancel();
+
+    // Start new timer with fresh synchronization
+    _startRealTimeCounter();
   }
 
   Future<void> _fetchAgents() async {
@@ -102,6 +120,9 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
           _agents = response.data!;
           _isLoading = false;
         });
+
+        // Restart the real-time counter with fresh data
+        _restartRealTimeCounter();
       } else {
         setState(() {
           _errorMessage =
@@ -274,6 +295,11 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
 
     final now = DateTime.now();
     final difference = now.difference(dateAvailable);
+
+    // Ensure we don't show negative time (in case of clock sync issues)
+    if (difference.isNegative) {
+      return 'Statut: Disponible';
+    }
 
     // Calculate hours, minutes, seconds
     final hours = difference.inHours;
