@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cryptoimmobilierapp/utils/Routes.dart';
+import 'package:CryptoApp/utils/Routes.dart';
 import '../models/UserModel.dart';
 import '../api/api_client.dart';
 import '../providers/auth_provider.dart';

@@ -5,8 +5,8 @@ import 'package:call_log/call_log.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cryptoimmobilierapp/utils/Routes.dart';
-import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
+import 'package:CryptoApp/utils/Routes.dart';
+import 'package:CryptoApp/providers/auth_provider.dart';
 
 class GestionAppelsPage extends StatefulWidget {
   const GestionAppelsPage({Key? key}) : super(key: key);

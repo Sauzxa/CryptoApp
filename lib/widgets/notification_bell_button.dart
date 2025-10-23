@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cryptoimmobilierapp/services/notification_service.dart';
-import 'package:cryptoimmobilierapp/widgets/notification_panel.dart';
+import 'package:CryptoApp/services/notification_service.dart';
+import 'package:CryptoApp/widgets/notification_panel.dart';
 
 class NotificationBellButton extends StatefulWidget {
   const NotificationBellButton({Key? key}) : super(key: key);

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:cryptoimmobilierapp/onboarding/welcomeScreen.dart';
-import 'package:cryptoimmobilierapp/auth/SingUp.dart';
-import 'package:cryptoimmobilierapp/auth/LoginScreen.dart';
-import 'package:cryptoimmobilierapp/core/HomePage.dart';
-import 'package:cryptoimmobilierapp/core/Messagerie.dart';
-import 'package:cryptoimmobilierapp/core/GestionAppels.dart';
-import 'package:cryptoimmobilierapp/core/Rendez-vous/ReserverRendezVous.dart';
-import 'package:cryptoimmobilierapp/core/Rendez-vous/Reservations.dart';
-import 'package:cryptoimmobilierapp/core/AgentTerrain.dart';
-import 'package:cryptoimmobilierapp/core/Profile/ProfileSettings.dart';
-import 'package:cryptoimmobilierapp/core/Suivi/SuiviPage.dart';
-import 'package:cryptoimmobilierapp/core/Suivi/CommercialSuiviPage.dart';
+import 'package:CryptoApp/onboarding/welcomeScreen.dart';
+import 'package:CryptoApp/auth/SingUp.dart';
+import 'package:CryptoApp/auth/LoginScreen.dart';
+import 'package:CryptoApp/core/HomePage.dart';
+import 'package:CryptoApp/core/Messagerie.dart';
+import 'package:CryptoApp/core/GestionAppels.dart';
+import 'package:CryptoApp/core/Rendez-vous/ReserverRendezVous.dart';
+import 'package:CryptoApp/core/Rendez-vous/Reservations.dart';
+import 'package:CryptoApp/core/AgentTerrain.dart';
+import 'package:CryptoApp/core/Profile/ProfileSettings.dart';
+import 'package:CryptoApp/core/Suivi/SuiviPage.dart';
+import 'package:CryptoApp/core/Suivi/CommercialSuiviPage.dart';
 
 class AppRoutes {
   // Route names

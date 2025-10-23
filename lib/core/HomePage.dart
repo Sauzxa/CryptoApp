@@ -2,13 +2,13 @@ import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cryptoimmobilierapp/utils/Routes.dart';
-import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
-import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
-import 'package:cryptoimmobilierapp/api/api_client.dart';
-import 'package:cryptoimmobilierapp/services/socket_service.dart';
+import 'package:CryptoApp/utils/Routes.dart';
+import 'package:CryptoApp/providers/auth_provider.dart';
+import 'package:CryptoApp/providers/messaging_provider.dart';
+import 'package:CryptoApp/api/api_client.dart';
+import 'package:CryptoApp/services/socket_service.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:cryptoimmobilierapp/widgets/notification_bell_button.dart';
+import 'package:CryptoApp/widgets/notification_bell_button.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);

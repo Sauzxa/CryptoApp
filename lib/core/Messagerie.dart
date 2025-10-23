@@ -1,11 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cryptoimmobilierapp/utils/Routes.dart';
-import 'package:cryptoimmobilierapp/providers/auth_provider.dart';
-import 'package:cryptoimmobilierapp/providers/messaging_provider.dart';
-import 'package:cryptoimmobilierapp/core/messagerie/CreateRoomPage.dart';
-import 'package:cryptoimmobilierapp/core/messagerie/MessageRoom.dart';
+import 'package:CryptoApp/utils/Routes.dart';
+import 'package:CryptoApp/providers/auth_provider.dart';
+import 'package:CryptoApp/providers/messaging_provider.dart';
+import 'package:CryptoApp/core/messagerie/CreateRoomPage.dart';
+import 'package:CryptoApp/core/messagerie/MessageRoom.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:intl/intl.dart';
 
