@@ -27,7 +27,7 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
   String? _errorMessage;
   List<UserModel> _agents = [];
 
-  // Timer for updating elapsed time display
+  // Timer for real-time elapsed time counter (updates every second)
   Timer? _updateTimer;
 
   @override
@@ -36,12 +36,18 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
     _fetchAgents();
     _setupSocketListeners();
 
-    // Update UI every 30 seconds to refresh elapsed time (more efficient)
-    _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    // Update UI every second for real-time elapsed time counter
+    _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
-        setState(() {
-          // This will rebuild the UI and update all time displays
-        });
+        // Only update if there are available agents to optimize performance
+        final hasAvailableAgents = _agents.any(
+          (agent) => agent.availability == 'available',
+        );
+        if (hasAvailableAgents) {
+          setState(() {
+            // This will rebuild the UI and update all time displays in real-time
+          });
+        }
       }
     });
   }
@@ -346,16 +352,44 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        availabilityText,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color:
-                              (isAvailable
-                                      ? const Color(0xFF10B981)
-                                      : const Color(0xFFEF4444))
-                                  .withOpacity(0.8),
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            availabilityText,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color:
+                                  (isAvailable
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFFEF4444))
+                                      .withOpacity(0.8),
+                            ),
+                          ),
+                          if (isAvailable && agent.dateAvailable != null) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                              child: TweenAnimationBuilder<double>(
+                                duration: const Duration(seconds: 1),
+                                tween: Tween(begin: 0.0, end: 1.0),
+                                builder: (context, value, child) {
+                                  return Opacity(opacity: value, child: child);
+                                },
+                                onEnd: () {
+                                  // Restart animation
+                                  if (mounted) {
+                                    setState(() {});
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
