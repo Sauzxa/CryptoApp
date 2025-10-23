@@ -1,6 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -15,13 +14,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class FirebaseNotificationService {
-  static final FirebaseNotificationService _instance = FirebaseNotificationService._internal();
+  static final FirebaseNotificationService _instance =
+      FirebaseNotificationService._internal();
   factory FirebaseNotificationService() => _instance;
   FirebaseNotificationService._internal();
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
 
@@ -32,16 +33,18 @@ class FirebaseNotificationService {
   Future<void> initialize() async {
     try {
       // Request permission (iOS)
-      NotificationSettings settings = await _firebaseMessaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
+      NotificationSettings settings = await _firebaseMessaging
+          .requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+            provisional: false,
+          );
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         print('✅ User granted notification permission');
-      } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.provisional) {
         print('⚠️ User granted provisional notification permission');
       } else {
         print('❌ User declined notification permission');
@@ -52,7 +55,9 @@ class FirebaseNotificationService {
       await _initializeLocalNotifications();
 
       // Set background message handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
 
       // Get FCM token
       _fcmToken = await _firebaseMessaging.getToken();
@@ -73,7 +78,8 @@ class FirebaseNotificationService {
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
       // Check if app was opened from a terminated state
-      RemoteMessage? initialMessage = await _firebaseMessaging.getInitialMessage();
+      RemoteMessage? initialMessage = await _firebaseMessaging
+          .getInitialMessage();
       if (initialMessage != null) {
         _handleNotificationTap(initialMessage);
       }
@@ -86,13 +92,15 @@ class FirebaseNotificationService {
 
   /// Initialize local notifications
   Future<void> _initializeLocalNotifications() async {
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    const DarwinInitializationSettings iosSettings =
+        DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
 
     const InitializationSettings initSettings = InitializationSettings(
       android: androidSettings,
@@ -104,19 +112,49 @@ class FirebaseNotificationService {
       onDidReceiveNotificationResponse: _onLocalNotificationTap,
     );
 
-    // Create Android notification channel
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'reservation_notifications',
-      'Reservation Notifications',
-      description: 'Notifications for reservations and appointments',
-      importance: Importance.high,
-      playSound: true,
-      enableVibration: true,
-    );
+    // Create Android notification channels
+    const List<AndroidNotificationChannel> channels = [
+      AndroidNotificationChannel(
+        'reservation_notifications',
+        'Reservation Notifications',
+        description: 'Notifications for reservations and appointments',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      ),
+      AndroidNotificationChannel(
+        'agent_availability',
+        'Agent Availability',
+        description: 'Notifications for agent availability updates',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      ),
+      AndroidNotificationChannel(
+        'messages',
+        'Messages',
+        description: 'Notifications for new messages',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      ),
+      AndroidNotificationChannel(
+        'reminders',
+        'Reminders',
+        description: 'Availability and calendar reminders',
+        importance: Importance.defaultImportance,
+        playSound: true,
+        enableVibration: true,
+      ),
+    ];
 
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    for (final channel in channels) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(channel);
+    }
   }
 
   /// Send FCM token to backend (public method for manual calls)
@@ -188,14 +226,15 @@ class FirebaseNotificationService {
     required String body,
     String? payload,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'reservation_notifications',
-      'Reservation Notifications',
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-    );
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'reservation_notifications',
+          'Reservation Notifications',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+        );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -238,7 +277,7 @@ class FirebaseNotificationService {
   /// Navigate based on notification data
   void _navigateBasedOnData(Map<String, dynamic> data) {
     final type = data['type'];
-    
+
     if (onNotificationTap != null) {
       switch (type) {
         case 'reservation_assigned':
@@ -253,7 +292,27 @@ class FirebaseNotificationService {
           }
           break;
         case 'agent_available_again':
+        case 'agent_available':
           onNotificationTap!('/suivi', data);
+          break;
+        case 'message_received':
+          final roomId = data['roomId'];
+          if (roomId != null) {
+            onNotificationTap!('/messagerie', {'roomId': roomId});
+          } else {
+            onNotificationTap!('/messagerie', data);
+          }
+          break;
+        case 'availability_reminder':
+          onNotificationTap!('/profile', data);
+          break;
+        case 'suivi_reminder':
+          final reservationId = data['reservationId'];
+          if (reservationId != null) {
+            onNotificationTap!('/reservation-details', {'id': reservationId});
+          } else {
+            onNotificationTap!('/suivi', data);
+          }
           break;
         default:
           onNotificationTap!('/home', data);
@@ -315,8 +374,73 @@ class FirebaseNotificationService {
     await _showLocalNotification(
       title: '✅ Vous êtes disponible',
       body: 'Votre statut a été changé à disponible',
+      payload: json.encode({'type': 'agent_available_again'}),
+    );
+  }
+
+  /// Show agent available notification (for commercial agents)
+  Future<void> showAgentAvailable({
+    required String agentName,
+    required String agentId,
+  }) async {
+    await _showLocalNotification(
+      title: '🟢 Agent disponible',
+      body: '$agentName est maintenant disponible',
       payload: json.encode({
-        'type': 'agent_available_again',
+        'type': 'agent_available',
+        'agentName': agentName,
+        'agentId': agentId,
+      }),
+    );
+  }
+
+  /// Show message notification
+  Future<void> showMessageNotification({
+    required String senderName,
+    required String messageText,
+    required String roomName,
+    required String roomId,
+  }) async {
+    await _showLocalNotification(
+      title: '💬 Nouveau message',
+      body:
+          '$senderName: ${messageText.length > 50 ? messageText.substring(0, 50) + '...' : messageText}',
+      payload: json.encode({
+        'type': 'message_received',
+        'senderName': senderName,
+        'messageText': messageText,
+        'roomName': roomName,
+        'roomId': roomId,
+      }),
+    );
+  }
+
+  /// Show availability reminder notification
+  Future<void> showAvailabilityReminder({required String agentName}) async {
+    await _showLocalNotification(
+      title: '⏰ Rappel de disponibilité',
+      body: 'N\'oubliez pas de mettre à jour votre disponibilité',
+      payload: json.encode({
+        'type': 'availability_reminder',
+        'agentName': agentName,
+      }),
+    );
+  }
+
+  /// Show suivi reminder notification
+  Future<void> showSuiviReminder({
+    required String clientName,
+    required String reservedAt,
+    required String reservationId,
+  }) async {
+    await _showLocalNotification(
+      title: '📅 Rappel Suivi',
+      body: 'Vous avez un suivi aujourd\'hui avec $clientName',
+      payload: json.encode({
+        'type': 'suivi_reminder',
+        'clientName': clientName,
+        'reservedAt': reservedAt,
+        'reservationId': reservationId,
       }),
     );
   }
@@ -330,9 +454,7 @@ class FirebaseNotificationService {
 
       await http.delete(
         Uri.parse('${ApiEndpoints.baseUrl}/api/notifications/fcm-token'),
-        headers: {
-          'Authorization': 'Bearer $authToken',
-        },
+        headers: {'Authorization': 'Bearer $authToken'},
       );
 
       await _firebaseMessaging.deleteToken();
