@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:provider/provider.dart';
+import 'package:CryptoApp/providers/notification_provider.dart';
 
 class NotificationPanel extends StatefulWidget {
-  final List<Map<String, dynamic>> notifications;
+  final List<NotificationModel> notifications;
   final Function(String) onMarkAsRead;
   final VoidCallback onClearAll;
 
@@ -54,10 +56,10 @@ class _NotificationPanelState extends State<NotificationPanel>
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final unreadNotifications = widget.notifications
-        .where((n) => n['read'] == false)
+        .where((n) => !n.read)
         .toList();
     final readNotifications = widget.notifications
-        .where((n) => n['read'] == true)
+        .where((n) => n.read)
         .toList();
 
     return GestureDetector(
@@ -268,16 +270,19 @@ class _NotificationPanelState extends State<NotificationPanel>
   }
 
   Widget _buildNotificationItem(
-    Map<String, dynamic> notification,
+    NotificationModel notification,
     bool isDarkMode, {
     required bool isUnread,
   }) {
-    final timestamp = DateTime.parse(notification['timestamp']);
-    final timeAgo = timeago.format(timestamp, locale: 'fr');
+    final timeAgo = timeago.format(notification.createdAt, locale: 'fr');
+    final notificationProvider = Provider.of<NotificationProvider>(
+      context,
+      listen: false,
+    );
 
     return InkWell(
       onTap: () {
-        widget.onMarkAsRead(notification['id']);
+        widget.onMarkAsRead(notification.id);
         setState(() {});
       },
       child: Container(
@@ -285,8 +290,12 @@ class _NotificationPanelState extends State<NotificationPanel>
         decoration: BoxDecoration(
           color: isUnread
               ? (isDarkMode
-                    ? const Color(0xFF6366F1).withOpacity(0.1)
-                    : const Color(0xFF6366F1).withOpacity(0.05))
+                    ? notificationProvider
+                          .getNotificationColor(notification.type)
+                          .withOpacity(0.1)
+                    : notificationProvider
+                          .getNotificationColor(notification.type)
+                          .withOpacity(0.05))
               : Colors.transparent,
           border: Border(
             bottom: BorderSide(
@@ -305,12 +314,16 @@ class _NotificationPanelState extends State<NotificationPanel>
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withOpacity(0.1),
+                color: notificationProvider
+                    .getNotificationColor(notification.type)
+                    .withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.person,
-                color: Color(0xFF6366F1),
+              child: Icon(
+                notificationProvider.getNotificationIcon(notification.type),
+                color: notificationProvider.getNotificationColor(
+                  notification.type,
+                ),
                 size: 24,
               ),
             ),
@@ -325,7 +338,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                     children: [
                       Expanded(
                         child: Text(
-                          'Agent disponible',
+                          notification.title,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -339,8 +352,10 @@ class _NotificationPanelState extends State<NotificationPanel>
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF6366F1),
+                          decoration: BoxDecoration(
+                            color: notificationProvider.getNotificationColor(
+                              notification.type,
+                            ),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -348,7 +363,7 @@ class _NotificationPanelState extends State<NotificationPanel>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    notification['message'],
+                    notification.message,
                     style: TextStyle(
                       fontSize: 14,
                       color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
@@ -389,7 +404,7 @@ class _NotificationPanelState extends State<NotificationPanel>
               ),
               onSelected: (value) {
                 if (value == 'mark_read') {
-                  widget.onMarkAsRead(notification['id']);
+                  widget.onMarkAsRead(notification.id);
                   setState(() {});
                 }
               },
@@ -419,7 +434,7 @@ class _NotificationPanelState extends State<NotificationPanel>
 // Helper function to show the notification panel
 void showNotificationPanel(
   BuildContext context, {
-  required List<Map<String, dynamic>> notifications,
+  required List<NotificationModel> notifications,
   required Function(String) onMarkAsRead,
   required VoidCallback onClearAll,
 }) {
@@ -435,11 +450,9 @@ void showNotificationPanel(
         builder: (context, scrollController) {
           final isDarkMode = Theme.of(context).brightness == Brightness.dark;
           final unreadNotifications = notifications
-              .where((n) => n['read'] == false)
+              .where((n) => !n.read)
               .toList();
-          final readNotifications = notifications
-              .where((n) => n['read'] == true)
-              .toList();
+          final readNotifications = notifications.where((n) => n.read).toList();
 
           return Container(
             decoration: BoxDecoration(
@@ -538,6 +551,7 @@ void showNotificationPanel(
                               ),
                               ...unreadNotifications.map(
                                 (notification) => _buildNotificationItemSimple(
+                                  context,
                                   notification,
                                   isDarkMode,
                                   onMarkAsRead,
@@ -566,6 +580,7 @@ void showNotificationPanel(
                               ),
                               ...readNotifications.map(
                                 (notification) => _buildNotificationItemSimple(
+                                  context,
                                   notification,
                                   isDarkMode,
                                   onMarkAsRead,
@@ -622,23 +637,31 @@ Widget _buildEmptyStateSimple(bool isDarkMode) {
 }
 
 Widget _buildNotificationItemSimple(
-  Map<String, dynamic> notification,
+  BuildContext context,
+  NotificationModel notification,
   bool isDarkMode,
   Function(String) onMarkAsRead, {
   required bool isUnread,
 }) {
-  final timestamp = DateTime.parse(notification['timestamp']);
-  final timeAgo = timeago.format(timestamp, locale: 'fr');
+  final timeAgo = timeago.format(notification.createdAt, locale: 'fr');
+  final notificationProvider = Provider.of<NotificationProvider>(
+    context,
+    listen: false,
+  );
 
   return InkWell(
-    onTap: () => onMarkAsRead(notification['id']),
+    onTap: () => onMarkAsRead(notification.id),
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isUnread
             ? (isDarkMode
-                  ? const Color(0xFF6366F1).withOpacity(0.1)
-                  : const Color(0xFF6366F1).withOpacity(0.05))
+                  ? notificationProvider
+                        .getNotificationColor(notification.type)
+                        .withOpacity(0.1)
+                  : notificationProvider
+                        .getNotificationColor(notification.type)
+                        .withOpacity(0.05))
             : Colors.transparent,
         border: Border(
           bottom: BorderSide(
@@ -657,10 +680,18 @@ Widget _buildNotificationItemSimple(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFF6366F1).withOpacity(0.1),
+              color: notificationProvider
+                  .getNotificationColor(notification.type)
+                  .withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.person, color: Color(0xFF6366F1), size: 24),
+            child: Icon(
+              notificationProvider.getNotificationIcon(notification.type),
+              color: notificationProvider.getNotificationColor(
+                notification.type,
+              ),
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           // Content
@@ -672,7 +703,7 @@ Widget _buildNotificationItemSimple(
                   children: [
                     Expanded(
                       child: Text(
-                        'Agent disponible',
+                        notification.title,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -686,8 +717,10 @@ Widget _buildNotificationItemSimple(
                       Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF6366F1),
+                        decoration: BoxDecoration(
+                          color: notificationProvider.getNotificationColor(
+                            notification.type,
+                          ),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -695,7 +728,7 @@ Widget _buildNotificationItemSimple(
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  notification['message'],
+                  notification.message,
                   style: TextStyle(
                     fontSize: 14,
                     color: isDarkMode ? Colors.white70 : Colors.grey.shade700,

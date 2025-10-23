@@ -2,6 +2,7 @@ import 'package:CryptoApp/onboarding/welcomeScreen.dart';
 import 'package:CryptoApp/utils/Routes.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import 'package:CryptoApp/providers/messaging_provider.dart';
+import 'package:CryptoApp/providers/notification_provider.dart';
 import 'package:CryptoApp/core/HomePage.dart';
 import 'package:CryptoApp/services/firebase_notification_service.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => MessagingProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
