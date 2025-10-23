@@ -57,13 +57,14 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     _joinSocketRoom();
     _setupSocketListeners();
 
-    // Initialize waveform recorder controller with better quality settings
+    // Initialize waveform recorder controller with optimized quality settings
     _recorderController = RecorderController()
       ..androidEncoder = AndroidEncoder.aac
       ..androidOutputFormat = AndroidOutputFormat.mpeg4
       ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-      ..sampleRate = 44100
-      ..bitRate = 128000;
+      ..sampleRate =
+          48000 // Higher sample rate for better quality
+      ..bitRate = 192000; // Higher bitrate for better quality
 
     // Listen for audio player state changes
     _audioPlayer.onPlayerStateChanged.listen((ap.PlayerState state) {
@@ -363,17 +364,18 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       final path =
           '${directory.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-      // Start both audio recorder and waveform recorder
+      // Start both audio recorder and waveform recorder with optimized settings
       await Future.wait([
         _audioRecorder.start(
           const RecordConfig(
             encoder: AudioEncoder.aacLc,
-            bitRate: 128000,
-            sampleRate: 44100,
+            bitRate: 192000, // Higher bitrate for better quality
+            sampleRate: 48000, // Higher sample rate for better quality
             numChannels: 1, // Mono for voice
-            autoGain: true, // Auto gain control
-            echoCancel: true, // Echo cancellation
-            noiseSuppress: true, // Noise suppression
+            autoGain: false, // Disable auto gain to prevent cutting
+            echoCancel: false, // Disable echo cancellation to prevent artifacts
+            noiseSuppress:
+                false, // Disable noise suppression to prevent cutting
           ),
           path: path,
         ),
@@ -573,7 +575,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           await _audioPlayer.stop();
         }
 
-        // Start playing
+        // Start playing with optimized settings
         final voiceUrl = message.voiceUrl;
         if (voiceUrl != null && voiceUrl.isNotEmpty) {
           // Construct full URL if it's a relative path
@@ -581,7 +583,13 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               ? voiceUrl
               : '${ApiEndpoints.baseUrl}$voiceUrl';
 
+          // Configure audio player for better quality playback
+          await _audioPlayer.setVolume(1.0); // Full volume
+          await _audioPlayer.setPlaybackRate(1.0); // Normal playback rate
+
+          // Play with high quality settings
           await _audioPlayer.play(ap.UrlSource(fullUrl));
+
           if (!mounted) return;
           setState(() {
             _currentlyPlayingMessageId = message.id;
