@@ -322,19 +322,30 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF0A192F) // Dark blue background
+            : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isAvailable
-              ? const Color(0xFF10B981).withOpacity(0.3)
-              : const Color(0xFFEF4444).withOpacity(0.3),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.1)
+              : (isAvailable
+                    ? const Color(0xFF10B981).withOpacity(0.3)
+                    : const Color(0xFFEF4444).withOpacity(0.3)),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black.withOpacity(0.3)
+                : Colors.black.withOpacity(0.05),
+            blurRadius: Theme.of(context).brightness == Brightness.dark
+                ? 15
+                : 8,
             offset: const Offset(0, 2),
+            spreadRadius: Theme.of(context).brightness == Brightness.dark
+                ? 1
+                : 0,
           ),
         ],
       ),
@@ -454,10 +465,12 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                     children: [
                       Text(
                         agent.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF1F2937),
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : const Color(0xFF1F2937),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -466,14 +479,21 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                           Icon(
                             Icons.phone_outlined,
                             size: 14,
-                            color: Colors.grey.shade600,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade600,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             agent.phone,
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.grey.shade600,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey.shade300
+                                  : Colors.grey.shade600,
                             ),
                           ),
                         ],
@@ -578,16 +598,35 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                     _searchQuery = value;
                   });
                 },
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black87,
+                  fontSize: 16,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Rechercher par nom ou téléphone',
                   hintStyle: TextStyle(
-                    color: Colors.grey.shade400,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.6)
+                        : Colors.grey.shade400,
                     fontSize: 14,
                   ),
-                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.grey.shade600,
+                  ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear),
+                          icon: Icon(
+                            Icons.clear,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.grey.shade600,
+                          ),
                           onPressed: () {
                             _searchController.clear();
                             setState(() {
@@ -597,7 +636,9 @@ class _AgentTerrainPageState extends State<AgentTerrainPage> {
                         )
                       : null,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade800
+                      : Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,

@@ -156,13 +156,25 @@ class _MessageriePageState extends State<MessageriePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF0A192F) // Dark blue background
+            : Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Theme.of(context).brightness == Brightness.dark
+            ? Border.all(color: Colors.white.withOpacity(0.1), width: 1)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black.withOpacity(0.3)
+                : Colors.black.withOpacity(0.05),
+            blurRadius: Theme.of(context).brightness == Brightness.dark
+                ? 15
+                : 10,
             offset: const Offset(0, 2),
+            spreadRadius: Theme.of(context).brightness == Brightness.dark
+                ? 1
+                : 0,
           ),
         ],
       ),
@@ -213,10 +225,14 @@ class _MessageriePageState extends State<MessageriePage> {
                               room.clientFullName != null) ...[
                             Text(
                               room.clientFullName!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1F2937),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : const Color(0xFF1F2937),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -225,10 +241,14 @@ class _MessageriePageState extends State<MessageriePage> {
                             // Fallback to room name for non-reservation rooms
                             Text(
                               room.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1F2937),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : const Color(0xFF1F2937),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -281,7 +301,11 @@ class _MessageriePageState extends State<MessageriePage> {
                                         : '${room.members.length} membres',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color:
+                                          Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.grey.shade300
+                                          : Colors.grey.shade600,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -297,7 +321,11 @@ class _MessageriePageState extends State<MessageriePage> {
                                     timeAgo,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color:
+                                          Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.grey.shade300
+                                          : Colors.grey.shade600,
                                     ),
                                   ),
                                   if (isReservationRoom &&
@@ -309,7 +337,11 @@ class _MessageriePageState extends State<MessageriePage> {
                                       ).format(room.createdAt!),
                                       style: TextStyle(
                                         fontSize: 10,
-                                        color: Colors.grey.shade500,
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade500,
                                       ),
                                     ),
                                   ],

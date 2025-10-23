@@ -368,13 +368,25 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF0A192F) // Dark blue background
+            : Colors.white,
         borderRadius: BorderRadius.circular(15),
+        border: Theme.of(context).brightness == Brightness.dark
+            ? Border.all(color: Colors.white.withOpacity(0.1), width: 1)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black.withOpacity(0.3)
+                : Colors.black.withOpacity(0.05),
+            blurRadius: Theme.of(context).brightness == Brightness.dark
+                ? 15
+                : 5,
             offset: const Offset(0, 2),
+            spreadRadius: Theme.of(context).brightness == Brightness.dark
+                ? 1
+                : 0,
           ),
         ],
       ),
@@ -402,10 +414,12 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
               children: [
                 Text(
                   call.name ?? call.number ?? 'Inconnu',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -414,7 +428,12 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
                 if (call.name != null && call.number != null)
                   Text(
                     call.number!,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey.shade300
+                          : Colors.grey.shade600,
+                    ),
                   ),
                 const SizedBox(height: 2),
                 Row(
@@ -428,13 +447,22 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                    Text(
+                      '•',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade400,
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       _formatDateTime(call.timestamp),
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade300
+                            : Colors.grey.shade600,
                       ),
                     ),
                   ],
@@ -447,7 +475,9 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
                       : 'Durée: ${_formatDuration(call.duration)}',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade500,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade500,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -477,7 +507,15 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey),
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected
+                ? Colors.white
+                : Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey.shade300
+                : Colors.grey,
+          ),
           const SizedBox(width: 4),
           Text(label),
         ],
@@ -487,9 +525,15 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
         _onFilterChanged(value);
       },
       selectedColor: const Color(0xFF6366F1),
-      backgroundColor: Colors.grey.shade200,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.grey.shade800
+          : Colors.grey.shade200,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black87,
+        color: isSelected
+            ? Colors.white
+            : Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black87,
         fontSize: 12,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -568,12 +612,33 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
           child: TextField(
             controller: _searchController,
             onChanged: _onSearchChanged,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+              fontSize: 16,
+            ),
             decoration: InputDecoration(
               hintText: 'Rechercher par nom ou numéro...',
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF6366F1)),
+              hintStyle: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withOpacity(0.6)
+                    : Colors.grey.shade600,
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : const Color(0xFF6366F1),
+              ),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear),
+                      icon: Icon(
+                        Icons.clear,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : const Color(0xFF6366F1),
+                      ),
                       onPressed: () {
                         _searchController.clear();
                         _onSearchChanged('');
@@ -581,7 +646,9 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
                     )
                   : null,
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey.shade800
+                  : Colors.white,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
                 borderSide: BorderSide.none,
@@ -611,7 +678,12 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
             alignment: Alignment.centerLeft,
             child: Text(
               '${_filteredCallLogs.length} appel(s)',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade300
+                    : Colors.grey,
+              ),
             ),
           ),
         ),

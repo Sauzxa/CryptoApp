@@ -237,6 +237,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF0A192F) // Dark blue background
+            : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -254,19 +257,26 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Modifications enregistrées',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : const Color(0xFF1F2937),
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Votre profil a été mis à jour avec succès',
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade300
+                    : Colors.grey.shade600,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -303,19 +313,43 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF0A192F) // Dark blue background
+            : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Erreur'),
+            const Icon(Icons.error_outline, color: Colors.red),
+            const SizedBox(width: 8),
+            Text(
+              'Erreur',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+            ),
           ],
         ),
-        content: Text(message),
+        content: Text(
+          message,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey.shade300
+                : Colors.black87,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(
+              'OK',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : AppColors.primaryPurple,
+              ),
+            ),
           ),
         ],
       ),
