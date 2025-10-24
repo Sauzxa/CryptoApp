@@ -11,6 +11,8 @@ import 'package:CryptoApp/core/AgentTerrain.dart';
 import 'package:CryptoApp/core/Profile/ProfileSettings.dart';
 import 'package:CryptoApp/core/Suivi/SuiviPage.dart';
 import 'package:CryptoApp/core/Suivi/CommercialSuiviPage.dart';
+import 'package:CryptoApp/statistics/agentTerrinStats.dart';
+import 'package:CryptoApp/statistics/agentCommercielStats.dart';
 
 class AppRoutes {
   // Route names
@@ -26,6 +28,8 @@ class AppRoutes {
   static const String profileSettings = '/profile-settings';
   static const String suivi = '/suivi';
   static const String commercialSuivi = '/commercial-suivi';
+  static const String agentTerrainStats = '/agent-terrain-stats';
+  static const String agentCommercialStats = '/agent-commercial-stats';
 
   // Route generator
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -56,6 +60,10 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const SuiviPage());
       case commercialSuivi:
         return MaterialPageRoute(builder: (_) => const CommercialSuiviPage());
+      case agentTerrainStats:
+        return MaterialPageRoute(builder: (_) => const AgentTerrinStats());
+      case agentCommercialStats:
+        return MaterialPageRoute(builder: (_) => const AgentCommercielStats());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

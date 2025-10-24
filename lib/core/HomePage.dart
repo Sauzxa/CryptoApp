@@ -491,6 +491,46 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _navigateToStatistics() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (authProvider.isField) {
+      // Navigate to Agent Terrain Statistics
+      Navigator.pushNamed(context, AppRoutes.agentTerrainStats).then((_) {
+        setState(() {
+          _selectedIndex = 0;
+        });
+      });
+    } else if (authProvider.isCommercial) {
+      // Navigate to Agent Commercial Statistics
+      Navigator.pushNamed(context, AppRoutes.agentCommercialStats).then((_) {
+        setState(() {
+          _selectedIndex = 0;
+        });
+      });
+    } else {
+      // Show error message for other roles
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Statistiques non disponibles pour votre rôle',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -917,6 +957,9 @@ class _HomePageState extends State<HomePage> {
                     color: const Color(0xFF6366F1),
                     icon: Icons.analytics_outlined,
                     textColor: Colors.white,
+                    onTap: () {
+                      _navigateToStatistics();
+                    },
                   ),
                 ],
               ),

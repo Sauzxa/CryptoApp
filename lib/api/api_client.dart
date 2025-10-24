@@ -914,6 +914,152 @@ class ApiClient {
     }
   }
 
+  // Statistics Methods
+
+  /// Get terrain agent daily statistics
+  Future<ApiResponse<Map<String, dynamic>>> getTerrainDailyStats(
+    String token,
+    DateTime date, {
+    bool allAgents = false,
+  }) async {
+    try {
+      final dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final allAgentsParam = allAgents ? '&allAgents=true' : '';
+      final response = await _makeRequest(
+        'GET',
+        '${ApiEndpoints.reservations}/statistics?type=daily&date=$dateStr$allAgentsParam',
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: response.data!['data'],
+          message: response.data!['message'],
+          statusCode: response.statusCode,
+        );
+      }
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message:
+            response.message ?? 'Erreur lors du chargement des statistiques',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Erreur lors du chargement des statistiques: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get terrain agent monthly statistics
+  Future<ApiResponse<Map<String, dynamic>>> getTerrainMonthlyStats(
+    String token,
+    int month,
+    int day,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'GET',
+        '${ApiEndpoints.reservations}/statistics?type=monthly&month=$month&day=$day',
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: response.data!['data'],
+          message: response.data!['message'],
+          statusCode: response.statusCode,
+        );
+      }
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message:
+            response.message ?? 'Erreur lors du chargement des statistiques',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Erreur lors du chargement des statistiques: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get commercial agent daily statistics
+  Future<ApiResponse<Map<String, dynamic>>> getCommercialDailyStats(
+    String token,
+    DateTime date,
+  ) async {
+    try {
+      final dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final response = await _makeRequest(
+        'GET',
+        '${ApiEndpoints.reservations}/statistics?type=daily&date=$dateStr',
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: response.data!['data'],
+          message: response.data!['message'],
+          statusCode: response.statusCode,
+        );
+      }
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message:
+            response.message ?? 'Erreur lors du chargement des statistiques',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Erreur lors du chargement des statistiques: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get commercial agent monthly statistics
+  Future<ApiResponse<Map<String, dynamic>>> getCommercialMonthlyStats(
+    String token,
+    int month,
+    int day,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'GET',
+        '${ApiEndpoints.reservations}/statistics?type=monthly&month=$month&day=$day',
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          data: response.data!['data'],
+          message: response.data!['message'],
+          statusCode: response.statusCode,
+        );
+      }
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message:
+            response.message ?? 'Erreur lors du chargement des statistiques',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Erreur lors du chargement des statistiques: ${e.toString()}',
+      );
+    }
+  }
+
   // Dispose method to clean up resources
   void dispose() {
     _client.close();

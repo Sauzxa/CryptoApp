@@ -60,6 +60,10 @@ dependencies:
   firebase_messaging: ^16.0.3
   flutter_local_notifications: ^19.4.2
   flutter_launcher_icons: ^0.14.4
+  fl_chart: ^1.1.1
+  
+  # Charts
+ 
   
  
   
