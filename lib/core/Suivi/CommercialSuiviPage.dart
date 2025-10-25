@@ -3,10 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../../models/ReservationModel.dart';
+import '../../models/RoomModel.dart';
 import '../../api/api_client.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/messaging_provider.dart';
 import '../../services/socket_service.dart';
+import '../../services/messaging_service.dart';
 import '../../utils/colors.dart';
+import '../messagerie/MessageRoom.dart';
 
 class CommercialSuiviPage extends StatefulWidget {
   const CommercialSuiviPage({Key? key}) : super(key: key);
@@ -420,6 +424,78 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
               ),
             ],
 
+            // Commercial Action info
+            if (reservation.commercialAction != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkCardBackground.withOpacity(0.7)
+                      : Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.purple.shade200,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      reservation.commercialAction == 'paye'
+                          ? Icons.check_circle
+                          : reservation.commercialAction == 'en_cours'
+                          ? Icons.schedule
+                          : Icons.cancel,
+                      size: 16,
+                      color: reservation.commercialAction == 'paye'
+                          ? Colors.green
+                          : reservation.commercialAction == 'en_cours'
+                          ? Colors.orange
+                          : Colors.red,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Action: ${reservation.commercialActionDisplay}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white.withOpacity(0.9)
+                                  : Colors.grey.shade800,
+                            ),
+                          ),
+                          if (reservation.commercialActionMessage != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              reservation.commercialActionMessage!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withOpacity(0.7)
+                                    : Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Rapport info
             if (reservation.rapportState != null) ...[
               const SizedBox(height: 12),
@@ -487,10 +563,109 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                 ),
               ),
             ],
+
+            // Message button
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _openChatRoom(reservation),
+                icon: const Icon(Icons.message, size: 18),
+                label: const Text('Ouvrir la conversation'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _openChatRoom(ReservationModel reservation) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final messagingProvider = Provider.of<MessagingProvider>(
+        context,
+        listen: false,
+      );
+      final token = authProvider.token;
+
+      if (token == null) return;
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+        ),
+      );
+
+      // Fetch rooms
+      await messagingProvider.fetchRooms(token);
+
+      // Find reservation room
+      RoomModel? room;
+      try {
+        room = messagingProvider.rooms.firstWhere(
+          (r) =>
+              r.roomType == 'reservation' && r.reservationId == reservation.id,
+        );
+      } catch (e) {
+        // Room not found - create it
+        final agentCommercialId = reservation.agentCommercialId;
+        final agentTerrainId = reservation.agentTerrainId;
+
+        if (agentCommercialId != null && agentTerrainId != null) {
+          final roomResponse = await MessagingService.createReservationRoom(
+            token: token,
+            reservationId: reservation.id!,
+            agentCommercialId: agentCommercialId,
+            agentTerrainId: agentTerrainId,
+            clientName: reservation.clientFullName,
+          );
+
+          if (roomResponse['success'] && roomResponse.containsKey('room')) {
+            room = roomResponse['room'] as RoomModel;
+          }
+        }
+      }
+
+      // Close loading
+      if (mounted) Navigator.pop(context);
+
+      // Navigate if room found
+      if (room != null && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => MessageRoomPage(room: room!)),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible d\'ouvrir la conversation'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading if still open
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildCalendarView() {

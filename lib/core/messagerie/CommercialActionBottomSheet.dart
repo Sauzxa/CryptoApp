@@ -7,7 +7,11 @@ class CommercialActionBottomSheet extends StatefulWidget {
   final String clientPhone;
   final String agentCommercialName;
   final String agentTerrainName;
-  final Function(String action, String? newReservedAt, String? message)
+  final Future<void> Function(
+    String action,
+    String? newReservedAt,
+    String? message,
+  )
   onSubmit;
 
   const CommercialActionBottomSheet({
@@ -30,6 +34,7 @@ class _CommercialActionBottomSheetState
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   final TextEditingController _messageController = TextEditingController();
+  bool _isSubmitting = false;
 
   final Map<String, String> _actionLabels = {
     'en_cours': 'En Cours',
@@ -39,6 +44,8 @@ class _CommercialActionBottomSheetState
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -106,17 +113,41 @@ class _CommercialActionBottomSheetState
               const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.grey.shade300,
+                  ),
                   borderRadius: BorderRadius.circular(12),
-                  color: Colors.grey.shade50,
+                  color: isDark
+                      ? AppColors.darkCardBackground.withOpacity(0.5)
+                      : Colors.grey.shade50,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: _selectedAction,
-                    hint: const Text('Sélectionnez un état'),
-                    icon: const Icon(Icons.arrow_drop_down),
+                    hint: Text(
+                      'Sélectionnez un état',
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.5)
+                            : Colors.grey.shade400,
+                      ),
+                    ),
+                    icon: Icon(
+                      Icons.arrow_drop_down,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.7)
+                          : Colors.grey.shade600,
+                    ),
+                    dropdownColor: isDark
+                        ? AppColors.darkCardBackground
+                        : Colors.white,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
                     items: _actionLabels.entries.map((entry) {
                       IconData icon;
                       Color color;
@@ -143,7 +174,12 @@ class _CommercialActionBottomSheetState
                           children: [
                             Icon(icon, color: color, size: 20),
                             const SizedBox(width: 12),
-                            Text(entry.value),
+                            Text(
+                              entry.value,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
                           ],
                         ),
                       );
@@ -183,9 +219,15 @@ class _CommercialActionBottomSheetState
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.grey.shade300,
+                      ),
                       borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey.shade50,
+                      color: isDark
+                          ? AppColors.darkCardBackground.withOpacity(0.5)
+                          : Colors.grey.shade50,
                     ),
                     child: Row(
                       children: [
@@ -201,7 +243,9 @@ class _CommercialActionBottomSheetState
                           style: TextStyle(
                             fontSize: 16,
                             color: _selectedDate == null
-                                ? Colors.grey.shade600
+                                ? (isDark
+                                      ? Colors.white.withOpacity(0.5)
+                                      : Colors.grey.shade600)
                                 : Theme.of(
                                     context,
                                   ).textTheme.titleMedium?.color,
@@ -219,9 +263,15 @@ class _CommercialActionBottomSheetState
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.grey.shade300,
+                      ),
                       borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey.shade50,
+                      color: isDark
+                          ? AppColors.darkCardBackground.withOpacity(0.5)
+                          : Colors.grey.shade50,
                     ),
                     child: Row(
                       children: [
@@ -234,7 +284,9 @@ class _CommercialActionBottomSheetState
                           style: TextStyle(
                             fontSize: 16,
                             color: _selectedTime == null
-                                ? Colors.grey.shade600
+                                ? (isDark
+                                      ? Colors.white.withOpacity(0.5)
+                                      : Colors.grey.shade600)
                                 : Theme.of(
                                     context,
                                   ).textTheme.titleMedium?.color,
@@ -273,10 +325,18 @@ class _CommercialActionBottomSheetState
                 child: TextField(
                   controller: _messageController,
                   maxLines: 3,
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: InputDecoration(
                     hintText: 'Ajouter un commentaire...',
+                    hintStyle: TextStyle(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.5)
+                          : Colors.grey.shade400,
+                    ),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
+                    contentPadding: const EdgeInsets.all(16),
                     errorText: null,
                   ),
                 ),
@@ -288,7 +348,9 @@ class _CommercialActionBottomSheetState
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _canSubmit() ? _handleSubmit : null,
+                  onPressed: (_canSubmit() && !_isSubmitting)
+                      ? _handleSubmit
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryPurple,
                     foregroundColor: Colors.white,
@@ -299,15 +361,26 @@ class _CommercialActionBottomSheetState
                     elevation: 2,
                     disabledBackgroundColor: Colors.grey.shade300,
                   ),
-                  child: Text(
-                    _selectedAction == 'en_cours'
-                        ? 'Reprogrammer'
-                        : 'Soumettre',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          _selectedAction == 'en_cours'
+                              ? 'Reprogrammer'
+                              : 'Soumettre',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -407,30 +480,48 @@ class _CommercialActionBottomSheetState
     return true;
   }
 
-  void _handleSubmit() {
-    if (!_canSubmit()) return;
+  void _handleSubmit() async {
+    if (!_canSubmit() || _isSubmitting) return;
 
-    String? newReservedAt;
+    setState(() {
+      _isSubmitting = true;
+    });
 
-    if (_selectedAction == 'en_cours' &&
-        _selectedDate != null &&
-        _selectedTime != null) {
-      final newDate = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
-      );
-      newReservedAt = newDate.toIso8601String();
+    try {
+      String? newReservedAt;
+
+      if (_selectedAction == 'en_cours' &&
+          _selectedDate != null &&
+          _selectedTime != null) {
+        final newDate = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
+        );
+        newReservedAt = newDate.toIso8601String();
+      }
+
+      // Call the callback with message (always required now)
+      final message = _messageController.text.trim();
+
+      // Wait for the callback to complete
+      await widget.onSubmit(_selectedAction!, newReservedAt, message);
+
+      // Close the bottom sheet after submission
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      // If there's an error, reset the submitting state
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+      // Re-throw to let the caller handle the error
+      rethrow;
     }
-
-    // Call the callback with message (always required now)
-    final message = _messageController.text.trim();
-
-    widget.onSubmit(_selectedAction!, newReservedAt, message);
-
-    // Close the bottom sheet
-    Navigator.pop(context);
   }
 }

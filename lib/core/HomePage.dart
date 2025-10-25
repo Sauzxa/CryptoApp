@@ -19,17 +19,17 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _permissionRequested =
       false; // Track if permission was already requested
-  bool _canToggleAvailability = true; // Track if agent can toggle availability
   bool _isCheckingReservations = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Reset selected index when page loads
     _selectedIndex = 0;
     // Request permission on first load
@@ -42,8 +42,18 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _removeReservationListeners();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // When app comes to foreground, check availability again
+    if (state == AppLifecycleState.resumed) {
+      _checkActiveReservations();
+    }
   }
 
   void _setupReservationListeners() {
@@ -65,94 +75,8 @@ class _HomePageState extends State<HomePage> {
         if (mounted) _checkActiveReservations();
       });
 
-      // Listen for reservation rejected (agent can toggle availability again)
-      socket.on('reservation:rejected', (data) {
-        if (mounted) {
-          // If backend explicitly says toggle is enabled, force it
-          if (data['availabilityToggleEnabled'] == true) {
-            setState(() {
-              _canToggleAvailability = true;
-            });
-            // Delay check to allow backend to update
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted) _checkActiveReservations();
-            });
-          } else {
-            // Normal check without delay
-            _checkActiveReservations();
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(data['message'] ?? 'Réservation rejetée'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      });
-
-      // Listen for availability toggle enabled
-      socket.on('agent:availability_toggle_enabled', (data) {
-        if (mounted) {
-          // Force toggle enabled from backend
-          if (data['enabled'] == true) {
-            setState(() {
-              _canToggleAvailability = true;
-            });
-            // Delay check to allow backend to update
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted) _checkActiveReservations();
-            });
-          } else {
-            // Normal check without delay
-            _checkActiveReservations();
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['message'] ?? 'Vous pouvez modifier votre disponibilité',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      });
-
-      // Listen for agent status changed (availability updated from backend)
-      socket.on('agent:status_changed', (data) {
-        if (mounted) {
-          final availability = data['availability'];
-          if (availability != null) {
-            // Update user availability in AuthProvider
-            final authProvider = Provider.of<AuthProvider>(
-              context,
-              listen: false,
-            );
-            final currentUser = authProvider.currentUser;
-
-            if (currentUser != null) {
-              // Update user with new availability
-              final updatedUser = currentUser.copyWith(
-                availability: availability,
-                dateAvailable: DateTime.now(),
-              );
-              authProvider.updateUser(updatedUser);
-
-              // Enable/disable toggle based on availability
-              if (availability == 'available') {
-                // Enable toggle when agent becomes available
-                setState(() {
-                  _canToggleAvailability = true;
-                });
-              } else if (availability == 'not_available') {
-                // Check reservations to see if toggle should be disabled
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  if (mounted) _checkActiveReservations();
-                });
-              }
-            }
-          }
-        }
-      });
+      // AuthProvider handles socket events for toggle availability
+      // We only need to listen for reservation updates
     }
   }
 
@@ -163,12 +87,10 @@ class _HomePageState extends State<HomePage> {
       socket.off('reservation:updated');
       socket.off('reservation:assigned');
       socket.off('reservation:state_changed');
-      socket.off('reservation:rejected');
-      socket.off('agent:availability_toggle_enabled');
-      socket.off('agent:status_changed');
     }
   }
 
+  // Initialize toggle state when page loads
   Future<void> _checkActiveReservations() async {
     if (_isCheckingReservations || !mounted) return;
 
@@ -220,6 +142,7 @@ class _HomePageState extends State<HomePage> {
           debugPrint('✅ No reservations found → Toggle ENABLED');
         } else {
           // Agent has reservations → Check if any are blocking (assigned or in_progress)
+          // Backend handles rapport logic, frontend just checks state
           final blockingReservations = agentReservations
               .where(
                 (reservation) =>
@@ -249,8 +172,11 @@ class _HomePageState extends State<HomePage> {
         }
 
         if (mounted) {
+          Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          ).setCanToggleAvailability(canToggle);
           setState(() {
-            _canToggleAvailability = canToggle;
             _isCheckingReservations = false;
           });
           debugPrint(
@@ -263,9 +189,11 @@ class _HomePageState extends State<HomePage> {
           '⚠️ API call failed or no data - Enabling toggle by default',
         );
         if (mounted) {
+          Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          ).setCanToggleAvailability(true);
           setState(() {
-            _canToggleAvailability =
-                true; // Changed: Enable by default on error
             _isCheckingReservations = false;
           });
         }
@@ -274,8 +202,11 @@ class _HomePageState extends State<HomePage> {
       debugPrint('❌ Error checking reservations: $e');
       debugPrint('⚠️ Enabling toggle by default due to error');
       if (mounted) {
+        Provider.of<AuthProvider>(
+          context,
+          listen: false,
+        ).setCanToggleAvailability(true);
         setState(() {
-          _canToggleAvailability = true; // Enable by default on error
           _isCheckingReservations = false;
         });
       }
@@ -646,42 +577,67 @@ class _HomePageState extends State<HomePage> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            subtitle: Text(
-                              !_canToggleAvailability
-                                  ? 'Verrouillé (Rendez-vous en cours)'
-                                  : (user?.isAvailable == true
-                                        ? 'Disponible'
-                                        : 'Indisponible'),
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: !_canToggleAvailability
-                                    ? Colors.grey.shade600
+                            subtitle: Consumer<AuthProvider>(
+                              builder: (context, auth, _) => Text(
+                                !auth.canToggleAvailability
+                                    ? 'Verrouillé (Rendez-vous en cours)'
                                     : (user?.isAvailable == true
-                                          ? const Color(0xFF059669)
-                                          : const Color(0xFFE11D48)),
+                                          ? 'Disponible'
+                                          : 'Indisponible'),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: !auth.canToggleAvailability
+                                      ? Colors.grey.shade600
+                                      : (user?.isAvailable == true
+                                            ? const Color(0xFF059669)
+                                            : const Color(0xFFE11D48)),
+                                ),
                               ),
                             ),
-                            trailing: Switch(
-                              value: user?.isAvailable ?? false,
-                              onChanged: !_canToggleAvailability
-                                  ? null // Disabled - cannot change
-                                  : (value) async {
-                                      // Enabled - can change availability
-                                      if (!mounted) return;
+                            trailing: Consumer<AuthProvider>(
+                              builder: (context, auth, _) => Switch(
+                                value: user?.isAvailable ?? false,
+                                onChanged: !auth.canToggleAvailability
+                                    ? null // Disabled - cannot change
+                                    : (value) async {
+                                        // Enabled - can change availability
+                                        if (!mounted) return;
 
-                                      final availability = value
-                                          ? 'available'
-                                          : 'not_available';
+                                        final availability = value
+                                            ? 'available'
+                                            : 'not_available';
 
-                                      // Call the provider method
-                                      await authProvider.updateAvailability(
-                                        availability,
-                                      );
+                                        // Call the provider method
+                                        final success = await authProvider
+                                            .updateAvailability(availability);
 
-                                      // Check for active reservations after change
-                                      _checkActiveReservations();
-                                    },
-                              activeColor: const Color(0xFF059669),
+                                        if (!success && mounted) {
+                                          // Show error message if update failed
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                authProvider.errorMessage ??
+                                                    'Erreur lors de la mise à jour',
+                                              ),
+                                              backgroundColor: Colors.red,
+                                              duration: const Duration(
+                                                seconds: 3,
+                                              ),
+                                            ),
+                                          );
+                                          // Revert the switch state
+                                          setState(() {});
+                                        }
+
+                                        // Check for active reservations after change
+                                        if (success) {
+                                          _checkActiveReservations();
+                                        }
+                                      },
+                                activeColor: const Color(0xFF059669),
+                              ),
                             ),
                           ),
                         ],

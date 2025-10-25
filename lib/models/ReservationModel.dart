@@ -73,6 +73,7 @@ class ReservationModel {
   final String? rapportMessage;
   final String? rapportState; // 'potentiel', 'non_potentiel'
   final String? commercialAction; // 'paye', 'en_cours', 'annulee'
+  final String? commercialActionMessage; // Message from commercial action form
   final DateTime? assignedAt;
   final DateTime? completedAt;
   final DateTime? rapportSentAt;
@@ -97,6 +98,7 @@ class ReservationModel {
     this.rapportMessage,
     this.rapportState,
     this.commercialAction,
+    this.commercialActionMessage,
     this.assignedAt,
     this.completedAt,
     this.rapportSentAt,
@@ -136,6 +138,7 @@ class ReservationModel {
       rapportMessage: json['rapportMessage'],
       rapportState: json['rapportState'],
       commercialAction: json['commercialAction'],
+      commercialActionMessage: json['commercialActionMessage'],
       assignedAt: json['assignedAt'] != null
           ? DateTime.parse(json['assignedAt'])
           : null,
@@ -194,6 +197,7 @@ class ReservationModel {
     String? rapportMessage,
     String? rapportState,
     String? commercialAction,
+    String? commercialActionMessage,
     DateTime? assignedAt,
     DateTime? completedAt,
     DateTime? rapportSentAt,
@@ -218,6 +222,8 @@ class ReservationModel {
       rapportMessage: rapportMessage ?? this.rapportMessage,
       rapportState: rapportState ?? this.rapportState,
       commercialAction: commercialAction ?? this.commercialAction,
+      commercialActionMessage:
+          commercialActionMessage ?? this.commercialActionMessage,
       assignedAt: assignedAt ?? this.assignedAt,
       completedAt: completedAt ?? this.completedAt,
       rapportSentAt: rapportSentAt ?? this.rapportSentAt,

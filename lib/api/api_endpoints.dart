@@ -1,7 +1,9 @@
+import '../config/config.dart';
+
 class ApiEndpoints {
   // Base URL for your backend server
-  // Using PC's IP address for real device testing on same network
-  static const String baseUrl = 'http://192.168.1.91:3000';
+  // Using centralized configuration for easy IP address management
+  static String get baseUrl => AppConfig.baseUrl;
 
   // API version prefix
   static const String apiPrefix = '/api';
@@ -18,7 +20,7 @@ class ApiEndpoints {
 
   // Reservations endpoints
   static const String reservations = '$apiPrefix/reservations';
-  static const String createReservation = '$reservations';
+  static const String createReservation = reservations;
   static const String reservationHistory = '$reservations/history';
 
   // Call logs endpoints

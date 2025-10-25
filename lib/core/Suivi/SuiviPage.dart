@@ -7,8 +7,10 @@ import '../../api/api_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/messaging_provider.dart';
 import '../../services/socket_service.dart';
+import '../../services/messaging_service.dart';
 import '../messagerie/MessageRoom.dart';
 import '../../utils/snackbar_utils.dart';
+import '../../utils/colors.dart';
 
 class SuiviPage extends StatefulWidget {
   const SuiviPage({Key? key}) : super(key: key);
@@ -226,13 +228,21 @@ class _SuiviPageState extends State<SuiviPage>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBackground : Colors.grey[100],
       appBar: AppBar(
         title: const Text('Suivi des Rendez-vous'),
-        backgroundColor: const Color(0xFF6366F1),
+        backgroundColor: isDark
+            ? AppColors.darkCardBackground
+            : const Color(0xFF6366F1),
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(text: 'Tous'),
             Tab(text: 'Assignés'),
@@ -306,9 +316,12 @@ class _SuiviPageState extends State<SuiviPage>
   }
 
   Widget _buildReservationCard(ReservationModel reservation) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 3,
+      elevation: isDark ? 0 : 3,
+      color: isDark ? AppColors.darkCardBackground : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
@@ -368,10 +381,14 @@ class _SuiviPageState extends State<SuiviPage>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.05),
+                  color: isDark
+                      ? AppColors.darkCardBackground.withOpacity(0.5)
+                      : const Color(0xFF6366F1).withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF6366F1).withOpacity(0.2),
+                    color: isDark
+                        ? Colors.white.withOpacity(0.1)
+                        : const Color(0xFF6366F1).withOpacity(0.2),
                     width: 1,
                   ),
                 ),
@@ -435,9 +452,16 @@ class _SuiviPageState extends State<SuiviPage>
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: isDark
+                        ? Colors.blue.withOpacity(0.2)
+                        : Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200, width: 1),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.blue.withOpacity(0.3)
+                          : Colors.blue.shade200,
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -473,9 +497,16 @@ class _SuiviPageState extends State<SuiviPage>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: isDark
+                        ? AppColors.darkCardBackground.withOpacity(0.5)
+                        : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200, width: 1),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey.shade200,
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -554,9 +585,16 @@ class _SuiviPageState extends State<SuiviPage>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: isDark
+                        ? Colors.blue.withOpacity(0.2)
+                        : Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200, width: 1),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.blue.withOpacity(0.3)
+                          : Colors.blue.shade200,
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,13 +602,17 @@ class _SuiviPageState extends State<SuiviPage>
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
+                          color: isDark
+                              ? Colors.blue.withOpacity(0.3)
+                              : Colors.blue.shade100,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.message,
                           size: 16,
-                          color: Color(0xFF6366F1),
+                          color: isDark
+                              ? Colors.blue.shade200
+                              : const Color(0xFF6366F1),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -744,9 +786,8 @@ class _SuiviPageState extends State<SuiviPage>
         listen: false,
       );
       final token = authProvider.token;
-      final currentUserId = authProvider.currentUser?.id;
 
-      if (token == null || currentUserId == null) return;
+      if (token == null) return;
 
       // Show loading indicator
       showDialog(
@@ -757,64 +798,63 @@ class _SuiviPageState extends State<SuiviPage>
         ),
       );
 
-      // Load rooms to find the reservation room
+      // Fetch rooms
       await messagingProvider.fetchRooms(token);
 
-      print(
-        '🔍 Looking for reservation room for reservation: ${reservation.id}',
-      );
-      print('🔍 Current user ID: $currentUserId');
-      print('🔍 Total rooms fetched: ${messagingProvider.rooms.length}');
-
-      late RoomModel room;
-
-      // Find reservation room - backend now returns all rooms we have access to
+      // Find reservation room
+      RoomModel? room;
       try {
         room = messagingProvider.rooms.firstWhere(
           (r) =>
               r.roomType == 'reservation' && r.reservationId == reservation.id,
         );
-
-        print('✅ Found reservation room: ${room.id}');
-        print('✅ Room name: ${room.name}');
+        print('✅ Found room: ${room.id}');
       } catch (e) {
-        // Room not found - might be a timing issue, try once more
-        print('⚠️ Room not found, retrying...');
-        await Future.delayed(const Duration(milliseconds: 500));
-        await messagingProvider.fetchRooms(token);
+        // Room not found - create it using MessagingService
+        print('⚠️ Room not found, creating new room...');
 
-        try {
-          room = messagingProvider.rooms.firstWhere(
-            (r) =>
-                r.roomType == 'reservation' &&
-                r.reservationId == reservation.id,
+        final agentCommercialId = reservation.agentCommercialId;
+        final agentTerrainId =
+            reservation.agentTerrainId ?? authProvider.currentUser?.id;
+
+        if (agentCommercialId != null && agentTerrainId != null) {
+          final roomResponse = await MessagingService.createReservationRoom(
+            token: token,
+            reservationId: reservation.id!,
+            agentCommercialId: agentCommercialId,
+            agentTerrainId: agentTerrainId,
+            clientName: reservation.clientFullName,
           );
-          print('✅ Found room on retry: ${room.id}');
-        } catch (e2) {
-          throw Exception(
-            'Salle de conversation non trouvée. '
-            'Veuillez réessayer ou contacter l\'administrateur.',
-          );
+
+          if (roomResponse['success'] && roomResponse.containsKey('room')) {
+            room = roomResponse['room'] as RoomModel;
+            print('✅ Created new room: ${room.id}');
+          }
         }
       }
 
-      // Close loading indicator
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      // Close loading
+      if (mounted) Navigator.pop(context);
 
-      // Navigate to chat room
-      if (mounted) {
-        print('🚀 Navigating to reservation room: ${room.id}');
-        Navigator.push(
+      // Navigate if room found
+      if (room != null && mounted) {
+        final result = await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => MessageRoomPage(room: room)),
+          MaterialPageRoute(builder: (context) => MessageRoomPage(room: room!)),
+        );
+
+        // If rapport was submitted, reload reservations
+        if (result == true && mounted) {
+          await _loadReservations();
+        }
+      } else {
+        SnackbarUtils.showError(
+          context,
+          'Impossible de créer la salle de conversation',
         );
       }
     } catch (e) {
-      print('❌ Error opening chat room: $e');
-
-      // Close loading indicator if still open
+      print('❌ Error: $e');
       if (mounted) {
         Navigator.pop(context);
         SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../models/ReservationModel.dart';
 import '../../api/api_client.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/colors.dart';
 
 // Custom date input formatter
 class DateInputFormatter extends TextInputFormatter {
@@ -474,8 +475,10 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: ClipRRect(
@@ -520,22 +523,24 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Title and subtitle
-                const Text(
+                Text(
                   'Formulaire de prendre\nun rendez-vous',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                     height: 1.3,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Remplir ce formulaire pour ajouter ce rendez-vous\ndans les réservations (dans les 24 heures suivantes)',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: isDark
+                        ? Colors.white.withOpacity(0.7)
+                        : Colors.black54,
                     height: 1.4,
                   ),
                   textAlign: TextAlign.center,
@@ -546,25 +551,31 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: isDark
+                        ? AppColors.darkCardBackground.withOpacity(0.5)
+                        : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey.shade300,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Direction de l\'appel',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 12),
                       RadioListTile<String>(
-                        title: const Text('Client m\'a appelé'),
-                        subtitle: const Text('Le client a contacté l\'agence'),
+                        title: Text('Client m\'a appelé'),
+                        subtitle: Text('Le client a contacté l\'agence'),
                         value: 'client_to_agent',
                         groupValue: _callDirection,
                         onChanged: (value) {
@@ -576,8 +587,8 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                         contentPadding: EdgeInsets.zero,
                       ),
                       RadioListTile<String>(
-                        title: const Text('J\'ai appelé le client'),
-                        subtitle: const Text('Pour formulaire site web ou rappel'),
+                        title: Text('J\'ai appelé le client'),
+                        subtitle: Text('Pour formulaire site web ou rappel'),
                         value: 'agent_to_client',
                         groupValue: _callDirection,
                         onChanged: (value) {
@@ -594,25 +605,32 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 const SizedBox(height: 24),
 
                 // Nom field
-                const Text(
+                Text(
                   'Nom',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _nomController,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Entrez votre nom',
                     hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.5)
+                          : Colors.grey.shade400,
                       fontSize: 14,
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: isDark
+                        ? AppColors.darkCardBackground.withOpacity(0.5)
+                        : Colors.grey.shade50,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey.shade300),
@@ -643,25 +661,32 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 const SizedBox(height: 20),
 
                 // Prenom field
-                const Text(
+                Text(
                   'Prenom',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _prenomController,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Entrez votre prenom',
                     hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.5)
+                          : Colors.grey.shade400,
                       fontSize: 14,
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: isDark
+                        ? AppColors.darkCardBackground.withOpacity(0.5)
+                        : Colors.grey.shade50,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey.shade300),
@@ -692,12 +717,12 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 const SizedBox(height: 20),
 
                 // Phone field
-                const Text(
+                Text(
                   'Numero de téléphone',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -709,22 +734,32 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                       height: 56,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
+                        color: isDark
+                            ? AppColors.darkCardBackground.withOpacity(0.5)
+                            : Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.grey.shade300,
+                        ),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _selectedCountryCode,
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.arrow_drop_down,
-                            color: Color(0xFF757575),
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : const Color(0xFF757575),
                             size: 20,
                           ),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF1A1A1A),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1A1A1A),
                           ),
                           items: _countryCodes.entries.map((entry) {
                             return DropdownMenuItem<String>(
@@ -750,6 +785,9 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                       child: TextFormField(
                         controller: _phoneController,
                         keyboardType: TextInputType.number,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(10),
@@ -757,11 +795,15 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                         decoration: InputDecoration(
                           hintText: 'Numéro (10 chiffres)',
                           hintStyle: TextStyle(
-                            color: Colors.grey.shade400,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.5)
+                                : Colors.grey.shade400,
                             fontSize: 14,
                           ),
                           filled: true,
-                          fillColor: Colors.grey.shade50,
+                          fillColor: isDark
+                              ? AppColors.darkCardBackground.withOpacity(0.5)
+                              : Colors.grey.shade50,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: Colors.grey.shade300),
@@ -798,21 +840,27 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 const SizedBox(height: 20),
 
                 // Date field
-                const Text(
+                Text(
                   'Sélectionnez la date de rendez-vous',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: isDark
+                        ? AppColors.darkCardBackground.withOpacity(0.5)
+                        : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey.shade300,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -823,28 +871,38 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Sélectionnez la date',
-                          style: TextStyle(fontSize: 13, color: Colors.black54),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : Colors.black54,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         'Entrer une date',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: Colors.black87,
+                          color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _dateController,
                         keyboardType: TextInputType.number,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
                         inputFormatters: [
                           DateInputFormatter(),
                           LengthLimitingTextInputFormatter(10),
@@ -852,19 +910,25 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                         decoration: InputDecoration(
                           hintText: 'jj/MM/AAAA',
                           hintStyle: TextStyle(
-                            color: Colors.grey.shade400,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.5)
+                                : Colors.grey.shade400,
                             fontSize: 14,
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               Icons.calendar_today,
-                              color: Colors.grey.shade600,
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.7)
+                                  : Colors.grey.shade600,
                               size: 20,
                             ),
                             onPressed: () => _selectDate(context),
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: isDark
+                              ? AppColors.darkCardBackground.withOpacity(0.5)
+                              : Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: const BorderSide(
@@ -995,21 +1059,27 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 const SizedBox(height: 20),
 
                 // Time field
-                const Text(
+                Text(
                   'Sélectionnez l\'heure de rendez-vous',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: isDark
+                        ? AppColors.darkCardBackground.withOpacity(0.5)
+                        : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey.shade300,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1020,12 +1090,19 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Sélectionnez l\'heure',
-                          style: TextStyle(fontSize: 13, color: Colors.black54),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : Colors.black54,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -1034,22 +1111,31 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                         controller: _timeController,
                         readOnly: true,
                         onTap: () => _selectTime(context),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'HH:MM',
                           hintStyle: TextStyle(
-                            color: Colors.grey.shade400,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.5)
+                                : Colors.grey.shade400,
                             fontSize: 14,
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               Icons.access_time,
-                              color: Colors.grey.shade600,
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.7)
+                                  : Colors.grey.shade600,
                               size: 20,
                             ),
                             onPressed: () => _selectTime(context),
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: isDark
+                              ? AppColors.darkCardBackground.withOpacity(0.5)
+                              : Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: const BorderSide(
@@ -1123,22 +1209,27 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 const SizedBox(height: 20),
 
                 // Message field
-                const Text(
+                Text(
                   'Entrez un message',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _messageController,
                   maxLines: 4,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Tapez un message ici',
                     hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.5)
+                          : Colors.grey.shade400,
                       fontSize: 14,
                     ),
                     suffixIcon: Padding(
@@ -1147,14 +1238,18 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withOpacity(0.1),
+                          color: isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : const Color(0xFF6366F1).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
                           padding: EdgeInsets.zero,
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.close,
-                            color: Color(0xFF6366F1),
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : const Color(0xFF6366F1),
                             size: 18,
                           ),
                           onPressed: () {
@@ -1164,7 +1259,9 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                       ),
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: isDark
+                        ? AppColors.darkCardBackground.withOpacity(0.5)
+                        : Colors.grey.shade50,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey.shade300),

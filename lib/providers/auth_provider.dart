@@ -18,6 +18,7 @@ class AuthProvider with ChangeNotifier {
   String? _token;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _canToggleAvailability = true; // Controlled by socket events
 
   // Public getters
   UserModel? get currentUser => _currentUser;
@@ -26,6 +27,7 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _token != null && _currentUser != null;
   bool get hasSeenWelcome => _authService.hasSeenWelcome;
+  bool get canToggleAvailability => _canToggleAvailability;
 
   // Role-based getters
   bool get isAdmin => _currentUser?.isAdmin ?? false;
@@ -313,7 +315,20 @@ class AuthProvider with ChangeNotifier {
           );
         }
       });
+
+      // Listen for availability toggle enabled (when rapport is sent)
+      _socketService.socket?.on('agent:availability_toggle_enabled', (data) {
+        debugPrint('🔓 AuthProvider: Toggle enabled via socket: $data');
+        _canToggleAvailability = true;
+        notifyListeners();
+      });
     }
+  }
+
+  /// Set if agent can toggle availability
+  void setCanToggleAvailability(bool canToggle) {
+    _canToggleAvailability = canToggle;
+    notifyListeners();
   }
 
   /// Update agent availability status (field agents only)

@@ -47,11 +47,18 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   int _recordingDuration = 0;
   String? _currentlyPlayingMessageId;
   int _previousMessageCount = 0;
-
   @override
   void initState() {
     super.initState();
     timeago.setLocaleMessages('fr', timeago.FrMessages());
+
+    // Debug: Print room commercialAction value
+    print(
+      '🔍 INIT: widget.room.commercialAction = ${widget.room.commercialAction}',
+    );
+    print('🔍 INIT: widget.room.id = ${widget.room.id}');
+    print('🔍 INIT: widget.room.reservationId = ${widget.room.reservationId}');
+    print('🔍 INIT: Full room data: ${widget.room.toJson()}');
 
     // Join socket room for real-time messages
     _joinSocketRoom();
@@ -614,6 +621,11 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     // Check if this is a rapport message
     if (message.isRapport) {
       return _buildRapportMessage(message);
+    }
+
+    // Check if this is a commercial action message
+    if (message.type == 'commercial_action') {
+      return _buildCommercialActionMessage(message);
     }
 
     return Align(
@@ -1201,6 +1213,9 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               context,
               response.message ?? 'Rapport envoyé avec succès',
             );
+
+            // Navigate back to trigger reservation check
+            Navigator.pop(context, true); // true = rapport was submitted
           }
         } else {
           if (mounted) {
@@ -1221,6 +1236,15 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   Widget _buildRapportMessage(MessageModel message) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final isCommercial = authProvider.isCommercial;
+
+    print('🔍 DEBUG: isCommercial = $isCommercial');
+    print(
+      '🔍 DEBUG: widget.room.commercialAction = ${widget.room.commercialAction}',
+    );
+    print(
+      '🔍 DEBUG: Can show button? ${isCommercial && widget.room.commercialAction == null}',
+    );
+    print('🔍 DEBUG: User role = ${authProvider.currentUser?.role}');
 
     // Parse rapport data from message text (JSON format)
     Map<String, dynamic> rapportData;
@@ -1298,32 +1322,156 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
           ),
 
-          // Commercial action button (only for commercial and potentiel)
-          if (isCommercial && isPotentiel) ...[
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _showCommercialActionDialog(),
-                icon: const Icon(Icons.business_center, size: 18),
-                label: const Text('Actions Commerciales'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 20,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
+          // Commercial action button (only for potentiel rapports)
+          FutureBuilder<bool>(
+            future: _shouldShowButton(),
+            builder: (context, snapshot) {
+              final isCommercial = authProvider.isCommercial;
+
+              // Don't show if not commercial agent
+              if (!isCommercial) {
+                return const SizedBox.shrink();
+              }
+
+              // Show button only if rapport is potentiel
+              if (snapshot.hasData && snapshot.data == true) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          await _handleButtonClick();
+                        },
+                        icon: const Icon(Icons.business_center, size: 18),
+                        label: const Text('Actions Commerciales'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 20,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              // Don't show button if rapport is non_potentiel
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommercialActionMessage(MessageModel message) {
+    // Parse commercial action data from message text (JSON format)
+    Map<String, dynamic> actionData;
+    try {
+      actionData = jsonDecode(message.text);
+    } catch (e) {
+      actionData = {'action': 'paye', 'message': message.text};
+    }
+
+    final action = actionData['action'] ?? 'paye';
+    final actionMessage = actionData['message'] ?? message.text;
+
+    // Determine color and icon based on action
+    Color bgColor;
+    Color borderColor;
+    IconData icon;
+    String actionText;
+
+    switch (action) {
+      case 'paye':
+        bgColor = Colors.green.shade50;
+        borderColor = Colors.green;
+        icon = Icons.check_circle;
+        actionText = 'Payé';
+        break;
+      case 'en_cours':
+        bgColor = Colors.orange.shade50;
+        borderColor = Colors.orange;
+        icon = Icons.schedule;
+        actionText = 'En Cours';
+        break;
+      case 'annulee':
+        bgColor = Colors.red.shade50;
+        borderColor = Colors.red;
+        icon = Icons.cancel;
+        actionText = 'Annulé';
+        break;
+      default:
+        bgColor = Colors.grey.shade50;
+        borderColor = Colors.grey;
+        icon = Icons.business_center;
+        actionText = 'Action Commerciale';
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: borderColor),
+              const SizedBox(width: 8),
+              Text(
+                '💼 ACTION COMMERCIALE',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: borderColor,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(icon, color: borderColor, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'État: $actionText',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: borderColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (actionMessage.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              actionMessage.toString(),
+              style: const TextStyle(fontSize: 14),
             ),
           ],
+          const SizedBox(height: 8),
+          Text(
+            DateFormat('dd/MM/yyyy à HH:mm').format(message.createdAt),
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
         ],
       ),
     );
@@ -2043,6 +2191,75 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     );
   }
 
+  // Check if button should be shown (only for potentiel rapports)
+  Future<bool> _shouldShowButton() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      if (token == null || widget.room.reservationId == null) {
+        return false;
+      }
+
+      // Fetch reservation to check rapportState
+      final response = await apiClient.getReservations(token);
+
+      if (response.success && response.data != null) {
+        final reservation = response.data!.firstWhere(
+          (r) => r.id == widget.room.reservationId,
+          orElse: () => throw Exception('Reservation not found'),
+        );
+
+        // Only show button if rapportState is 'potentiel'
+        return reservation.rapportState == 'potentiel';
+      }
+    } catch (e) {
+      print('Error checking rapport state: $e');
+    }
+
+    return false;
+  }
+
+  // Handle button click with backend check
+  Future<void> _handleButtonClick() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+
+    if (token == null) return;
+
+    try {
+      final response = await apiClient.getReservations(token);
+
+      if (response.success &&
+          response.data != null &&
+          widget.room.reservationId != null) {
+        final reservation = response.data!.firstWhere(
+          (r) => r.id == widget.room.reservationId,
+          orElse: () => throw Exception('Reservation not found'),
+        );
+
+        if (reservation.commercialAction != null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Vous avez déjà répondu: ${reservation.commercialActionDisplay}',
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      print('Error checking commercial action: $e');
+    }
+
+    _showCommercialActionDialog();
+  }
+
   Future<void> _showCommercialActionDialog() async {
     try {
       // Fetch reservation details to get client and agent info
@@ -2080,8 +2297,8 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             clientPhone: reservation.clientPhone,
             agentCommercialName: reservation.agentCommercialName ?? 'N/A',
             agentTerrainName: reservation.agentTerrainName ?? 'N/A',
-            onSubmit: (action, newReservedAt, message) {
-              _executeCommercialAction(action, newReservedAt, message);
+            onSubmit: (action, newReservedAt, message) async {
+              await _executeCommercialAction(action, newReservedAt, message);
             },
           ),
         );
@@ -2122,16 +2339,30 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       );
 
       if (response.success) {
+        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                response.message ?? '✅ Action effectuée avec succès',
-              ),
+            const SnackBar(
+              content: Text('✅ Action enregistrée avec succès'),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
             ),
           );
         }
+
+        // Send commercial action as a message via socket (this creates the message in chat)
+        final socket = socketService.socket;
+        if (socket != null) {
+          socket.emit('reservation_room:send_message', {
+            'roomId': widget.room.id,
+            'type': 'commercial_action',
+            'text': jsonEncode({'action': action, 'message': message}),
+            'reservationId': widget.room.reservationId,
+          });
+        }
+
+        // Reload messages to refresh UI
+        await _reloadMessages();
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

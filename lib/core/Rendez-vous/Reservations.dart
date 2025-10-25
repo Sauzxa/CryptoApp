@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/ReservationModel.dart';
 import '../../api/api_client.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/colors.dart';
 import 'package:intl/intl.dart';
 
 class ReservationsPage extends StatefulWidget {
@@ -143,8 +144,10 @@ class _ReservationsPageState extends State<ReservationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppColors.darkBackground : Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(56),
         child: ClipRRect(
@@ -195,7 +198,7 @@ class _ReservationsPageState extends State<ReservationsPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? AppColors.darkCardBackground : Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
@@ -341,6 +344,7 @@ class _ReservationsPageState extends State<ReservationsPage> {
   }
 
   Widget _buildReservationCard(ReservationModel reservation) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final timeRemaining = _getTimeRemaining(reservation.reservedAt);
     final isExpired = timeRemaining == 'Expiré';
     final stateColor = _getStateColor(reservation.state);
@@ -349,9 +353,14 @@ class _ReservationsPageState extends State<ReservationsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkCardBackground : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: stateColor.withOpacity(0.3), width: 2),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.1)
+              : stateColor.withOpacity(0.3),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -393,7 +402,9 @@ class _ReservationsPageState extends State<ReservationsPage> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark
+                          ? AppColors.darkCardBackground
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: stateColor),
                     ),
@@ -431,16 +442,18 @@ class _ReservationsPageState extends State<ReservationsPage> {
                           Icon(
                             Icons.person,
                             size: 18,
-                            color: Colors.grey.shade600,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : Colors.grey.shade600,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               reservation.clientFullName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: isDark ? Colors.white : Colors.black87,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -456,15 +469,19 @@ class _ReservationsPageState extends State<ReservationsPage> {
                           Icon(
                             Icons.phone,
                             size: 18,
-                            color: Colors.grey.shade600,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : Colors.grey.shade600,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               reservation.clientPhone,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.black54,
+                                color: isDark
+                                    ? Colors.white.withOpacity(0.7)
+                                    : Colors.black54,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -486,7 +503,9 @@ class _ReservationsPageState extends State<ReservationsPage> {
                           Icon(
                             Icons.calendar_today,
                             size: 18,
-                            color: Colors.grey.shade600,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : Colors.grey.shade600,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
@@ -494,9 +513,11 @@ class _ReservationsPageState extends State<ReservationsPage> {
                               DateFormat(
                                 'dd/MM/yyyy à HH:mm',
                               ).format(reservation.reservedAt),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.black54,
+                                color: isDark
+                                    ? Colors.white.withOpacity(0.7)
+                                    : Colors.black54,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -515,7 +536,9 @@ class _ReservationsPageState extends State<ReservationsPage> {
                                 ? Icons.message
                                 : Icons.person_outline,
                             size: 18,
-                            color: Colors.grey.shade600,
+                            color: isDark
+                                ? Colors.white.withOpacity(0.7)
+                                : Colors.grey.shade600,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
@@ -526,7 +549,9 @@ class _ReservationsPageState extends State<ReservationsPage> {
                                   : reservation.agentCommercialName ?? 'N/A',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.black54,
+                                color: isDark
+                                    ? Colors.white.withOpacity(0.7)
+                                    : Colors.black54,
                                 fontStyle:
                                     reservation.message != null &&
                                         reservation.message!.isNotEmpty
@@ -549,9 +574,15 @@ class _ReservationsPageState extends State<ReservationsPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: isDark
+                          ? Colors.blue.withOpacity(0.2)
+                          : Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.shade200),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.blue.withOpacity(0.3)
+                            : Colors.blue.shade200,
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -585,21 +616,23 @@ class _ReservationsPageState extends State<ReservationsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Agent Terrain Assigné',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.black54,
+                                  color: isDark
+                                      ? Colors.white.withOpacity(0.7)
+                                      : Colors.black54,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 reservation.agentTerrain!.name ?? 'N/A',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  color: isDark ? Colors.white : Colors.black87,
                                 ),
                               ),
                               if (reservation.agentTerrain!.phone != null)
@@ -607,7 +640,9 @@ class _ReservationsPageState extends State<ReservationsPage> {
                                   reservation.agentTerrain!.phone!,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey.shade600,
+                                    color: isDark
+                                        ? Colors.white.withOpacity(0.7)
+                                        : Colors.grey.shade600,
                                   ),
                                 ),
                             ],
@@ -630,15 +665,23 @@ class _ReservationsPageState extends State<ReservationsPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
+                      color: isDark
+                          ? Colors.orange.withOpacity(0.2)
+                          : Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.shade200),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.orange.withOpacity(0.3)
+                            : Colors.orange.shade200,
+                      ),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.hourglass_empty,
-                          color: Colors.orange.shade700,
+                          color: isDark
+                              ? Colors.orange.shade300
+                              : Colors.orange.shade700,
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -647,7 +690,9 @@ class _ReservationsPageState extends State<ReservationsPage> {
                             'En attente d\'assignation à un agent terrain disponible',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.orange.shade900,
+                              color: isDark
+                                  ? Colors.orange.shade200
+                                  : Colors.orange.shade900,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

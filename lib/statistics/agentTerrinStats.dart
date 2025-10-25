@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:CryptoApp/api/api_client.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import 'package:CryptoApp/widgets/chartWidgets.dart';
+import 'package:CryptoApp/utils/colors.dart';
 
 class AgentTerrinStats extends StatefulWidget {
   const AgentTerrinStats({Key? key}) : super(key: key);
@@ -178,14 +179,18 @@ class _AgentTerrinStatsState extends State<AgentTerrinStats>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: isDark ? AppColors.darkBackground : Colors.grey[100],
       appBar: AppBar(
         title: const Text(
           'Statistiques Agent Terrain',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.purple[700],
+        backgroundColor: isDark
+            ? AppColors.darkCardBackground
+            : Colors.purple[700],
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
@@ -216,11 +221,13 @@ class _AgentTerrinStatsState extends State<AgentTerrinStats>
   }
 
   Widget _buildDateSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkCardBackground : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -521,11 +528,18 @@ class _AgentTerrinStatsState extends State<AgentTerrinStats>
     required IconData icon,
     required Color color,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark
+            ? AppColors.darkCardBackground.withOpacity(0.8)
+            : Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: isDark
+            ? Border.all(color: Colors.white.withOpacity(0.1))
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -550,7 +564,10 @@ class _AgentTerrinStatsState extends State<AgentTerrinStats>
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white.withOpacity(0.7) : Colors.grey,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
