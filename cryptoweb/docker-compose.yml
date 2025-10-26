@@ -1,0 +1,91 @@
+services:
+  # MongoDB service
+  mongo:
+    image: mongo:4.4
+    container_name: crypto-mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017"  # Localhost seulement pour sécurité
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: crypto_immobilier
+    volumes:
+      - mongo_data:/data/db
+      - ./scripts:/docker-entrypoint-initdb.d
+    networks:
+      - crypto-network
+
+  # Backend service
+  backend:
+    build:
+      context: .
+      dockerfile: ./CryptoBack/Dockerfile
+    container_name: crypto-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=${MONGO_URI}
+      - PORT=8000
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL}
+      - SUPER_ADMIN_PASS=${SUPER_ADMIN_PASS}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - ./CryptoBack/src:/app/src:ro
+    depends_on:
+      - mongo
+    networks:
+      - crypto-network
+
+  # Frontend service (Landing page)
+  frontend:
+    build:
+      context: ./CryptoLanding
+      dockerfile: Dockerfile
+    container_name: crypto-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - crypto-network
+
+  # Dashboard service
+  dashboard:
+    build:
+      context: ./CryptoDashAdmin
+      dockerfile: Dockerfile
+    container_name: crypto-dashboard
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - crypto-network
+
+  # Nginx reverse proxy (avec sous-domaines)
+  nginx:
+    image: nginx:alpine
+    container_name: crypto-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - dashboard
+      - backend
+    networks:
+      - crypto-network
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  crypto-network:
+    driver: bridge

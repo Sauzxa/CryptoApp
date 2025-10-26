@@ -817,7 +817,24 @@ class _SuiviPageState extends State<SuiviPage>
         final agentTerrainId =
             reservation.agentTerrainId ?? authProvider.currentUser?.id;
 
+        print('🔍 Debug room creation:');
+        print('   - Current user ID: ${authProvider.currentUser?.id}');
+        print('   - Reservation agentCommercialId: $agentCommercialId');
+        print('   - Reservation agentTerrainId: $agentTerrainId');
+        print('   - Reservation ID: ${reservation.id}');
+
         if (agentCommercialId != null && agentTerrainId != null) {
+          // Verify current user is one of the agents
+          final currentUserId = authProvider.currentUser?.id;
+          if (currentUserId != agentCommercialId &&
+              currentUserId != agentTerrainId) {
+            print('❌ Current user is not authorized for this reservation');
+            print('   - Current user: $currentUserId');
+            print('   - Commercial agent: $agentCommercialId');
+            print('   - Terrain agent: $agentTerrainId');
+            return;
+          }
+
           final roomResponse = await MessagingService.createReservationRoom(
             token: token,
             reservationId: reservation.id!,
@@ -829,7 +846,13 @@ class _SuiviPageState extends State<SuiviPage>
           if (roomResponse['success'] && roomResponse.containsKey('room')) {
             room = roomResponse['room'] as RoomModel;
             print('✅ Created new room: ${room.id}');
+          } else {
+            print('❌ Failed to create room: ${roomResponse['message']}');
           }
+        } else {
+          print('❌ Missing required data for room creation:');
+          print('   - agentCommercialId: $agentCommercialId');
+          print('   - agentTerrainId: $agentTerrainId');
         }
       }
 

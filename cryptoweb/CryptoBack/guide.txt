@@ -1,0 +1,722 @@
+================================================================================
+                    CRYPTO IMMOBILIER BACKEND API GUIDE
+                         For Frontend Developers
+================================================================================
+
+BASE URL: http://localhost:8000/api
+
+================================================================================
+                           AUTHENTICATION FLOW
+================================================================================
+
+Step 1: Initialize Admin Account (One-time Setup)
+--------------------------------------------------
+Method: POST
+URL: /api/auth/setup
+Headers: Content-Type: application/json
+Body:
+{
+  "email": "crypto.immobilier@gmail.com",
+  "password": "crypto_2222"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Initial admin created successfully",
+  "data": {
+    "admin": {
+      "id": "64f7b8c9e12345678901234a",
+      "email": "crypto.immobilier@gmail.com"
+    }
+  }
+}
+
+Note: This endpoint only works if no admin exists. It will fail if admin already exists.
+
+Step 2: Admin Login
+-------------------
+Method: POST
+URL: /api/auth/login
+Headers: Content-Type: application/json
+Body:
+{
+  "email": "crypto.immobilier@gmail.com",
+  "password": "crypto_2222"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "admin": {
+      "id": "64f7b8c9e12345678901234a",
+      "email": "crypto.immobilier@gmail.com"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+
+IMPORTANT: Store the token in localStorage/sessionStorage for subsequent requests!
+
+Step 3: Admin Logout
+--------------------
+Method: POST
+URL: /api/auth/logout
+Headers: 
+  Content-Type: application/json
+  Authorization: Bearer <your-jwt-token>
+
+Response:
+{
+  "success": true,
+  "message": "Logout successful"
+}
+
+Note: This invalidates the token. User must login again after logout.
+
+================================================================================
+                        RESERVATION MANAGEMENT
+================================================================================
+
+ALL RESERVATION ENDPOINTS REQUIRE JWT AUTHENTICATION!
+Headers for all requests below:
+  Content-Type: application/json
+  Authorization: Bearer <your-jwt-token>
+
+1. Create New Reservation
+-------------------------
+Method: POST
+URL: /api/users
+Body:
+{
+  "name": "John Doe",
+  "number": "+1234567890", 
+  "message": "Interested in a 2-bedroom apartment with sea view",
+  "apartmentType": "2BR Deluxe"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Reservation created successfully",
+  "data": {
+    "id": "64f7b8c9e12345678901234a",
+    "name": "John Doe",
+    "number": "+1234567890",
+    "message": "Interested in a 2-bedroom apartment with sea view", 
+    "apartmentType": "2BR Deluxe",
+    "date": "2023-09-05T10:30:00.000Z",
+    "status": "Pending"
+  }
+}
+
+2. Get All Reservations
+-----------------------
+Method: GET
+URL: /api/users
+
+Response:
+{
+  "success": true,
+  "message": "Users retrieved successfully",
+  "count": 5,
+  "data": [
+    {
+      "id": "64f7b8c9e12345678901234a",
+      "name": "John Doe",
+      "number": "+1234567890",
+      "message": "Interested in apartment",
+      "apartmentType": "2BR Deluxe", 
+      "date": "2023-09-05T10:30:00.000Z",
+      "status": "Pending"
+    },
+    // ... more reservations
+  ]
+}
+
+3. Update Reservation Status
+----------------------------
+Method: PUT
+URL: /api/users/:id/status
+Body:
+{
+  "status": "Done"
+}
+// Valid values: "Pending" or "Done"
+
+Response:
+{
+  "success": true,
+  "message": "Reservation status updated successfully",
+  "data": {
+    "id": "64f7b8c9e12345678901234a",
+    "status": "Done",
+    // ... other reservation data
+  }
+}
+
+4. Get Total Reservations Count
+-------------------------------
+Method: GET
+URL: /api/users/count
+
+Response:
+{
+  "success": true,
+  "count": 15
+}
+
+5. Get Completed Reservations Count  
+-----------------------------------
+Method: GET
+URL: /api/users/count/done
+
+Response:
+{
+  "success": true,
+  "count": 8
+}
+
+6. Get Pending Reservations Count
+---------------------------------
+Method: GET
+URL: /api/users/count/pending
+
+Response:
+{
+  "success": true,
+  "count": 7
+}
+
+================================================================================
+                         DASHBOARD FYH SECTION
+================================================================================
+
+ALL DASHBOARD ENDPOINTS REQUIRE JWT AUTHENTICATION!
+Headers for all requests below:
+  Content-Type: application/json
+  Authorization: Bearer <your-jwt-token>
+
+Note: Dashboard has exactly 3 divs with fixed IDs: 1, 2, 3
+
+1. Create/Update Dashboard Div
+------------------------------
+Method: POST
+URL: /api/dashboard/divs
+Body:
+{
+  "id": 1,
+  "photoUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/property.jpg",
+  "price": 250000,
+  "apartment": "Luxury Villa"
+}
+
+Validation Rules:
+- id: Must be 1, 2, or 3
+- photoUrl: Must be valid image URL (supports Cloudinary URLs)
+- price: Must be positive number
+- apartment: Required string, max 100 characters
+
+Response:
+{
+  "success": true,
+  "message": "Dashboard div 1 updated successfully",
+  "data": {
+    "id": 1,
+    "photoUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/property.jpg",
+    "price": 250000,
+    "apartment": "Luxury Villa"
+  }
+}
+
+2. Update Specific Dashboard Div
+--------------------------------
+Method: PUT  
+URL: /api/dashboard/divs/:id
+Body (all fields optional):
+{
+  "photoUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/new-property.jpg",
+  "price": 300000,
+  "apartment": "Premium Villa"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Dashboard div 1 updated successfully",
+  "data": {
+    "id": 1,
+    "photoUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/new-property.jpg",
+    "price": 300000,
+    "apartment": "Premium Villa"
+  }
+}
+
+3. Get All Dashboard Divs
+-------------------------
+Method: GET
+URL: /api/dashboard/divs
+
+Response:
+{
+  "success": true,
+  "message": "Dashboard divs retrieved successfully",
+  "count": 3,
+  "data": [
+    {
+      "id": 1,
+      "photoUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/property1.jpg",
+      "price": 250000,
+      "apartment": "Luxury Villa"
+    },
+    {
+      "id": 2, 
+      "photoUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/property2.jpg",
+      "price": 180000,
+      "apartment": "Modern Apartment"
+    },
+    {
+      "id": 3,
+      "photoUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/property3.jpg", 
+      "price": 350000,
+      "apartment": "Penthouse Suite"
+    }
+  ]
+}
+
+4. Get Specific Dashboard Div
+-----------------------------
+Method: GET
+URL: /api/dashboard/divs/:id
+// :id must be 1, 2, or 3
+
+Response:
+{
+  "success": true,
+  "message": "Dashboard div 1 retrieved successfully",
+  "data": {
+    "id": 1,
+    "photoUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/property.jpg",
+    "price": 250000,
+    "apartment": "Luxury Villa"
+  }
+}
+
+================================================================================
+                        BEST SELLERS SECTION
+================================================================================
+
+ALL BEST SELLERS ENDPOINTS REQUIRE JWT AUTHENTICATION!
+Headers for all requests below:
+  Content-Type: application/json
+  Authorization: Bearer <your-jwt-token>
+
+Data Structure:
+Region → Contains multiple Apartments → Each apartment has multiple Types
+
+REGION MANAGEMENT
+=================
+
+1. Create New Region
+-------------------
+Method: POST
+URL: /api/bestsellers/regions
+Body:
+{
+  "name": "Algiers"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Region created successfully",
+  "data": {
+    "id": "uuid-region-123",
+    "name": "Algiers",
+    "apartments": []
+  }
+}
+
+2. Get All Regions with Apartments
+----------------------------------
+Method: GET
+URL: /api/bestsellers/regions
+
+Response:
+{
+  "success": true,
+  "message": "Regions retrieved successfully",
+  "count": 2,
+  "data": [
+    {
+      "id": "uuid-region-123",
+      "name": "Algiers",
+      "apartments": [
+        {
+          "id": "uuid-apartment-456",
+          "imageUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/apartment.jpg",
+          "description": "Modern flat with sea view",
+          "types": [
+            {
+              "id": "uuid-type-789",
+              "name": "F2"
+            },
+            {
+              "id": "uuid-type-101",
+              "name": "F3"
+            }
+          ]
+        }
+        // ... more apartments
+      ]
+    },
+    {
+      "id": "uuid-region-124", 
+      "name": "Oran",
+      "apartments": [...]
+    }
+  ]
+}
+
+3. Delete Region
+---------------
+Method: DELETE
+URL: /api/bestsellers/regions/:regionId
+
+Response:
+{
+  "success": true,
+  "message": "Region deleted successfully",
+  "data": {
+    "id": "uuid-region-123",
+    "name": "Algiers"
+    // ... deleted region data
+  }
+}
+
+Note: Deleting a region removes ALL apartments and types within it!
+
+APARTMENT MANAGEMENT
+====================
+
+4. Add Apartment to Region
+--------------------------
+Method: POST
+URL: /api/bestsellers/regions/:regionId/apartments
+Body:
+{
+  "imageUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/apartment.jpg",
+  "description": "Modern flat with sea view",
+  "types": ["F2", "F3", "Duplex"]
+}
+
+Validation Rules:
+- imageUrl: Must be valid image URL (supports Cloudinary URLs)
+- description: Required string, max 500 characters
+- types: Optional array of strings
+
+Response:
+{
+  "success": true,
+  "message": "Apartment added successfully", 
+  "data": {
+    "id": "uuid-apartment-456",
+    "imageUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/apartment.jpg",
+    "description": "Modern flat with sea view",
+    "types": [
+      {
+        "id": "uuid-type-789",
+        "name": "F2"
+      },
+      {
+        "id": "uuid-type-101", 
+        "name": "F3"
+      },
+      {
+        "id": "uuid-type-102",
+        "name": "Duplex"
+      }
+    ]
+  }
+}
+
+5. Update Apartment
+-------------------
+Method: PUT
+URL: /api/bestsellers/regions/:regionId/apartments/:apartmentId
+Body (all fields optional):
+{
+  "imageUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/new-apartment.jpg",
+  "description": "Updated description with luxury finishes",
+  "types": ["F2", "F3", "Penthouse"]
+}
+
+Response:
+{
+  "success": true,
+  "message": "Apartment updated successfully",
+  "data": {
+    "id": "uuid-apartment-456",
+    "imageUrl": "https://res.cloudinary.com/your-cloud/image/upload/v123456789/new-apartment.jpg", 
+    "description": "Updated description with luxury finishes",
+    "types": [
+      {
+        "id": "uuid-type-789",
+        "name": "F2"
+      },
+      {
+        "id": "uuid-type-101",
+        "name": "F3"
+      },
+      {
+        "id": "uuid-type-103",
+        "name": "Penthouse"
+      }
+    ]
+  }
+}
+
+Note: When updating types array, it replaces ALL existing types!
+
+6. Delete Apartment
+-------------------
+Method: DELETE
+URL: /api/bestsellers/regions/:regionId/apartments/:apartmentId
+
+Response:
+{
+  "success": true,
+  "message": "Apartment deleted successfully",
+  "data": {
+    "id": "uuid-apartment-456",
+    // ... deleted apartment data
+  }
+}
+
+TYPE MANAGEMENT
+===============
+
+7. Add Type to Apartment
+------------------------
+Method: POST
+URL: /api/bestsellers/regions/:regionId/apartments/:apartmentId/types
+Body:
+{
+  "name": "Penthouse"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Type added successfully",
+  "data": {
+    "id": "uuid-type-104",
+    "name": "Penthouse"
+  }
+}
+
+8. Update Type Name
+------------------
+Method: PUT
+URL: /api/bestsellers/regions/:regionId/apartments/:apartmentId/types/:typeId
+Body:
+{
+  "name": "Luxury Penthouse"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Type updated successfully",
+  "data": {
+    "id": "uuid-type-104",
+    "name": "Luxury Penthouse"
+  }
+}
+
+9. Delete Type
+-------------
+Method: DELETE
+URL: /api/bestsellers/regions/:regionId/apartments/:apartmentId/types/:typeId
+
+Response:
+{
+  "success": true,
+  "message": "Type deleted successfully",
+  "data": {
+    "id": "uuid-type-104",
+    "name": "Luxury Penthouse"
+  }
+}
+
+================================================================================
+                           ERROR HANDLING
+================================================================================
+
+All API endpoints return consistent error responses:
+
+Validation Error (400):
+{
+  "success": false,
+  "error": {
+    "message": "Validation failed: Name is required"
+  }
+}
+
+Authentication Error (401):
+{
+  "success": false,
+  "error": {
+    "message": "Access denied. No token provided."
+  }
+}
+
+Not Found Error (404):
+{
+  "success": false,
+  "error": {
+    "message": "Reservation with ID 123 not found"
+  }
+}
+
+Server Error (500):
+{
+  "success": false,
+  "error": {
+    "message": "Internal Server Error"
+  }
+}
+
+================================================================================
+                          FRONTEND IMPLEMENTATION
+================================================================================
+
+1. TOKEN MANAGEMENT
+-------------------
+// Store token after login
+localStorage.setItem('authToken', response.data.token);
+
+// Get token for API calls
+const token = localStorage.getItem('authToken');
+
+// Remove token on logout
+localStorage.removeItem('authToken');
+
+2. API HELPER FUNCTION
+----------------------
+const apiCall = async (method, endpoint, data = null) => {
+  const token = localStorage.getItem('authToken');
+  
+  const config = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    },
+    ...(data && { body: JSON.stringify(data) })
+  };
+  
+  const response = await fetch(`http://localhost:8000/api${endpoint}`, config);
+  return response.json();
+};
+
+3. USAGE EXAMPLES
+-----------------
+// Login
+const loginResult = await apiCall('POST', '/auth/login', {
+  email: 'crypto.immobilier@gmail.com',
+  password: 'crypto_2222'
+});
+
+// Get all reservations
+const reservations = await apiCall('GET', '/users');
+
+// Create dashboard div
+const divResult = await apiCall('POST', '/dashboard/divs', {
+  id: 1,
+  photoUrl: 'https://res.cloudinary.com/...',
+  price: 250000,
+  apartment: 'Luxury Villa'
+});
+
+// Get all regions
+const regions = await apiCall('GET', '/bestsellers/regions');
+
+// Add apartment to region
+const apartmentResult = await apiCall('POST', `/bestsellers/regions/${regionId}/apartments`, {
+  imageUrl: 'https://res.cloudinary.com/...',
+  description: 'Modern apartment',
+  types: ['F2', 'F3']
+});
+
+4. AXIOS EXAMPLE (Alternative)
+------------------------------
+import axios from 'axios';
+
+// Setup axios interceptor for token
+axios.interceptors.request.use(config => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// API calls
+const api = axios.create({
+  baseURL: 'http://localhost:8000/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Usage
+const response = await api.post('/dashboard/divs', divData);
+const regions = await api.get('/bestsellers/regions');
+
+================================================================================
+                            IMPORTANT NOTES
+================================================================================
+
+1. AUTHENTICATION:
+   - ALL endpoints except /auth/setup and /auth/login require JWT token
+   - Token expires after 30 days by default
+   - Include token in Authorization header: "Bearer <token>"
+
+2. DASHBOARD DIVS:
+   - Only 3 divs allowed with fixed IDs: 1, 2, 3
+   - Use POST for create/update or PUT for partial updates
+   - Image URLs must be valid (Cloudinary URLs preferred)
+
+3. BEST SELLERS:
+   - Hierarchical structure: Regions → Apartments → Types
+   - UUIDs are auto-generated for regions, apartments, and types
+   - Deleting parent items removes all child items
+
+4. IMAGE HANDLING:
+   - Backend only stores Cloudinary URLs, not actual files
+   - Frontend must upload images to Cloudinary first
+   - Then send the Cloudinary URL to the backend
+
+5. DATA VALIDATION:
+   - All required fields must be provided
+   - String length limits are enforced
+   - Price must be positive numbers
+   - Image URLs are validated
+
+6. ERROR HANDLING:
+   - Always check response.success before accessing data
+   - Handle authentication errors by redirecting to login
+   - Display user-friendly error messages from response.error.message
+
+================================================================================
+                              END OF GUIDE
+================================================================================
+
+This guide covers all available endpoints in the Crypto Immobilier Backend API.
+For any issues or questions, refer to the full API documentation in README.md.
+
+Server Health Check: GET /health (no authentication required)
+API Info: GET /api (no authentication required)

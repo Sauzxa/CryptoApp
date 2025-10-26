@@ -1,13 +1,10 @@
 import 'dart:ui';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:CryptoApp/utils/Routes.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import 'package:CryptoApp/providers/messaging_provider.dart';
 import 'package:CryptoApp/providers/theme_provider.dart';
-import 'package:CryptoApp/api/api_client.dart';
-import 'package:CryptoApp/services/socket_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:CryptoApp/widgets/notification_bell_button.dart';
 import '../utils/colors.dart';
@@ -24,7 +21,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _permissionRequested =
       false; // Track if permission was already requested
-  bool _isCheckingReservations = false;
 
   @override
   void initState() {
@@ -35,15 +31,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Request permission on first load
     _requestPhonePermission();
     // Check for active reservations
-    _checkActiveReservations();
     // Setup socket listeners for reservation updates
-    _setupReservationListeners();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _removeReservationListeners();
     super.dispose();
   }
 
@@ -51,166 +44,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     // When app comes to foreground, check availability again
-    if (state == AppLifecycleState.resumed) {
-      _checkActiveReservations();
-    }
-  }
-
-  void _setupReservationListeners() {
-    final socket = socketService.socket;
-
-    if (socket != null) {
-      // Listen for reservation updates
-      socket.on('reservation:updated', (_) {
-        if (mounted) _checkActiveReservations();
-      });
-
-      // Listen for new assignments
-      socket.on('reservation:assigned', (_) {
-        if (mounted) _checkActiveReservations();
-      });
-
-      // Listen for state changes (completed, cancelled, in_progress)
-      socket.on('reservation:state_changed', (data) {
-        if (mounted) _checkActiveReservations();
-      });
-
-      // AuthProvider handles socket events for toggle availability
-      // We only need to listen for reservation updates
-    }
-  }
-
-  void _removeReservationListeners() {
-    final socket = socketService.socket;
-
-    if (socket != null) {
-      socket.off('reservation:updated');
-      socket.off('reservation:assigned');
-      socket.off('reservation:state_changed');
-    }
-  }
-
-  // Initialize toggle state when page loads
-  Future<void> _checkActiveReservations() async {
-    if (_isCheckingReservations || !mounted) return;
-
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final token = authProvider.token;
-      var userId = authProvider.currentUser?.id;
-
-      // If userId is null, extract from JWT token
-      if (userId == null && token != null) {
-        try {
-          final parts = token.split('.');
-          if (parts.length == 3) {
-            final payload = parts[1];
-            final normalized = base64Url.normalize(payload);
-            final decoded = utf8.decode(base64Url.decode(normalized));
-            final Map<String, dynamic> payloadMap = json.decode(decoded);
-            userId = payloadMap['userId'] as String?;
-          }
-        } catch (e) {}
-      }
-
-      if (token == null || userId == null || !authProvider.isField) {
-        return;
-      }
-
-      setState(() {
-        _isCheckingReservations = true;
-      });
-
-      final response = await apiClient.getReservations(token);
-
-      if (response.success && response.data != null) {
-        // Find agent's reservations
-        final agentReservations = response.data!
-            .where((reservation) => reservation.agentTerrainId == userId)
-            .toList();
-
-        debugPrint(
-          '🔍 Checking agent reservations: Found ${agentReservations.length} total reservations',
-        );
-
-        // Determine if agent can toggle availability based on workflow rules
-        bool canToggle = true;
-
-        if (agentReservations.isEmpty) {
-          // NO reservations → Agent CAN toggle availability
-          canToggle = true;
-          debugPrint('✅ No reservations found → Toggle ENABLED');
-        } else {
-          // Agent has reservations → Check if any are blocking (assigned or in_progress)
-          // Backend handles rapport logic, frontend just checks state
-          final blockingReservations = agentReservations
-              .where(
-                (reservation) =>
-                    reservation.state == 'assigned' ||
-                    reservation.state == 'in_progress',
-              )
-              .toList();
-
-          debugPrint(
-            '🔍 Found ${blockingReservations.length} blocking reservations (assigned/in_progress)',
-          );
-
-          if (blockingReservations.isEmpty) {
-            // All reservations are completed/cancelled → Agent CAN toggle
-            canToggle = true;
-            debugPrint('✅ No blocking reservations → Toggle ENABLED');
-          } else {
-            // Agent has assigned or in_progress reservations → CANNOT toggle
-            canToggle = false;
-            debugPrint('🔒 Has blocking reservations → Toggle DISABLED');
-            for (var reservation in blockingReservations) {
-              debugPrint(
-                '   - ${reservation.clientFullName} (${reservation.state})',
-              );
-            }
-          }
-        }
-
-        if (mounted) {
-          Provider.of<AuthProvider>(
-            context,
-            listen: false,
-          ).setCanToggleAvailability(canToggle);
-          setState(() {
-            _isCheckingReservations = false;
-          });
-          debugPrint(
-            '🎯 Final toggle state: ${canToggle ? "ENABLED" : "DISABLED"}',
-          );
-        }
-      } else {
-        // API call failed or no data - enable toggle by default
-        debugPrint(
-          '⚠️ API call failed or no data - Enabling toggle by default',
-        );
-        if (mounted) {
-          Provider.of<AuthProvider>(
-            context,
-            listen: false,
-          ).setCanToggleAvailability(true);
-          setState(() {
-            _isCheckingReservations = false;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ Error checking reservations: $e');
-      debugPrint('⚠️ Enabling toggle by default due to error');
-      if (mounted) {
-        Provider.of<AuthProvider>(
-          context,
-          listen: false,
-        ).setCanToggleAvailability(true);
-        setState(() {
-          _isCheckingReservations = false;
-        });
-      }
-    }
+    if (state == AppLifecycleState.resumed) {}
   }
 
   Future<void> _requestPhonePermission() async {
@@ -519,7 +353,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       CircleAvatar(
                         radius: 35,
                         backgroundColor: Colors.white,
-                        backgroundImage: user?.profilePhoto?.url != null
+                        backgroundImage: (user?.profilePhoto?.url != null)
                             ? NetworkImage(user!.profilePhoto!.url!)
                             : null,
                         child: user?.profilePhoto?.url == null
@@ -577,65 +411,36 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            subtitle: Consumer<AuthProvider>(
-                              builder: (context, auth, _) => Text(
-                                !auth.canToggleAvailability
-                                    ? 'Verrouillé (Rendez-vous en cours)'
-                                    : (user?.isAvailable == true
-                                          ? 'Disponible'
-                                          : 'Indisponible'),
+                            subtitle: Selector<AuthProvider, String?>(
+                              selector: (context, auth) =>
+                                  auth.currentUser?.availability ??
+                                  'not_available',
+                              builder: (context, availability, child) => Text(
+                                availability == 'available'
+                                    ? 'Disponible'
+                                    : 'Indisponible',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: !auth.canToggleAvailability
-                                      ? Colors.grey.shade600
-                                      : (user?.isAvailable == true
-                                            ? const Color(0xFF059669)
-                                            : const Color(0xFFE11D48)),
+                                  color: availability == 'available'
+                                      ? const Color(0xFF059669)
+                                      : const Color(0xFFE11D48),
                                 ),
                               ),
                             ),
-                            trailing: Consumer<AuthProvider>(
-                              builder: (context, auth, _) => Switch(
-                                value: user?.isAvailable ?? false,
-                                onChanged: !auth.canToggleAvailability
-                                    ? null // Disabled - cannot change
-                                    : (value) async {
-                                        // Enabled - can change availability
-                                        if (!mounted) return;
-
-                                        final availability = value
-                                            ? 'available'
-                                            : 'not_available';
-
-                                        // Call the provider method
-                                        final success = await authProvider
-                                            .updateAvailability(availability);
-
-                                        if (!success && mounted) {
-                                          // Show error message if update failed
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                authProvider.errorMessage ??
-                                                    'Erreur lors de la mise à jour',
-                                              ),
-                                              backgroundColor: Colors.red,
-                                              duration: const Duration(
-                                                seconds: 3,
-                                              ),
-                                            ),
-                                          );
-                                          // Revert the switch state
-                                          setState(() {});
-                                        }
-
-                                        // Check for active reservations after change
-                                        if (success) {
-                                          _checkActiveReservations();
-                                        }
-                                      },
+                            trailing: Selector<AuthProvider, String?>(
+                              selector: (context, auth) =>
+                                  auth.currentUser?.availability ??
+                                  'not_available',
+                              builder: (context, availability, child) => Switch(
+                                value: availability == 'available',
+                                onChanged: (value) async {
+                                  final newAvailability = value
+                                      ? 'available'
+                                      : 'not_available';
+                                  await authProvider.updateAvailability(
+                                    newAvailability,
+                                  );
+                                },
                                 activeColor: const Color(0xFF059669),
                               ),
                             ),
@@ -646,11 +451,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
                         // Suivi (Only for field agents)
                         if (isFieldAgent) ...[
-                          Builder(
-                            builder: (context) {
-                              return const SizedBox.shrink();
-                            },
-                          ),
                           ListTile(
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 20,

@@ -1323,9 +1323,19 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           ),
 
           // Commercial action button (only for potentiel rapports)
-          FutureBuilder<bool>(
-            future: _shouldShowButton(),
-            builder: (context, snapshot) {
+          Selector<MessagingProvider, RoomModel?>(
+            selector: (context, provider) {
+              // Find the current room in the provider's rooms list
+              try {
+                return provider.rooms.firstWhere(
+                  (room) => room.id == widget.room.id,
+                  orElse: () => widget.room,
+                );
+              } catch (e) {
+                return widget.room;
+              }
+            },
+            builder: (context, room, child) {
               final isCommercial = authProvider.isCommercial;
 
               // Don't show if not commercial agent
@@ -1333,41 +1343,41 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                 return const SizedBox.shrink();
               }
 
-              // Show button only if rapport is potentiel
-              if (snapshot.hasData && snapshot.data == true) {
-                return Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          await _handleButtonClick();
-                        },
-                        icon: const Icon(Icons.business_center, size: 18),
-                        label: const Text('Actions Commerciales'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 16,
-                            horizontal: 20,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
+              // Only show button if rapport is potentiel
+              if (room?.rapportState != 'potentiel') {
+                return const SizedBox.shrink();
               }
 
-              // Don't show button if rapport is non_potentiel
-              return const SizedBox.shrink();
+              // Commercial Action Button - Always enabled
+              return Column(
+                children: [
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        _showCommercialActionDialog();
+                      },
+                      icon: const Icon(Icons.business_center, size: 18),
+                      label: const Text('Actions Commerciales'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 20,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                ],
+              );
             },
           ),
         ],
@@ -2192,73 +2202,6 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   }
 
   // Check if button should be shown (only for potentiel rapports)
-  Future<bool> _shouldShowButton() async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final token = authProvider.token;
-
-      if (token == null || widget.room.reservationId == null) {
-        return false;
-      }
-
-      // Fetch reservation to check rapportState
-      final response = await apiClient.getReservations(token);
-
-      if (response.success && response.data != null) {
-        final reservation = response.data!.firstWhere(
-          (r) => r.id == widget.room.reservationId,
-          orElse: () => throw Exception('Reservation not found'),
-        );
-
-        // Only show button if rapportState is 'potentiel'
-        return reservation.rapportState == 'potentiel';
-      }
-    } catch (e) {
-      print('Error checking rapport state: $e');
-    }
-
-    return false;
-  }
-
-  // Handle button click with backend check
-  Future<void> _handleButtonClick() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.token;
-
-    if (token == null) return;
-
-    try {
-      final response = await apiClient.getReservations(token);
-
-      if (response.success &&
-          response.data != null &&
-          widget.room.reservationId != null) {
-        final reservation = response.data!.firstWhere(
-          (r) => r.id == widget.room.reservationId,
-          orElse: () => throw Exception('Reservation not found'),
-        );
-
-        if (reservation.commercialAction != null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Vous avez déjà répondu: ${reservation.commercialActionDisplay}',
-                ),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-          return;
-        }
-      }
-    } catch (e) {
-      print('Error checking commercial action: $e');
-    }
-
-    _showCommercialActionDialog();
-  }
 
   Future<void> _showCommercialActionDialog() async {
     try {
