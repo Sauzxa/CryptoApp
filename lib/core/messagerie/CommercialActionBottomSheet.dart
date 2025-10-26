@@ -347,40 +347,56 @@ class _CommercialActionBottomSheetState
               // Submit Button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (_canSubmit() && !_isSubmitting)
+                child: GestureDetector(
+                  onTap: (_canSubmit() && !_isSubmitting)
                       ? _handleSubmit
                       : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryPurple,
-                    foregroundColor: Colors.white,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
+                    decoration: BoxDecoration(
+                      color: (_canSubmit() && !_isSubmitting)
+                          ? (isDark
+                                ? const Color(
+                                    0xFF10B981,
+                                  ) // Green color for dark mode
+                                : AppColors
+                                      .primaryPurple) // Purple for light mode
+                          : (isDark
+                                ? Colors.grey.shade600
+                                : Colors.grey.shade300), // Disabled color
                       borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                      : Text(
-                          _selectedAction == 'en_cours'
-                              ? 'Reprogrammer'
-                              : 'Soumettre',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: Center(
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              _selectedAction == 'en_cours'
+                                  ? 'Reprogrammer'
+                                  : 'Soumettre',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
