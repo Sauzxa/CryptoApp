@@ -1060,6 +1060,129 @@ class ApiClient {
     }
   }
 
+  /// Sync call log to backend
+  Future<ApiResponse<Map<String, dynamic>>> syncCallLog({
+    required String token,
+    required String direction, // 'incoming', 'outgoing', 'missed'
+    required String phoneNumber,
+    required DateTime startedAt,
+    DateTime? endedAt,
+    required int durationSec,
+    String? note,
+  }) async {
+    try {
+      final body = {
+        'direction': direction,
+        'phoneNumber': phoneNumber,
+        'startedAt': startedAt.toIso8601String(),
+        if (endedAt != null) 'endedAt': endedAt.toIso8601String(),
+        'durationSec': durationSec,
+        if (note != null) 'note': note,
+      };
+
+      final response = await _makeRequest(
+        'POST',
+        ApiEndpoints.calls,
+        body: body,
+        token: token,
+      );
+
+      return ApiResponse<Map<String, dynamic>>(
+        success: response.success,
+        data: response.data,
+        message: response.message,
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Erreur lors de la synchronisation de l\'appel: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Sync multiple call logs to backend (batch)
+  Future<ApiResponse<Map<String, dynamic>>> syncMultipleCallLogs({
+    required String token,
+    required List<Map<String, dynamic>> callLogs,
+  }) async {
+    try {
+      final body = {
+        'callLogs': callLogs,
+      };
+
+      final response = await _makeRequest(
+        'POST',
+        '${ApiEndpoints.calls}/sync',
+        body: body,
+        token: token,
+      );
+
+      return ApiResponse<Map<String, dynamic>>(
+        success: response.success,
+        data: response.data?['data'],
+        message: response.message,
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Erreur lors de la synchronisation des appels: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get all call logs from backend
+  Future<ApiResponse<List<Map<String, dynamic>>>> getCallLogs({
+    required String token,
+    String? direction,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      String endpoint = ApiEndpoints.calls;
+      List<String> queryParams = [];
+
+      if (direction != null) queryParams.add('direction=$direction');
+      if (startDate != null) queryParams.add('startDate=${startDate.toIso8601String()}');
+      if (endDate != null) queryParams.add('endDate=${endDate.toIso8601String()}');
+
+      if (queryParams.isNotEmpty) {
+        endpoint += '?${queryParams.join('&')}';
+      }
+
+      final response = await _makeRequest(
+        'GET',
+        endpoint,
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final callLogs = (response.data!['data']['callLogs'] as List)
+            .map((e) => e as Map<String, dynamic>)
+            .toList();
+
+        return ApiResponse<List<Map<String, dynamic>>>(
+          success: true,
+          data: callLogs,
+          message: response.message,
+          statusCode: response.statusCode,
+        );
+      }
+
+      return ApiResponse<List<Map<String, dynamic>>>(
+        success: false,
+        message: response.message ?? 'Erreur lors du chargement des appels',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<List<Map<String, dynamic>>>(
+        success: false,
+        message: 'Erreur lors du chargement des appels: ${e.toString()}',
+      );
+    }
+  }
+
   // Dispose method to clean up resources
   void dispose() {
     _client.close();

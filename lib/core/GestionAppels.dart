@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:CryptoApp/utils/Routes.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import '../utils/colors.dart';
+import '../api/api_client.dart';
 
 class GestionAppelsPage extends StatefulWidget {
   const GestionAppelsPage({Key? key}) : super(key: key);
@@ -40,30 +41,23 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
 
   Future<void> _checkPermissionAndLoadLogs() async {
     try {
-      print('GestionAppels: Checking permission...');
       final phoneStatus = await Permission.phone.status;
-      print('GestionAppels: Permission status: $phoneStatus');
 
       setState(() {
         _hasPermission = phoneStatus.isGranted;
       });
 
       if (phoneStatus.isGranted) {
-        print('GestionAppels: Permission granted, loading call logs...');
         await _loadCallLogs();
       } else if (phoneStatus.isDenied) {
-        print('GestionAppels: Permission denied, requesting...');
         await _requestPermission();
         if (_hasPermission) {
           await _loadCallLogs();
         }
       } else if (phoneStatus.isPermanentlyDenied) {
-        print('GestionAppels: Permission permanently denied');
         _showPermissionDialog();
       }
-    } catch (e, stackTrace) {
-      print('GestionAppels: Error in checkPermissionAndLoadLogs: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       setState(() {
         _isLoading = false;
         _hasPermission = false;
@@ -91,8 +85,6 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
         _hasPermission = phoneStatus.isGranted;
       });
     } catch (e) {
-      // Handle permission request errors (e.g., already requesting)
-      debugPrint('GestionAppels: Error requesting permission: $e');
       setState(() {
         _hasPermission = false;
       });
@@ -126,18 +118,13 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
   }
 
   Future<void> _loadCallLogs() async {
-    if (!_hasPermission) {
-      print('GestionAppels: No permission to load call logs');
-      return;
-    }
+    if (!_hasPermission) return;
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      print('GestionAppels: Fetching call logs...');
-      // Limit to last 100 call logs for better performance
       final Iterable<CallLogEntry> logs = await CallLog.query(
         dateFrom: DateTime.now()
             .subtract(const Duration(days: 30))
@@ -145,9 +132,7 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
         dateTo: DateTime.now().millisecondsSinceEpoch,
       );
 
-      // Take only the first 100 entries
       final limitedLogs = logs.take(100).toList();
-      print('GestionAppels: Fetched ${limitedLogs.length} call logs');
 
       setState(() {
         _callLogs = limitedLogs;
@@ -155,11 +140,10 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
         _isLoading = false;
       });
       _applyFilters();
-      print('GestionAppels: Call logs loaded successfully');
-    } catch (e, stackTrace) {
-      print('GestionAppels: Error loading call logs: $e');
-      print('Stack trace: $stackTrace');
-
+      
+      // Auto-sync to backend after loading
+      _syncCallsToBackend();
+    } catch (e) {
       setState(() {
         _isLoading = false;
       });
@@ -169,7 +153,81 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
           SnackBar(
             content: Text('Erreur: $e'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _syncCallsToBackend() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+
+    if (token == null || _callLogs.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_callLogs.isEmpty ? 'Aucun appel à synchroniser' : 'Non authentifié'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      List<Map<String, dynamic>> callLogsToSync = _callLogs.map((call) {
+        String direction = 'outgoing';
+        if (call.callType == CallType.incoming) {
+          direction = 'incoming';
+        } else if (call.callType == CallType.missed || call.callType == CallType.rejected) {
+          direction = 'missed';
+        }
+
+        return {
+          'direction': direction,
+          'phoneNumber': call.number ?? 'Unknown',
+          'startedAt': DateTime.fromMillisecondsSinceEpoch(call.timestamp ?? 0).toIso8601String(),
+          'endedAt': call.duration != null && call.duration! > 0
+              ? DateTime.fromMillisecondsSinceEpoch((call.timestamp ?? 0) + (call.duration! * 1000)).toIso8601String()
+              : null,
+          'durationSec': call.duration ?? 0,
+          'note': call.name,
+        };
+      }).toList();
+
+      final response = await apiClient.syncMultipleCallLogs(
+        token: token,
+        callLogs: callLogsToSync,
+      );
+
+      if (response.success && mounted) {
+        final synced = response.data?['synced'] ?? 0;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ $synced appels synchronisés'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${response.message}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur de synchronisation'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -735,6 +793,7 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
                     color: Theme.of(context).iconTheme.color,
                   ),
                   onPressed: _hasPermission ? _loadCallLogs : null,
+                  tooltip: 'Actualiser',
                 ),
               ],
             ),
