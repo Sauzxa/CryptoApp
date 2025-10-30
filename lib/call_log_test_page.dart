@@ -81,18 +81,37 @@ class _CallLogTestPageState extends State<CallLogTestPage> {
     });
 
     try {
-      final Iterable<CallLogEntry> logs = await CallLog.get();
+      // Calculate 30 days ago timestamp
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      final thirtyDaysAgoTimestamp = thirtyDaysAgo.millisecondsSinceEpoch;
+      
+      // Fetch call logs from last 30 days
+      final Iterable<CallLogEntry> logs = await CallLog.query(
+        dateFrom: thirtyDaysAgoTimestamp,
+        dateTo: DateTime.now().millisecondsSinceEpoch,
+      );
+      
+      // Convert to list and sort by most recent first
+      final allLogs = logs.toList();
+      allLogs.sort((a, b) => (b.timestamp ?? 0).compareTo(a.timestamp ?? 0));
+      
+      // Display only the 100 most recent calls in UI
+      final displayLogs = allLogs.take(100).toList();
+      
       setState(() {
-        _callLogs = logs.toList();
+        _callLogs = displayLogs;
         _isLoading = false;
       });
+      
+      // Note: When syncing to backend, send all logs from last 30 days (allLogs)
+      // but UI only shows 100 most recent (displayLogs)
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
       _showError('Failed to load call logs: $e');
     }
-  } //
+  }
 
   void _showError(String message) {
     if (mounted) {
