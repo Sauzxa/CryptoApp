@@ -137,7 +137,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
           await _loadCalendarData();
 
           debugPrint(
-            '✅ Loaded suivi: Payé=${_payeReservations.length}, Annulé=${_annuleReservations.length}, En cours=${_enCoursReservations.length}',
+            '✅ Loaded suivi: Terminé=${_payeReservations.length}, Annulé=${_annuleReservations.length}, En cours=${_enCoursReservations.length}',
           );
         }
       } else {
@@ -202,7 +202,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
           controller: _tabController,
           indicatorColor: Colors.white,
           tabs: const [
-            Tab(text: 'Payé'),
+            Tab(text: 'Terminé'),
             Tab(text: 'Annulé'),
             Tab(text: 'En Cours'),
             Tab(text: 'Calendrier'),
@@ -230,7 +230,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildReservationList(_payeReservations, 'Payé', Colors.green),
+                _buildReservationList(_payeReservations, 'Terminé', Colors.green),
                 _buildReservationList(
                   _annuleReservations,
                   'Annulé',

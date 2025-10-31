@@ -293,7 +293,7 @@ class ReservationModel {
 
   String get commercialActionDisplay {
     if (commercialAction == 'paye') {
-      return 'Payé';
+      return 'Terminé';
     } else if (commercialAction == 'en_cours') {
       return 'En Cours';
     } else if (commercialAction == 'annulee') {

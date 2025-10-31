@@ -781,8 +781,9 @@ class ApiClient {
     }
   }
 
-  /// Take commercial action on rapport (Agent Commercial only)
+  /// Take commercial action on rapport (Agent Commercial only) - POST
   /// Actions: 'paye', 'en_cours', 'annulee'
+  /// Use this for initial action after rapport
   Future<ApiResponse<ReservationModel>> takeCommercialAction(
     String reservationId,
     String action,
@@ -826,6 +827,54 @@ class ApiClient {
       return ApiResponse<ReservationModel>(
         success: false,
         message: 'Erreur lors de l\'action: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Update commercial action from en_cours to paye/annulee (Agent Commercial only) - PUT
+  /// Actions: 'paye' or 'annulee' only
+  /// Use this to update an existing en_cours reservation
+  Future<ApiResponse<ReservationModel>> updateCommercialAction(
+    String reservationId,
+    String action, // 'paye' or 'annulee'
+    String token, {
+    String? message, // Optional message
+  }) async {
+    try {
+      final body = {
+        'action': action,
+        if (message != null) 'message': message,
+      };
+
+      final response = await _makeRequest(
+        'PUT',
+        '${ApiEndpoints.reservations}/$reservationId/commercial-action',
+        body: body,
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final reservationData = response.data!['data']['reservation'];
+        if (reservationData != null) {
+          final reservation = ReservationModel.fromJson(reservationData);
+          return ApiResponse<ReservationModel>(
+            success: true,
+            data: reservation,
+            message:
+                response.data!['message'] ?? 'Action mise à jour avec succès',
+            statusCode: response.statusCode,
+          );
+        }
+      }
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: response.message ?? 'Erreur lors de la mise à jour',
+        statusCode: response.statusCode,
+      );
+    } catch (e) {
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message: 'Erreur lors de la mise à jour: ${e.toString()}',
       );
     }
   }

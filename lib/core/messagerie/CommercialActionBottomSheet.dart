@@ -38,7 +38,7 @@ class _CommercialActionBottomSheetState
 
   final Map<String, String> _actionLabels = {
     'en_cours': 'En Cours',
-    'paye': 'Payé (Terminé)',
+    'paye': 'Terminé',
     'annulee': 'Annulée',
   };
 

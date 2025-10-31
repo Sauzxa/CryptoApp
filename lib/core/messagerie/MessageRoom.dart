@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import 'package:CryptoApp/providers/messaging_provider.dart';
 import 'package:CryptoApp/models/RoomModel.dart';
+import 'package:CryptoApp/models/ReservationModel.dart';
 import 'package:CryptoApp/api/api_endpoints.dart';
 import 'package:CryptoApp/api/api_client.dart';
 import 'package:CryptoApp/services/messaging_service.dart';
@@ -1263,7 +1264,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Use lighter backgrounds in dark mode, darker in light mode
-    Color bgColor = isPotentiel 
+    Color bgColor = isPotentiel
         ? (isDark ? Colors.green.shade700 : Colors.green.shade50)
         : (isDark ? Colors.red.shade700 : Colors.red.shade50);
     Color borderColor = isPotentiel ? Colors.green : Colors.red;
@@ -1319,10 +1320,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             const SizedBox(height: 8),
             Text(
               rapportMessage.toString(),
-              style: TextStyle(
-                fontSize: 14,
-                color: textColor,
-              ),
+              style: TextStyle(fontSize: 14, color: textColor),
             ),
           ],
           const SizedBox(height: 8),
@@ -1398,6 +1396,10 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   }
 
   Widget _buildCommercialActionMessage(MessageModel message) {
+    // Get auth provider to check user role
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isCommercial = authProvider.isCommercial;
+
     // Parse commercial action data from message text (JSON format)
     Map<String, dynamic> actionData;
     try {
@@ -1420,7 +1422,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         bgColor = Colors.green.shade50;
         borderColor = Colors.green;
         icon = Icons.check_circle;
-        actionText = 'Payé';
+        actionText = 'Terminé';
         break;
       case 'en_cours':
         bgColor = Colors.orange.shade50;
@@ -1476,17 +1478,44 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                   'État: $actionText',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: borderColor,
+                    color: Colors.black87,
                   ),
                 ),
               ),
+              // Add state change button for en_cours actions (commercial agent only)
+              if (action == 'en_cours' && isCommercial) ...[
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () => _showChangeStateBottomSheet(
+                    widget.room.reservationId,
+                    actionMessage,
+                  ),
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Changer Etat de Suivi'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.orange,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(color: Colors.orange, width: 1),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ],
             ],
           ),
           if (actionMessage.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               actionMessage.toString(),
-              style: const TextStyle(fontSize: 14),
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
             ),
           ],
           const SizedBox(height: 8),
@@ -2285,13 +2314,29 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         );
       }
 
-      final response = await apiClient.takeCommercialAction(
-        widget.room.reservationId!,
-        action,
-        token,
-        newReservedAt: newReservedAt,
-        message: message,
-      );
+      // Determine which endpoint to use based on action
+      // If action is 'paye' or 'annulee' without newReservedAt, use PUT (update from en_cours)
+      // Otherwise use POST (initial action after rapport)
+      final ApiResponse<ReservationModel> response;
+      
+      if ((action == 'paye' || action == 'annulee') && newReservedAt == null) {
+        // Use PUT endpoint to update from en_cours to paye/annulee
+        response = await apiClient.updateCommercialAction(
+          widget.room.reservationId!,
+          action,
+          token,
+          message: message,
+        );
+      } else {
+        // Use POST endpoint for initial action (including en_cours with new date)
+        response = await apiClient.takeCommercialAction(
+          widget.room.reservationId!,
+          action,
+          token,
+          newReservedAt: newReservedAt,
+          message: message,
+        );
+      }
 
       if (response.success) {
         // Show success message
@@ -2333,5 +2378,70 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');
       }
     }
+  }
+
+  Future<void> _showChangeStateBottomSheet(
+    String? reservationId,
+    String currentMessage,
+  ) async {
+    if (!mounted || reservationId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final textColor = isDark ? Colors.white : Colors.black87;
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF121212) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Changer l\'état de suivi',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Icon(Icons.check_circle, color: Colors.green),
+                title: Text(
+                  'Terminé',
+                  style: TextStyle(color: textColor),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _executeCommercialAction(
+                    'paye',
+                    null,
+                    'Statut changé à Terminé',
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.cancel, color: Colors.red),
+                title: Text('Annulée', style: TextStyle(color: textColor)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _executeCommercialAction(
+                    'annulee',
+                    null,
+                    'Statut changé à Annulée',
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

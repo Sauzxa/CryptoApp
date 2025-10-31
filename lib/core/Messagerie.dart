@@ -138,7 +138,7 @@ class _MessageriePageState extends State<MessageriePage> {
     if (isReservationRoom) {
       // Use the same logic as ReservationModel.commercialActionDisplay
       if (room.commercialAction == 'paye') {
-        commercialActionText = 'Payé';
+        commercialActionText = 'Terminé';
         commercialActionColor = Colors.green;
       } else if (room.commercialAction == 'en_cours') {
         commercialActionText = 'En Cours';
