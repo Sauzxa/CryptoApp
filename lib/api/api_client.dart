@@ -1105,7 +1105,8 @@ class ApiClient {
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
-        message: 'Erreur lors de la synchronisation de l\'appel: ${e.toString()}',
+        message:
+            'Erreur lors de la synchronisation de l\'appel: ${e.toString()}',
       );
     }
   }
@@ -1116,9 +1117,7 @@ class ApiClient {
     required List<Map<String, dynamic>> callLogs,
   }) async {
     try {
-      final body = {
-        'callLogs': callLogs,
-      };
+      final body = {'callLogs': callLogs};
 
       final response = await _makeRequest(
         'POST',
@@ -1136,7 +1135,8 @@ class ApiClient {
     } catch (e) {
       return ApiResponse<Map<String, dynamic>>(
         success: false,
-        message: 'Erreur lors de la synchronisation des appels: ${e.toString()}',
+        message:
+            'Erreur lors de la synchronisation des appels: ${e.toString()}',
       );
     }
   }
@@ -1153,18 +1153,16 @@ class ApiClient {
       List<String> queryParams = [];
 
       if (direction != null) queryParams.add('direction=$direction');
-      if (startDate != null) queryParams.add('startDate=${startDate.toIso8601String()}');
-      if (endDate != null) queryParams.add('endDate=${endDate.toIso8601String()}');
+      if (startDate != null)
+        queryParams.add('startDate=${startDate.toIso8601String()}');
+      if (endDate != null)
+        queryParams.add('endDate=${endDate.toIso8601String()}');
 
       if (queryParams.isNotEmpty) {
         endpoint += '?${queryParams.join('&')}';
       }
 
-      final response = await _makeRequest(
-        'GET',
-        endpoint,
-        token: token,
-      );
+      final response = await _makeRequest('GET', endpoint, token: token);
 
       if (response.success && response.data != null) {
         final callLogs = (response.data!['data']['callLogs'] as List)
@@ -1197,11 +1195,11 @@ class ApiClient {
     try {
       final url = Uri.parse(ApiEndpoints.getFullUrl(ApiEndpoints.folders));
       final headers = _getApiKeyHeaders(token);
-      
-      final httpResponse = await _client.get(url, headers: headers).timeout(
-        const Duration(seconds: 30),
-      );
-      
+
+      final httpResponse = await _client
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 30));
+
       final response = _handleResponse(httpResponse);
 
       if (response.success && response.data != null) {
@@ -1241,11 +1239,11 @@ class ApiClient {
         ApiEndpoints.getFullUrl('${ApiEndpoints.folders}/$folderId/docs'),
       );
       final headers = _getApiKeyHeaders(token);
-      
-      final httpResponse = await _client.get(url, headers: headers).timeout(
-        const Duration(seconds: 30),
-      );
-      
+
+      final httpResponse = await _client
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 30));
+
       final response = _handleResponse(httpResponse);
 
       if (response.success && response.data != null) {
@@ -1263,7 +1261,8 @@ class ApiClient {
       } else {
         return ApiResponse<List<DocumentModel>>(
           success: false,
-          message: response.message ?? 'Erreur lors du chargement des documents',
+          message:
+              response.message ?? 'Erreur lors du chargement des documents',
           statusCode: response.statusCode,
         );
       }
@@ -1277,7 +1276,16 @@ class ApiClient {
 
   /// Get document download URL
   String getDocumentDownloadUrl(String documentId, String token) {
-    return '${ApiEndpoints.getFullUrl(ApiEndpoints.folders)}/download/$documentId?token=$token&apiKey=${AppConfig.internalApiKey}';
+    final base = ApiEndpoints.getFullUrl(ApiEndpoints.folders);
+    final uri = Uri.parse('$base/download/$documentId').replace(
+      queryParameters: {
+        // token is not used by backend for this route, but keep if needed later
+        'token': token,
+        // Encode apiKey safely to avoid truncation on '#', '[', ']' and others
+        'apiKey': AppConfig.internalApiKey,
+      },
+    );
+    return uri.toString();
   }
 
   // Dispose method to clean up resources

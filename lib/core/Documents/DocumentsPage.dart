@@ -1,11 +1,18 @@
 import 'dart:ui';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 import '../../models/DocumentModel.dart';
 import '../../api/api_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/colors.dart';
+import '../../config/config.dart';
 
 class DocumentsPage extends StatefulWidget {
   const DocumentsPage({Key? key}) : super(key: key);
@@ -149,6 +156,135 @@ class _DocumentsPageState extends State<DocumentsPage> {
     }
   }
 
+  Future<void> _showOpenOptions(DocumentModel document) async {
+    if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
+      builder: (context) {
+        final textColor = isDark ? Colors.white : Colors.black87;
+        final iconColor = isDark ? Colors.white70 : const Color(0xFF6366F1);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.open_in_browser, color: iconColor),
+                title: Text(
+                  'Ouvrir dans le navigateur',
+                  style: TextStyle(color: textColor),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openDocument(document);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.open_in_new, color: iconColor),
+                title: Text(
+                  'Ouvrir avec une application',
+                  style: TextStyle(color: textColor),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _downloadToCacheAndOpen(document);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.share, color: iconColor),
+                title: Text('Partager', style: TextStyle(color: textColor)),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _downloadToCacheAndShare(document);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>?> _downloadToCache(DocumentModel document) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.token;
+    if (token == null) return null;
+
+    try {
+      final url = Uri.parse(
+        apiClient.getDocumentDownloadUrl(document.id, token).split('?').first,
+      );
+
+      final response = await http.get(
+        url,
+        headers: {'x-api-key': AppConfig.internalApiKey, 'Accept': '*/*'},
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final dir = await getTemporaryDirectory();
+        final safeName = document.name.replaceAll('/', '_');
+        final filePath = '${dir.path}/$safeName';
+        final file = await File(filePath).writeAsBytes(response.bodyBytes);
+        return {
+          'path': file.path,
+          'mime': document.mimeType,
+          'name': document.name,
+        };
+      } else {
+        if (!mounted) return null;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Téléchargement échoué (${response.statusCode})'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    return null;
+  }
+
+  Future<void> _downloadToCacheAndOpen(DocumentModel document) async {
+    final result = await _downloadToCache(document);
+    if (result == null) return;
+    final path = result['path'] as String;
+    try {
+      final opened = await OpenFilex.open(path);
+      // If plugin returns an error, fallback to system chooser via url_launcher
+      if (opened.type != ResultType.done) {
+        final fileUri = Uri.file(path);
+        await launchUrl(fileUri, mode: LaunchMode.externalApplication);
+      }
+    } on MissingPluginException catch (_) {
+      // Fallback if plugin not registered on hot-reload; requires full restart
+      final fileUri = Uri.file(path);
+      await launchUrl(fileUri, mode: LaunchMode.externalApplication);
+    } on PlatformException catch (_) {
+      final fileUri = Uri.file(path);
+      await launchUrl(fileUri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _downloadToCacheAndShare(DocumentModel document) async {
+    final result = await _downloadToCache(document);
+    if (result == null) return;
+    await Share.shareXFiles([
+      XFile(
+        result['path'] as String,
+        mimeType: result['mime'] as String?,
+        name: result['name'] as String?,
+      ),
+    ]);
+  }
+
   void _goBack() {
     if (_selectedFolder != null) {
       setState(() {
@@ -185,9 +321,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 onPressed: _goBack,
               ),
               title: Text(
-                _selectedFolder != null
-                    ? _selectedFolder!.name
-                    : 'Documents',
+                _selectedFolder != null ? _selectedFolder!.name : 'Documents',
                 style: TextStyle(
                   color: isDark ? Colors.white : const Color(0xFF6366F1),
                   fontSize: 20,
@@ -217,10 +351,10 @@ class _DocumentsPageState extends State<DocumentsPage> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? _buildErrorView()
-                : _selectedFolder == null
-                    ? _buildFoldersView()
-                    : _buildDocumentsView(),
+            ? _buildErrorView()
+            : _selectedFolder == null
+            ? _buildFoldersView()
+            : _buildDocumentsView(),
       ),
     );
   }
@@ -330,11 +464,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
             color: const Color(0xFF6366F1).withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(
-            Icons.folder,
-            color: Color(0xFF6366F1),
-            size: 28,
-          ),
+          child: const Icon(Icons.folder, color: Color(0xFF6366F1), size: 28),
         ),
         title: Text(
           folder.name,
@@ -456,7 +586,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
           Icons.download,
           color: isDark ? Colors.white54 : const Color(0xFF6366F1),
         ),
-        onTap: () => _openDocument(document),
+        onTap: () => _showOpenOptions(document),
       ),
     );
   }
