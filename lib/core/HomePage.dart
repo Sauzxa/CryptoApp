@@ -555,33 +555,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           const Divider(height: 1, indent: 20, endIndent: 20),
                           const SizedBox(height: 8),
                         ],
-
-                        // Change Language (Disabled)
-                        Opacity(
-                          opacity: 0.5,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 4,
-                            ),
-                            leading: const Icon(Icons.language),
-                            title: const Text(
-                              'Changer la langue',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: const Text(
-                              'Français (Bientôt)',
-                              style: TextStyle(fontSize: 13),
-                            ),
-                            enabled: false,
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-                        const Divider(height: 1, indent: 20, endIndent: 20),
                         const SizedBox(height: 8),
 
                         // Dark Mode Toggle
