@@ -154,16 +154,13 @@ class AuthProvider with ChangeNotifier {
     try {
       debugPrint('AuthProvider: Starting logout...');
 
-      // Small delay to ensure logout flag is set before processing any pending events
-      await Future.delayed(const Duration(milliseconds: 50));
-
       // Clear messaging data first (before disconnecting socket)
       if (messagingProvider != null) {
         messagingProvider.clearMessagingData();
         debugPrint('AuthProvider: Messaging data cleared');
       }
 
-      // Disconnect socket before logging out
+      // Disconnect socket before logging out (this removes all listeners)
       _socketService.disconnect();
       debugPrint('AuthProvider: Socket disconnected');
 

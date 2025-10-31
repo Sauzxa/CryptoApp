@@ -8,6 +8,7 @@ import 'package:CryptoApp/providers/theme_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:CryptoApp/widgets/notification_bell_button.dart';
 import '../utils/colors.dart';
+import '../services/socket_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -30,13 +31,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _selectedIndex = 0;
     // Request permission on first load
     _requestPhonePermission();
-    // Check for active reservations
-    // Setup socket listeners for reservation updates
+    // Setup socket listeners for availability updates
+    _setupSocketListeners();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _removeSocketListeners();
     super.dispose();
   }
 
@@ -45,6 +47,43 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     // When app comes to foreground, check availability again
     if (state == AppLifecycleState.resumed) {}
+  }
+
+  void _setupSocketListeners() {
+    // Listen for availability toggle enabled event from backend
+    // This is triggered when agent submits rapport and becomes available again
+    socketService.onAvailabilityToggleEnabled((data) {
+      debugPrint('📥 HomePage: Availability toggle enabled: $data');
+      
+      if (!mounted) return;
+      
+      // Refresh user data from AuthProvider to get updated availability
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      authProvider.refreshUser().then((success) {
+        if (success) {
+          debugPrint('✅ HomePage: User data refreshed, availability updated');
+          
+          // Show snackbar notification
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  data['message'] ?? 'Vous êtes maintenant disponible',
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      });
+    });
+  }
+
+  void _removeSocketListeners() {
+    // Socket listeners are automatically removed when socket disconnects
+    // This is just a placeholder for future cleanup if needed
+    debugPrint('🧹 HomePage: Cleaning up socket listeners');
   }
 
   Future<void> _requestPhonePermission() async {
