@@ -54,15 +54,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // This is triggered when agent submits rapport and becomes available again
     socketService.onAvailabilityToggleEnabled((data) {
       debugPrint('📥 HomePage: Availability toggle enabled: $data');
-      
+
       if (!mounted) return;
-      
+
       // Refresh user data from AuthProvider to get updated availability
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       authProvider.refreshUser().then((success) {
         if (success) {
           debugPrint('✅ HomePage: User data refreshed, availability updated');
-          
+
           // Show snackbar notification
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -472,13 +472,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   'not_available',
                               builder: (context, availability, child) => Switch(
                                 value: availability == 'available',
-                                onChanged: (value) async {
+                                onChanged: (value) {
                                   final newAvailability = value
                                       ? 'available'
                                       : 'not_available';
-                                  await authProvider.updateAvailability(
-                                    newAvailability,
-                                  );
+                                  // No await - Selector handles UI update automatically
+                                  authProvider.updateAvailability(newAvailability);
                                 },
                                 activeColor: const Color(0xFF059669),
                               ),

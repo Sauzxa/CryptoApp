@@ -289,7 +289,9 @@ class AuthProvider with ChangeNotifier {
       _socketService.onAgentStatusUpdate((data) {
         // Guard: Don't process if logging out or not authenticated
         if (_isLoggingOut || _token == null || _currentUser == null) {
-          debugPrint('AuthProvider: Ignoring status update (logging out or not authenticated)');
+          debugPrint(
+            'AuthProvider: Ignoring status update (logging out or not authenticated)',
+          );
           return;
         }
 
@@ -311,7 +313,9 @@ class AuthProvider with ChangeNotifier {
       _socketService.socket?.on('agent:status_changed', (data) {
         // Guard: Don't process if logging out or not authenticated
         if (_isLoggingOut || _token == null || _currentUser == null) {
-          debugPrint('AuthProvider: Ignoring status change (logging out or not authenticated)');
+          debugPrint(
+            'AuthProvider: Ignoring status change (logging out or not authenticated)',
+          );
           return;
         }
 
@@ -332,6 +336,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   /// Update agent availability status (field agents only)
+  /// Uses optimistic update: UI updates immediately via Selector, reverts if API fails
   Future<bool> updateAvailability(String availability) async {
     if (_currentUser == null || _token == null) {
       _errorMessage = 'Utilisateur non connecté';
@@ -346,10 +351,18 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
 
-    try {
-      debugPrint('AuthProvider: Updating availability to $availability...');
+    // Store previous state for rollback if API fails
+    final previousAvailability = _currentUser!.availability;
 
-      // Call API to update status in database
+    try {
+      debugPrint('AuthProvider: Optimistically updating availability to $availability...');
+
+      // OPTIMISTIC UPDATE: Update local state immediately
+      _currentUser = _currentUser?.copyWith(availability: availability);
+      _authService.updateUserData(_currentUser!);
+      notifyListeners(); // Selector rebuilds Switch instantly ⚡
+
+      // Call API to update status in database (in background)
       final response = await apiClient.updateAgentStatus(
         agentId: _currentUser!.id!,
         availability: availability,
@@ -357,26 +370,32 @@ class AuthProvider with ChangeNotifier {
       );
 
       if (response.success && response.data != null) {
-        // Update local user data
+        // API succeeded - update with server data to ensure sync
         _currentUser = response.data;
         _authService.updateUserData(_currentUser!);
 
         // Emit socket event to notify other clients
         _socketService.emitStatusChange(availability);
 
-        debugPrint('AuthProvider: Availability updated successfully');
+        debugPrint('AuthProvider: Availability updated successfully (confirmed by server)');
         notifyListeners();
         return true;
       } else {
+        // API failed - ROLLBACK to previous state
+        debugPrint('AuthProvider: Update failed - rolling back to $previousAvailability');
+        _currentUser = _currentUser?.copyWith(availability: previousAvailability);
+        _authService.updateUserData(_currentUser!);
         _errorMessage = response.message ?? 'Erreur lors de la mise à jour';
-        debugPrint('AuthProvider: Update failed - $_errorMessage');
-        notifyListeners();
+        notifyListeners(); // Selector rebuilds Switch back to previous state
         return false;
       }
     } catch (e) {
+      // Exception - ROLLBACK to previous state
+      debugPrint('AuthProvider: Update error - rolling back to $previousAvailability');
+      _currentUser = _currentUser?.copyWith(availability: previousAvailability);
+      _authService.updateUserData(_currentUser!);
       _errorMessage = 'Erreur: ${e.toString()}';
-      debugPrint('AuthProvider: Update error - $_errorMessage');
-      notifyListeners();
+      notifyListeners(); // Selector rebuilds Switch back to previous state
       return false;
     }
   }
