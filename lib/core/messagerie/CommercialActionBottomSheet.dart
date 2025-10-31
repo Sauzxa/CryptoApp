@@ -280,7 +280,7 @@ class _CommercialActionBottomSheetState
                         Text(
                           _selectedTime == null
                               ? 'Sélectionner l\'heure'
-                              : _selectedTime!.format(context),
+                              : '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}',
                           style: TextStyle(
                             fontSize: 16,
                             color: _selectedTime == null
@@ -471,7 +471,23 @@ class _CommercialActionBottomSheetState
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
+      initialEntryMode: TimePickerEntryMode.input,
       helpText: 'Select time',
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: const Color(0xFF6366F1),
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          ),
+        );
+      },
     );
 
     if (time != null) {

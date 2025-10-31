@@ -131,16 +131,20 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: initialTime,
+      initialEntryMode: TimePickerEntryMode.input,
       builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF6366F1),
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: Color(0xFF6366F1),
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
             ),
+            child: child!,
           ),
-          child: child!,
         );
       },
     );
@@ -148,7 +152,10 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
     if (picked != null && picked != _selectedTime) {
       setState(() {
         _selectedTime = picked;
-        _timeController.text = picked.format(context);
+        // Format time in 24-hour format
+        final hour = picked.hour.toString().padLeft(2, '0');
+        final minute = picked.minute.toString().padLeft(2, '0');
+        _timeController.text = '$hour:$minute';
       });
     }
   }
@@ -831,6 +838,10 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                           if (value.length != 10) {
                             return '10 chiffres requis';
                           }
+                          // Check if phone starts with 05, 06, or 07
+                          if (!RegExp(r'^(05|06|07)').hasMatch(value)) {
+                            return 'Doit commencer par 05, 06 ou 07';
+                          }
                           return null;
                         },
                       ),
@@ -1224,6 +1235,12 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                   style: TextStyle(
                     color: isDark ? Colors.white : Colors.black87,
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Le message est obligatoire';
+                    }
+                    return null;
+                  },
                   decoration: InputDecoration(
                     hintText: 'Tapez un message ici',
                     hintStyle: TextStyle(

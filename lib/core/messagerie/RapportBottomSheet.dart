@@ -238,11 +238,11 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    // Validation: Message required for potentiel
-                    if (_rapportState == 'potentiel' && _messageController.text.trim().isEmpty) {
+                    // Validation: Message is always required
+                    if (_messageController.text.trim().isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Le message est requis pour un rapport potentiel'),
+                          content: Text('Le message est obligatoire'),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -251,7 +251,7 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
                     
                     widget.onSubmit(
                       _rapportState,
-                      _messageController.text.trim().isEmpty ? null : _messageController.text.trim(),
+                      _messageController.text.trim(),
                     );
                     Navigator.pop(context);
                   },
