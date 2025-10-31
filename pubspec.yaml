@@ -63,9 +63,9 @@ dependencies:
   fl_chart: ^1.1.1
   
   # Charts
- 
   
- 
+  # Environment variables
+  flutter_dotenv: ^6.0.0
   
 
 dev_dependencies:
@@ -94,6 +94,7 @@ flutter:
   assets:
     - lib/assets/CryptoBackground.png
     - lib/assets/CryptoLogo.png
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

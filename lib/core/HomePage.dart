@@ -555,7 +555,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           const Divider(height: 1, indent: 20, endIndent: 20),
                           const SizedBox(height: 8),
                         ],
-                        const SizedBox(height: 8),
 
                         // Dark Mode Toggle
                         Consumer<ThemeProvider>(
@@ -717,6 +716,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     color: const Color(0xFF475569),
                     icon: Icons.article_outlined,
                     textColor: Colors.white,
+                    onTap: () {
+                      Navigator.pushNamed(context, AppRoutes.documents);
+                    },
                   ),
                   _buildCard(
                     title: 'Statistiques',

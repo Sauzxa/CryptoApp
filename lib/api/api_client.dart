@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../models/UserModel.dart';
 import '../models/ReservationModel.dart';
+import '../models/DocumentModel.dart';
+import '../config/config.dart';
 import 'api_endpoints.dart';
 
 class ApiResponse<T> {
@@ -40,6 +42,13 @@ class ApiClient {
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
+    return headers;
+  }
+
+  // Headers with internal API key (for folders/documents)
+  Map<String, String> _getApiKeyHeaders(String? token) {
+    final headers = _getAuthHeaders(token);
+    headers['x-api-key'] = AppConfig.internalApiKey;
     return headers;
   }
 
@@ -1181,6 +1190,94 @@ class ApiClient {
         message: 'Erreur lors du chargement des appels: ${e.toString()}',
       );
     }
+  }
+
+  /// Get all folders (for current user's role)
+  Future<ApiResponse<List<FolderModel>>> getAllFolders(String token) async {
+    try {
+      final url = Uri.parse(ApiEndpoints.getFullUrl(ApiEndpoints.folders));
+      final headers = _getApiKeyHeaders(token);
+      
+      final httpResponse = await _client.get(url, headers: headers).timeout(
+        const Duration(seconds: 30),
+      );
+      
+      final response = _handleResponse(httpResponse);
+
+      if (response.success && response.data != null) {
+        final foldersData = response.data!['data']['folders'] as List;
+        final folders = foldersData
+            .map((folder) => FolderModel.fromJson(folder))
+            .toList();
+
+        return ApiResponse<List<FolderModel>>(
+          success: true,
+          data: folders,
+          message: 'Dossiers chargés avec succès',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<List<FolderModel>>(
+          success: false,
+          message: response.message ?? 'Erreur lors du chargement des dossiers',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<FolderModel>>(
+        success: false,
+        message: 'Erreur: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get documents in a folder
+  Future<ApiResponse<List<DocumentModel>>> getFolderDocuments(
+    String folderId,
+    String token,
+  ) async {
+    try {
+      final url = Uri.parse(
+        ApiEndpoints.getFullUrl('${ApiEndpoints.folders}/$folderId/docs'),
+      );
+      final headers = _getApiKeyHeaders(token);
+      
+      final httpResponse = await _client.get(url, headers: headers).timeout(
+        const Duration(seconds: 30),
+      );
+      
+      final response = _handleResponse(httpResponse);
+
+      if (response.success && response.data != null) {
+        final documentsData = response.data!['data']['documents'] as List;
+        final documents = documentsData
+            .map((doc) => DocumentModel.fromJson(doc))
+            .toList();
+
+        return ApiResponse<List<DocumentModel>>(
+          success: true,
+          data: documents,
+          message: 'Documents chargés avec succès',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<List<DocumentModel>>(
+          success: false,
+          message: response.message ?? 'Erreur lors du chargement des documents',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<DocumentModel>>(
+        success: false,
+        message: 'Erreur: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get document download URL
+  String getDocumentDownloadUrl(String documentId, String token) {
+    return '${ApiEndpoints.getFullUrl(ApiEndpoints.folders)}/download/$documentId?token=$token&apiKey=${AppConfig.internalApiKey}';
   }
 
   // Dispose method to clean up resources

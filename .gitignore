@@ -45,3 +45,9 @@ app.*.map.json
 /android/app/release
 #Readme
 ProductionWorkflow.md
+
+# Environment variables
+.env
+.env.example
+.env.local
+.env.*.local
