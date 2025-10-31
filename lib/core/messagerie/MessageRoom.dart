@@ -1260,9 +1260,15 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     final rapportState = rapportData['rapportState'] ?? 'potentiel';
     final rapportMessage = rapportData['rapportMessage'] ?? message.text;
     final isPotentiel = rapportState == 'potentiel';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    Color bgColor = isPotentiel ? Colors.green.shade50 : Colors.red.shade50;
+    // Use lighter backgrounds in dark mode, darker in light mode
+    Color bgColor = isPotentiel 
+        ? (isDark ? Colors.green.shade700 : Colors.green.shade50)
+        : (isDark ? Colors.red.shade700 : Colors.red.shade50);
     Color borderColor = isPotentiel ? Colors.green : Colors.red;
+    // Always use BLACK text on colored backgrounds for maximum visibility
+    Color textColor = Colors.black;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -1277,14 +1283,14 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.description, color: borderColor),
+              Icon(Icons.description, color: textColor),
               const SizedBox(width: 8),
               Text(
                 '📋 RAPPORT DE RENDEZ-VOUS',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: borderColor,
+                  color: textColor,
                 ),
               ),
             ],
@@ -1294,7 +1300,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             children: [
               Icon(
                 isPotentiel ? Icons.thumb_up : Icons.thumb_down,
-                color: borderColor,
+                color: textColor,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -1303,7 +1309,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                   'État: ${isPotentiel ? "POTENTIEL" : "NON POTENTIEL"}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: borderColor,
+                    color: textColor,
                   ),
                 ),
               ),
@@ -1313,13 +1319,19 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             const SizedBox(height: 8),
             Text(
               rapportMessage.toString(),
-              style: const TextStyle(fontSize: 14),
+              style: TextStyle(
+                fontSize: 14,
+                color: textColor,
+              ),
             ),
           ],
           const SizedBox(height: 8),
           Text(
             DateFormat('dd/MM/yyyy à HH:mm').format(message.createdAt),
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            style: TextStyle(
+              fontSize: 11,
+              color: isDark ? Colors.black54 : Colors.grey.shade600,
+            ),
           ),
 
           // Commercial action button (only for potentiel rapports)
