@@ -238,6 +238,7 @@ class SocketService {
   void removeAllListeners() {
     if (_socket != null) {
       _socket!.off('agent:status');
+      _socket!.off('agent:status_changed');
       _socket!.off('notification');
       _socket!.off('reservation:created');
       _socket!.off('reservation:updated');

@@ -18,6 +18,7 @@ class AuthProvider with ChangeNotifier {
   String? _token;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isLoggingOut = false;
 
   // Public getters
   UserModel? get currentUser => _currentUser;
@@ -147,10 +148,14 @@ class AuthProvider with ChangeNotifier {
   /// Logout user
   Future<void> logout({MessagingProvider? messagingProvider}) async {
     _isLoading = true;
+    _isLoggingOut = true;
     notifyListeners();
 
     try {
       debugPrint('AuthProvider: Starting logout...');
+
+      // Small delay to ensure logout flag is set before processing any pending events
+      await Future.delayed(const Duration(milliseconds: 50));
 
       // Clear messaging data first (before disconnecting socket)
       if (messagingProvider != null) {
@@ -184,6 +189,7 @@ class AuthProvider with ChangeNotifier {
       _token = null;
     } finally {
       _isLoading = false;
+      _isLoggingOut = false;
       notifyListeners();
       debugPrint('AuthProvider: Logout complete');
     }
@@ -284,6 +290,12 @@ class AuthProvider with ChangeNotifier {
 
       // Listen for agent status updates from other clients
       _socketService.onAgentStatusUpdate((data) {
+        // Guard: Don't process if logging out or not authenticated
+        if (_isLoggingOut || _token == null || _currentUser == null) {
+          debugPrint('AuthProvider: Ignoring status update (logging out or not authenticated)');
+          return;
+        }
+
         debugPrint('AuthProvider: Received status update: $data');
         final agentId = data['agentId'] as String?;
         final availability = data['availability'] as String?;
@@ -300,6 +312,12 @@ class AuthProvider with ChangeNotifier {
 
       // Listen for direct status changes (from "Commencer" button, rapport, etc.)
       _socketService.socket?.on('agent:status_changed', (data) {
+        // Guard: Don't process if logging out or not authenticated
+        if (_isLoggingOut || _token == null || _currentUser == null) {
+          debugPrint('AuthProvider: Ignoring status change (logging out or not authenticated)');
+          return;
+        }
+
         debugPrint('AuthProvider: Received direct status change: $data');
         final availability = data['availability'] as String?;
         final message = data['message'] as String?;

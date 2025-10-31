@@ -32,13 +32,15 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SingleChildScrollView(
         child: Padding(
@@ -51,18 +53,16 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 '📝 Soumettre le Rapport',
-                style: TextStyle(
-                  fontSize: 20,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
                 ),
               ),
               IconButton(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close),
-                color: Colors.grey.shade600,
+                color: Theme.of(context).iconTheme.color,
               ),
             ],
           ),
@@ -82,21 +82,27 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
           const SizedBox(height: 20),
           
           // Rapport State Selection
-          const Text(
+          Text(
             'État du rapport:',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).textTheme.titleMedium?.color,
             ),
           ),
           const SizedBox(height: 12),
           
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.grey.shade300,
+              ),
               borderRadius: BorderRadius.circular(12),
-              color: Colors.grey.shade50,
+              color: isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.grey.shade50,
             ),
             child: Column(
               children: [
@@ -146,10 +152,10 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
             _rapportState == 'potentiel' 
                 ? 'Message du rapport: *'
                 : 'Message du rapport: (optionnel)',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).textTheme.titleMedium?.color,
             ),
           ),
           const SizedBox(height: 8),
@@ -157,25 +163,42 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
           TextField(
             controller: _messageController,
             maxLines: 4,
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+            ),
             decoration: InputDecoration(
               hintText: _rapportState == 'potentiel'
                   ? 'Décrivez l\'intérêt du client... (requis)'
                   : 'Raison du refus... (optionnel)',
-              hintStyle: TextStyle(color: Colors.grey.shade400),
+              hintStyle: TextStyle(
+                color: isDark
+                    ? Colors.white.withOpacity(0.5)
+                    : Colors.grey.shade400,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.grey.shade300,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.grey.shade300,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
               ),
               filled: true,
-              fillColor: Colors.grey.shade50,
+              fillColor: isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.grey.shade50,
               contentPadding: const EdgeInsets.all(16),
             ),
           ),
@@ -190,17 +213,23 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: Colors.grey.shade400),
+                    side: BorderSide(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.3)
+                          : Colors.grey.shade400,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Annuler',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black54,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.7)
+                          : Colors.black54,
                     ),
                   ),
                 ),
@@ -255,12 +284,20 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
   }
 
   Widget _buildReadOnlyField(String label, String value, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: isDark
+            ? Colors.white.withOpacity(0.05)
+            : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.1)
+              : Colors.grey.shade300,
+        ),
       ),
       child: Row(
         children: [
@@ -274,17 +311,19 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade600,
+                    color: isDark
+                        ? Colors.white.withOpacity(0.6)
+                        : Colors.grey.shade600,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
                   ),
                 ),
               ],
