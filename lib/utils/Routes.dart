@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:CryptoApp/onboarding/welcomeScreen.dart';
 import 'package:CryptoApp/auth/SingUp.dart';
 import 'package:CryptoApp/auth/LoginScreen.dart';
+import 'package:CryptoApp/auth/ForgetPass.dart';
+import 'package:CryptoApp/auth/VerifyCode.dart';
+import 'package:CryptoApp/auth/ResetPassword.dart';
 import 'package:CryptoApp/core/HomePage.dart';
 import 'package:CryptoApp/core/Messagerie.dart';
 import 'package:CryptoApp/core/GestionAppels.dart';
@@ -18,6 +21,9 @@ class AppRoutes {
   static const String welcome = '/welcome';
   static const String signup = '/signup';
   static const String login = '/login';
+  static const String forgotPassword = '/forgot-password';
+  static const String verifyCode = '/verify-code';
+  static const String resetPassword = '/reset-password';
   static const String home = '/home';
   static const String messagerie = '/messagerie';
   static const String gestionAppels = '/gestion-appels';
@@ -38,6 +44,22 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const SignUpScreen());
       case login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
+      case forgotPassword:
+        return MaterialPageRoute(builder: (_) => const ForgetPassScreen());
+      case verifyCode:
+        // Extract email from arguments
+        final args = settings.arguments as Map<String, dynamic>?;
+        final email = args?['email'] as String? ?? '';
+        return MaterialPageRoute(
+          builder: (_) => VerifyCodeScreen(email: email),
+        );
+      case resetPassword:
+        // Extract email from arguments
+        final args = settings.arguments as Map<String, dynamic>?;
+        final email = args?['email'] as String? ?? '';
+        return MaterialPageRoute(
+          builder: (_) => ResetPasswordScreen(email: email),
+        );
       case home:
         return MaterialPageRoute(builder: (_) => const HomePage());
       case messagerie:

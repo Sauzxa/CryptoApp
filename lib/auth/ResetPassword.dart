@@ -2,25 +2,31 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../utils/Routes.dart';
 
-class ForgetPassScreen extends StatefulWidget {
-  const ForgetPassScreen({Key? key}) : super(key: key);
+class ResetPasswordScreen extends StatefulWidget {
+  final String email;
+
+  const ResetPasswordScreen({Key? key, required this.email}) : super(key: key);
 
   @override
-  State<ForgetPassScreen> createState() => _ForgetPassScreenState();
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _ForgetPassScreenState extends State<ForgetPassScreen> {
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleSendResetLink() async {
+  Future<void> _handleResetPassword() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -30,24 +36,35 @@ class _ForgetPassScreenState extends State<ForgetPassScreen> {
     });
 
     try {
-      final response = await apiClient.forgotPassword(
-        _emailController.text.trim().toLowerCase(),
+      final response = await apiClient.resetPassword(
+        widget.email,
+        _passwordController.text,
       );
 
       if (mounted) {
         if (response.success) {
-          // Navigate to verify code screen
-          Navigator.pushNamed(
-            context,
-            AppRoutes.verifyCode,
-            arguments: {'email': _emailController.text.trim().toLowerCase()},
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mot de passe réinitialisé avec succès!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
           );
+
+          // Navigate to login screen
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+          }
         } else {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                response.message ?? 'Erreur lors de l\'envoi de l\'email',
+                response.message ?? 'Erreur lors de la réinitialisation',
               ),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 3),
@@ -87,35 +104,7 @@ class _ForgetPassScreenState extends State<ForgetPassScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Back button
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Retour',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 60),
 
               // Logo
               Container(
@@ -149,7 +138,7 @@ class _ForgetPassScreenState extends State<ForgetPassScreen> {
                             // Title
                             const Center(
                               child: Text(
-                                'Mot de passe oublié ?',
+                                'Nouveau mot de passe',
                                 style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -162,7 +151,7 @@ class _ForgetPassScreenState extends State<ForgetPassScreen> {
                             // Description
                             const Center(
                               child: Text(
-                                'Entrez votre email et nous vous enverrons un lien pour réinitialiser votre mot de passe',
+                                'Entrez votre nouveau mot de passe',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14,
@@ -172,9 +161,9 @@ class _ForgetPassScreenState extends State<ForgetPassScreen> {
                             ),
                             const SizedBox(height: 32),
 
-                            // Email field
+                            // New password field
                             const Text(
-                              'Email',
+                              'Nouveau mot de passe',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -183,14 +172,14 @@ class _ForgetPassScreenState extends State<ForgetPassScreen> {
                             ),
                             const SizedBox(height: 8),
                             TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
                               style: const TextStyle(
                                 color: Colors.black87,
                                 fontSize: 16,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Entrez votre email',
+                                hintText: 'Entrez votre nouveau mot de passe',
                                 hintStyle: TextStyle(
                                   color: Colors.grey.shade600,
                                   fontSize: 14,
@@ -219,27 +208,110 @@ class _ForgetPassScreenState extends State<ForgetPassScreen> {
                                   horizontal: 16,
                                   vertical: 16,
                                 ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
+                                ),
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Veuillez entrer votre email';
+                                  return 'Veuillez entrer un mot de passe';
                                 }
-                                if (!value.contains('@')) {
-                                  return 'Veuillez entrer un email valide';
+                                if (value.length < 6) {
+                                  return 'Le mot de passe doit contenir au moins 6 caractères';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Confirm password field
+                            const Text(
+                              'Confirmer le mot de passe',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _confirmPasswordController,
+                              obscureText: _obscureConfirmPassword,
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Confirmez votre mot de passe',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF5F5F5),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF9333EA),
+                                    width: 2,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureConfirmPassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscureConfirmPassword =
+                                        !_obscureConfirmPassword,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Veuillez confirmer votre mot de passe';
+                                }
+                                if (value != _passwordController.text) {
+                                  return 'Les mots de passe ne correspondent pas';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 32),
 
-                            // Send button
+                            // Reset button
                             SizedBox(
                               width: double.infinity,
                               height: 56,
                               child: ElevatedButton(
                                 onPressed: _isLoading
                                     ? null
-                                    : _handleSendResetLink,
+                                    : _handleResetPassword,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF2196F3),
                                   foregroundColor: Colors.white,
@@ -260,30 +332,12 @@ class _ForgetPassScreenState extends State<ForgetPassScreen> {
                                         ),
                                       )
                                     : const Text(
-                                        'Envoyer le lien',
+                                        'Réinitialiser',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Back to login link
-                            Center(
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.pop(context);
-                                },
-                                child: const Text(
-                                  'Retour à la connexion',
-                                  style: TextStyle(
-                                    color: Color(0xFF2196F3),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
                               ),
                             ),
                           ],

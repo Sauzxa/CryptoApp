@@ -312,6 +312,103 @@ class ApiClient {
     }
   }
 
+  /// Request password reset (forgot password)
+  Future<ApiResponse<void>> forgotPassword(String email) async {
+    try {
+      final response = await _makeRequest(
+        'POST',
+        ApiEndpoints.forgotPassword,
+        body: {'email': email.toLowerCase().trim()},
+      );
+
+      if (response.success) {
+        return ApiResponse<void>(
+          success: true,
+          message:
+              response.data?['message'] ??
+              'Un code de vérification a été envoyé à votre email',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<void>(
+          success: false,
+          message: response.message ?? 'Erreur lors de l\'envoi de l\'email',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<void>(
+        success: false,
+        message: 'Erreur: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Verify 6-digit code
+  Future<ApiResponse<void>> verifyCode(String email, String code) async {
+    try {
+      final response = await _makeRequest(
+        'POST',
+        ApiEndpoints.verifyCode,
+        body: {'email': email.toLowerCase().trim(), 'code': code},
+      );
+
+      if (response.success) {
+        return ApiResponse<void>(
+          success: true,
+          message: response.data?['message'] ?? 'Code vérifié avec succès',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<void>(
+          success: false,
+          message: response.message ?? 'Code invalide ou expiré',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<void>(
+        success: false,
+        message: 'Erreur: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Reset password with email (after code verification)
+  Future<ApiResponse<void>> resetPassword(
+    String email,
+    String newPassword,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'POST',
+        ApiEndpoints.resetPassword,
+        body: {'email': email.toLowerCase().trim(), 'newPassword': newPassword},
+      );
+
+      if (response.success) {
+        return ApiResponse<void>(
+          success: true,
+          message:
+              response.data?['message'] ??
+              'Mot de passe réinitialisé avec succès',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<void>(
+          success: false,
+          message: response.message ?? 'Erreur lors de la réinitialisation',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<void>(
+        success: false,
+        message: 'Erreur: ${e.toString()}',
+      );
+    }
+  }
+
   // Health check
   Future<ApiResponse<Map<String, dynamic>>> healthCheck() async {
     try {
@@ -841,10 +938,7 @@ class ApiClient {
     String? message, // Optional message
   }) async {
     try {
-      final body = {
-        'action': action,
-        if (message != null) 'message': message,
-      };
+      final body = {'action': action, if (message != null) 'message': message};
 
       final response = await _makeRequest(
         'PUT',

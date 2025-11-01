@@ -14,6 +14,9 @@ class ApiEndpoints {
   static const String login = '$auth/login';
   static const String me = '$auth/me';
   static const String logout = '$auth/logout';
+  static const String forgotPassword = '$auth/forgot-password';
+  static const String verifyCode = '$auth/verify-code';
+  static const String resetPassword = '$auth/reset-password';
 
   // User/Agent endpoints
   static const String agents = '$apiPrefix/agents';

@@ -12,6 +12,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 
+// Global navigator key for deep link navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -56,6 +59,7 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             title: 'Crypto Immobilier',
             theme: themeProvider.currentTheme,
+            navigatorKey: navigatorKey,
             home: _getInitialScreen(authProvider),
             onGenerateRoute: AppRoutes.generateRoute,
           );
@@ -74,11 +78,7 @@ class MyApp extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'lib/assets/CryptoLogo.png',
-                width: 120,
-                height: 120,
-              ),
+              Image.asset('lib/assets/CryptoLogo.png', width: 120, height: 120),
               const SizedBox(height: 24),
               const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
