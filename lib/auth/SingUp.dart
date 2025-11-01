@@ -632,6 +632,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       if (value.length != 10) {
                                         return '10 chiffres requis';
                                       }
+                                      // Regular expression to check if number starts with 05, 06, or 07
+                                      final phoneRegex = RegExp(
+                                        r'^0[567]\d{8}$',
+                                      );
+                                      if (!phoneRegex.hasMatch(value)) {
+                                        return 'Doit commencer par 05, 06 ou 07';
+                                      }
                                       return null;
                                     },
                                   ),

@@ -4,7 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AppConfig {
   // Server configuration
   static String get serverIpAddress =>
-      dotenv.env['SERVER_IP'] ?? '192.168.1.91';
+      dotenv.env['SERVER_IP'] ?? '192.168.1.161';
 
   static int get serverPort =>
       int.tryParse(dotenv.env['SERVER_PORT'] ?? '') ?? 3000;
