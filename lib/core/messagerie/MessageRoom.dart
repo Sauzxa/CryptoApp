@@ -1399,6 +1399,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     // Get auth provider to check user role
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final isCommercial = authProvider.isCommercial;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Parse commercial action data from message text (JSON format)
     Map<String, dynamic> actionData;
@@ -1419,25 +1420,25 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
     switch (action) {
       case 'paye':
-        bgColor = Colors.green.shade50;
+        bgColor = isDark ? Colors.green.shade700 : Colors.green.shade50;
         borderColor = Colors.green;
         icon = Icons.check_circle;
         actionText = 'Terminé';
         break;
       case 'en_cours':
-        bgColor = Colors.orange.shade50;
+        bgColor = isDark ? Colors.orange.shade700 : Colors.orange.shade50;
         borderColor = Colors.orange;
         icon = Icons.schedule;
         actionText = 'En Cours';
         break;
       case 'annulee':
-        bgColor = Colors.red.shade50;
+        bgColor = isDark ? Colors.red.shade700 : Colors.red.shade50;
         borderColor = Colors.red;
         icon = Icons.cancel;
         actionText = 'Annulé';
         break;
       default:
-        bgColor = Colors.grey.shade50;
+        bgColor = isDark ? Colors.grey.shade700 : Colors.grey.shade50;
         borderColor = Colors.grey;
         icon = Icons.business_center;
         actionText = 'Action Commerciale';
@@ -1478,11 +1479,13 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                   'État: $actionText',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
               ),
               // Add state change button for en_cours actions (commercial agent only)
+              // This button only appears when the action is 'en_cours'
+              // For 'paye' (Terminé) and 'annulee' (Annulée), no edit button is shown
               if (action == 'en_cours' && isCommercial) ...[
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
@@ -1493,7 +1496,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                   icon: const Icon(Icons.edit, size: 16),
                   label: const Text('Changer Etat de Suivi'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
                     foregroundColor: Colors.orange,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -1515,13 +1518,19 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             const SizedBox(height: 8),
             Text(
               actionMessage.toString(),
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
             ),
           ],
           const SizedBox(height: 8),
           Text(
             DateFormat('dd/MM/yyyy à HH:mm').format(message.createdAt),
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            style: TextStyle(
+              fontSize: 11,
+              color: isDark ? Colors.white70 : Colors.grey.shade600,
+            ),
           ),
         ],
       ),
@@ -2412,6 +2421,24 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               ),
               const SizedBox(height: 20),
               ListTile(
+                leading: Icon(Icons.schedule, color: Colors.orange),
+                title: Text(
+                  'En Cours (Reprogrammer)',
+                  style: TextStyle(color: textColor),
+                ),
+                subtitle: Text(
+                  'Choisir une nouvelle date',
+                  style: TextStyle(
+                    color: isDark ? Colors.white60 : Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _showRescheduleDialog(reservationId);
+                },
+              ),
+              ListTile(
                 leading: Icon(Icons.check_circle, color: Colors.green),
                 title: Text(
                   'Terminé',
@@ -2442,6 +2469,75 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _showRescheduleDialog(String reservationId) async {
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
+
+    // Show date picker
+    selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: const Color(0xFF6366F1),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (selectedDate == null || !mounted) return;
+
+    // Show time picker
+    selectedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: const Color(0xFF6366F1),
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          ),
+        );
+      },
+    );
+
+    if (selectedTime == null || !mounted) return;
+
+    // Combine date and time
+    final newDateTime = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+
+    final newReservedAt = newDateTime.toIso8601String();
+    final formattedDate = DateFormat('dd/MM/yyyy à HH:mm').format(newDateTime);
+
+    // Execute the action
+    await _executeCommercialAction(
+      'en_cours',
+      newReservedAt,
+      'Reprogrammé pour le $formattedDate',
     );
   }
 }
