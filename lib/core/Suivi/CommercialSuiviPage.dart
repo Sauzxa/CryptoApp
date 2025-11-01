@@ -28,6 +28,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
   List<ReservationModel> _payeReservations = [];
   List<ReservationModel> _annuleReservations = [];
   List<ReservationModel> _enCoursReservations = [];
+  List<ReservationModel> _manqueReservations = [];
   Map<String, List<ReservationModel>> _calendarReservations = {};
 
   DateTime _focusedDay = DateTime.now();
@@ -36,7 +37,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     initializeDateFormatting('fr', null); // Initialize French locale
     _loadSuiviData();
     _setupSocketListeners();
@@ -130,6 +131,13 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                     .toList() ??
                 [];
 
+            // Parse manque section
+            _manqueReservations =
+                (sections['manque']['reservations'] as List?)
+                    ?.map((json) => ReservationModel.fromJson(json))
+                    .toList() ??
+                [];
+
             _isLoading = false;
           });
 
@@ -137,7 +145,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
           await _loadCalendarData();
 
           debugPrint(
-            '✅ Loaded suivi: Terminé=${_payeReservations.length}, Annulé=${_annuleReservations.length}, En cours=${_enCoursReservations.length}',
+            '✅ Loaded suivi: Terminé=${_payeReservations.length}, Annulé=${_annuleReservations.length}, En cours=${_enCoursReservations.length}, Manqué=${_manqueReservations.length}',
           );
         }
       } else {
@@ -205,6 +213,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
             Tab(text: 'Terminé'),
             Tab(text: 'Annulé'),
             Tab(text: 'En Cours'),
+            Tab(text: 'Manqué'),
             Tab(text: 'Calendrier'),
           ],
         ),
@@ -240,6 +249,11 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                   _enCoursReservations,
                   'En Cours',
                   Colors.orange,
+                ),
+                _buildReservationList(
+                  _manqueReservations,
+                  'Manqué',
+                  Colors.grey,
                 ),
                 _buildCalendarView(),
               ],

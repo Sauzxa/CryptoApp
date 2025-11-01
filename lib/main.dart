@@ -68,7 +68,25 @@ class MyApp extends StatelessWidget {
     // Show loading while initializing
     if (authProvider.isLoading) {
       print('⏳ App initializing...');
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: Colors.black, // Black background
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'lib/assets/CryptoLogo.png',
+                width: 120,
+                height: 120,
+              ),
+              const SizedBox(height: 24),
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     print('🚀 Determining initial route...');
