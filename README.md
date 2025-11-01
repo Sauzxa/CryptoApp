@@ -1,59 +1,137 @@
-# Crypto Immobilier App
+# 🏢 Crypto Immobilier App
 
-A comprehensive Flutter application for crypto real estate management with advanced communication features, call management, and reservation system.
+Flutter mobile application for real estate management with real-time communication.
 
-## 🚀 Features Overview
+---
 
-### 🔐 Authentication & User Management
-- **User Registration & Login**: Secure authentication with email/password
-- **Role-Based Access**: Support for Commercial Agents and Field Agents
-- **Profile Management**: Complete user profile editing with image upload
-- **Session Management**: Persistent login with automatic token refresh
-- **Multi-Country Support**: Phone number validation for Algeria, France, USA, UK, Morocco, Tunisia
+## ✨ Features
 
-### 💬 Real-Time Messaging System
-- **Text Messaging**: Send and receive text messages in real-time
-- **Voice Messages**: High-quality voice recording and playback with waveform visualization
-- **Room Management**: Create and manage chat rooms for different purposes
-- **Message Status**: Read receipts and message delivery confirmation
-- **Typing Indicators**: Real-time typing status for better user experience
-- **Socket.IO Integration**: WebSocket-based real-time communication
+### 🔐 Authentication
+- User registration and login
+- JWT-based secure authentication
+- Password reset via email (6-digit verification code) using resend
+- Role-based access (Commercial Agent / Field Agent /admin)
+- Persistent login sessions
 
-### 📞 Call Management & History
-- **Call Log Access**: View complete call history with permissions
-- **Call Filtering**: Filter calls by type (incoming/outgoing) and search by number/name
-- **Direct Calling**: One-tap calling from call logs
-- **Permission Handling**: Smart permission requests for call log access
-- **Call Analytics**: Detailed call information with timestamps and duration
+### 👤 Profile Management
+- Edit profile information (name, email, phone)
+- Upload profile photo (Cloudinary integration third party api)
+- Change password third api 
+- View account details 
+- Toggle availability status (Field Agents from availble to unavailble (bid))
 
-### 📅 Reservation System
-- **Appointment Booking**: Create reservations for property visits
-- **Agent Assignment**: Automatic assignment to available field agents
-- **Real-Time Updates**: Live reservation status updates
-- **Availability Management**: Field agents can toggle their availability
-- **Reservation Tracking**: Track and manage all reservations with countdown timers
-- **Client Management**: Store client information and contact details
+### 💬 Real-Time Messaging
+- Text messaging powerd by Socket.IO
+- Voice message recording and playback using cloudinary 
+- Audio waveform visualization
+- Create and manage chat rooms
+- Message read receipts
+- Typing indicators
+- Real-time message delivery
+- Voice message cloud storage
 
-### 🎨 User Interface & Experience
-- **Modern Design**: Beautiful, responsive UI with glass morphism effects
-- **Dark/Light Theme**: Automatic theme switching with user preferences
-- **Custom Animations**: Smooth transitions and micro-interactions
-- **Responsive Layout**: Optimized for different screen sizes
-- **Accessibility**: Full accessibility support for all users
+### 📞 Call Management
+- Access phone call history
+- View incoming/outgoing calls
+- Filter calls by type
+- Search calls by name/number
+- Direct calling from call logs
+- Call timestamps and duration
+- Contact information display
 
-### 🔔 Notification System
-- **Push Notifications**: Firebase Cloud Messaging integration
-- **Local Notifications**: In-app notification system
-- **Real-Time Alerts**: Instant notifications for messages and reservations
-- **Notification History**: Track all notifications with timestamps
+### 📅 Reservations
+- Create client appointments
+- Assign to available field agents
+- Real-time reservation updates
+- Countdown timers for appointments
+- Search, View and filter reservations
+- Track call direction (incoming/outgoing)
+- Client information storage
+- Reservation status management
 
-### 📱 Cross-Platform Support
-- **Web**: Full web application with responsive design
-- **Android**: Native Android app with Material Design
-- **iOS**: iOS app with Cupertino design elements
-- **Windows**: Windows desktop application
-- **macOS**: macOS desktop application
-- **Linux**: Linux desktop application
+### 📊 Suivi (Tracking) Page - Commercial Agents Only
+- **Overview Dashboard**: View all reservations at a glance
+- **Statistics Cards**:
+  - En Cours (In Progress) - Active appointments
+  - Terminée (Completed) - Successfully completed visits
+  - Annulée (Cancelled) - Cancelled appointments
+  - Missed (Missed) - Missed appointments
+- **Calendar View**: Visual calendar with all reservations
+- **Real-time Stats**: Live updating statistics
+- **Filter by Status**: Quick filter reservations by status
+- **Agent Performance**: Track field agent performance
+- **Date Range Selection**: View stats for specific periods
+
+### 🔔 Notifications
+- Push notifications (Firebase Cloud Messaging)
+- Local notifications
+- Real-time alerts for messages
+- Reservation notifications
+- Notification history
+- Badge counters
+
+### 🎨 UI/UX
+- Modern glass morphism design
+- Dark/Light theme support
+- Smooth animations
+- Responsive layouts
+- Custom navigation
+- Loading states
+- Error handling
+- Pull-to-refresh
+
+### 📱 Platform Support
+- Android
+- iOS  
+- Web
+- Windows
+- macOS
+- Linux
+
+---
+
+## 🛠️ Technology Stack
+
+**Frontend:** Flutter 3.24.3  
+**State Management:** Provider  
+**Real-Time:** Socket.IO  
+**Backend API:** Node.js + Express/ts  
+**Database:** MongoDB  
+**Storage:** Cloudinary  
+**Notifications:** Firebase Cloud Messaging  
+**Authentication:** JWT
+**Sender:** third party email sender
+
+---
+
+## 🚀 Quick Start
+
+### Run the app
+```bash
+flutter pub get
+flutter run
+```
+
+### Build for production
+```bash
+flutter build apk --release        # Android
+flutter build ios --release        # iOS
+flutter build web --release        # Web
+```
+
+---
+
+## 📧 Email Features
+
+- Password reset via email
+- 6-digit verification codes
+- Custom domain: `noreply@crypto-immobilier.site`
+- 15-minute code expiration
+- Resend integration
+
+---
+
+**Built with Flutter** 💙
 
 ## 🛠️ Technical Architecture
 
@@ -240,6 +318,7 @@ flutter build web --release
 - **Messaging**: Real-time chat with voice message support
 - **Call Management**: Call logs and direct calling functionality
 - **Reservations**: Appointment booking and management
+- **Suivi (Tracking)**: Statistics and calendar view (Commercial Agents only)
 - **Profile Settings**: User profile editing and preferences
 
 ### Detailed Screen Features
@@ -281,6 +360,23 @@ flutter build web --release
   - Countdown timers for upcoming appointments
   - Search and filter functionality
   - Real-time status updates
+
+#### 📊 Suivi (Tracking) Page
+- **Statistics Dashboard** (Commercial Agents only):
+  - **En Cours Card**: Count of in-progress appointments
+  - **Terminée Card**: Count of completed appointments
+  - **Annulée Card**: Count of cancelled appointments
+  - **Missed Card**: Count of missed appointments
+- **Calendar Integration**:
+  - Monthly calendar view
+  - Color-coded reservation markers
+  - Date selection for detailed view
+  - Quick navigation between months
+- **Detailed Views**:
+  - Click on any stat card to filter reservations
+  - View specific reservations for selected dates
+  - Agent-specific performance tracking
+  - Export capabilities for reporting
 
 #### ⚙️ Profile Settings
 - **Profile Information**: 
