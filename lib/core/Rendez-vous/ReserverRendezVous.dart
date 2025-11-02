@@ -50,7 +50,9 @@ class DateInputFormatter extends TextInputFormatter {
 }
 
 class ReserverRendezVousPage extends StatefulWidget {
-  const ReserverRendezVousPage({Key? key}) : super(key: key);
+  final String? phoneNumber; // Optional phone number to pre-fill
+  
+  const ReserverRendezVousPage({Key? key, this.phoneNumber}) : super(key: key);
 
   @override
   State<ReserverRendezVousPage> createState() => _ReserverRendezVousPageState();
@@ -80,6 +82,31 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
     '+212': '🇲🇦 Maroc',
     '+216': '🇹🇳 Tunisie',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill phone number if provided
+    if (widget.phoneNumber != null && widget.phoneNumber!.isNotEmpty) {
+      // Remove country code if present to extract just the phone number
+      String phoneNumber = widget.phoneNumber!;
+      
+      // Check if phone starts with + (international format)
+      if (phoneNumber.startsWith('+')) {
+        // Try to match with known country codes
+        for (var code in _countryCodes.keys) {
+          if (phoneNumber.startsWith(code)) {
+            _selectedCountryCode = code;
+            phoneNumber = phoneNumber.substring(code.length).trim();
+            break;
+          }
+        }
+      }
+      
+      // Set the phone number (remove any spaces or special characters)
+      _phoneController.text = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    }
+  }
 
   @override
   void dispose() {

@@ -9,6 +9,7 @@ import 'package:CryptoApp/utils/Routes.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import '../utils/colors.dart';
 import '../api/api_client.dart';
+import 'Rendez-vous/ReserverRendezVous.dart';
 
 class GestionAppelsPage extends StatefulWidget {
   const GestionAppelsPage({Key? key}) : super(key: key);
@@ -542,17 +543,49 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
               ],
             ),
           ),
-          // Call action button
-          GestureDetector(
-            onTap: () => _makeCall(call.number),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Color(0xFF4CAF50),
-                shape: BoxShape.circle,
+          // Action buttons
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Call button
+              GestureDetector(
+                onTap: () => _makeCall(call.number),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF4CAF50),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.call, color: Colors.white, size: 20),
+                ),
               ),
-              child: const Icon(Icons.call, color: Colors.white, size: 20),
-            ),
+              const SizedBox(height: 8),
+              // Create reservation button
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReserverRendezVousPage(
+                        phoneNumber: call.number,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_today,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
