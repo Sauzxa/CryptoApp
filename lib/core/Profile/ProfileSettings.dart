@@ -517,13 +517,44 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Veuillez entrer votre email';
                               }
-                              // Email regex pattern
+
+                              final email = value.trim().toLowerCase();
+
+                              // Enhanced email regex pattern with stricter validation
+                              // Allows standard email formats: xxx@domain.com
                               final emailRegex = RegExp(
-                                r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                                r'^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$',
                               );
-                              if (!emailRegex.hasMatch(value.trim())) {
+
+                              if (!emailRegex.hasMatch(email)) {
                                 return 'Format d\'email invalide';
                               }
+
+                              // Additional validation: ensure TLD is valid (common extensions)
+                              final validTLDs = [
+                                'com', 'net', 'org', 'edu', 'gov', 'mil', 'int',
+                                'fr', 'de', 'uk', 'it', 'es', 'ca', 'au', 'jp',
+                                'cn', 'in', 'br', 'ru', 'mx', 'za', 'kr', 'nl',
+                                'be', 'ch', 'se', 'no', 'dk', 'fi', 'pl', 'at',
+                                'io', 'co', 'me', 'tv', 'cc', 'info', 'biz',
+                                'dz', // Algeria
+                              ];
+
+                              final tld = email.split('.').last;
+                              if (!validTLDs.contains(tld)) {
+                                return 'Extension de domaine invalide (.com, .net, etc.)';
+                              }
+
+                              // Check for consecutive dots
+                              if (email.contains('..')) {
+                                return 'Format d\'email invalide';
+                              }
+
+                              // Check if @ appears only once
+                              if (email.split('@').length != 2) {
+                                return 'Format d\'email invalide';
+                              }
+
                               return null;
                             },
                           ),

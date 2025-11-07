@@ -141,7 +141,7 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
         _isLoading = false;
       });
       _applyFilters();
-      
+
       // Auto-sync to backend after loading
       _syncCallsToBackend();
     } catch (e) {
@@ -169,7 +169,11 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_callLogs.isEmpty ? 'Aucun appel à synchroniser' : 'Non authentifié'),
+            content: Text(
+              _callLogs.isEmpty
+                  ? 'Aucun appel à synchroniser'
+                  : 'Non authentifié',
+            ),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 2),
           ),
@@ -183,16 +187,21 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
         String direction = 'outgoing';
         if (call.callType == CallType.incoming) {
           direction = 'incoming';
-        } else if (call.callType == CallType.missed || call.callType == CallType.rejected) {
+        } else if (call.callType == CallType.missed ||
+            call.callType == CallType.rejected) {
           direction = 'missed';
         }
 
         return {
           'direction': direction,
           'phoneNumber': call.number ?? 'Unknown',
-          'startedAt': DateTime.fromMillisecondsSinceEpoch(call.timestamp ?? 0).toIso8601String(),
+          'startedAt': DateTime.fromMillisecondsSinceEpoch(
+            call.timestamp ?? 0,
+          ).toIso8601String(),
           'endedAt': call.duration != null && call.duration! > 0
-              ? DateTime.fromMillisecondsSinceEpoch((call.timestamp ?? 0) + (call.duration! * 1000)).toIso8601String()
+              ? DateTime.fromMillisecondsSinceEpoch(
+                  (call.timestamp ?? 0) + (call.duration! * 1000),
+                ).toIso8601String()
               : null,
           'durationSec': call.duration ?? 0,
           'note': call.name,
@@ -267,6 +276,14 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
   void _onSearchChanged(String query) {
     setState(() {
       _searchQuery = query;
+    });
+    _applyFilters();
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
     });
     _applyFilters();
   }
@@ -566,9 +583,8 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ReserverRendezVousPage(
-                        phoneNumber: call.number,
-                      ),
+                      builder: (context) =>
+                          ReserverRendezVousPage(phoneNumber: call.number),
                     ),
                   );
                 },
@@ -677,24 +693,6 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
       );
     }
 
-    if (_filteredCallLogs.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.phone, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              _searchQuery.isNotEmpty || _filterType != 'all'
-                  ? 'Aucun résultat'
-                  : 'Aucun appel trouvé',
-              style: const TextStyle(fontSize: 18, color: Colors.white),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
       children: [
         // Search bar
@@ -730,10 +728,7 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
                             ? Colors.white
                             : const Color(0xFF6366F1),
                       ),
-                      onPressed: () {
-                        _searchController.clear();
-                        _onSearchChanged('');
-                      },
+                      onPressed: _clearSearch,
                     )
                   : null,
               filled: true,
@@ -779,14 +774,59 @@ class _GestionAppelsPageState extends State<GestionAppelsPage> {
           ),
         ),
         const SizedBox(height: 8),
-        // Call logs list
+        // Call logs list or empty state
         Expanded(
-          child: ListView.builder(
-            itemCount: _filteredCallLogs.length,
-            itemBuilder: (context, index) {
-              return _buildCallCard(_filteredCallLogs[index]);
-            },
-          ),
+          child: _filteredCallLogs.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _searchQuery.isNotEmpty || _filterType != 'all'
+                            ? Icons.search_off
+                            : Icons.phone,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _searchQuery.isNotEmpty || _filterType != 'all'
+                            ? 'Aucun résultat trouvé'
+                            : 'Aucun appel récent',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_searchQuery.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            'Aucun contact ne correspond à "$_searchQuery"',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey.shade300
+                                  : Colors.grey.shade600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _filteredCallLogs.length,
+                  itemBuilder: (context, index) {
+                    return _buildCallCard(_filteredCallLogs[index]);
+                  },
+                ),
         ),
       ],
     );

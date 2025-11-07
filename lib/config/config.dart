@@ -2,15 +2,16 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Application configuration constants
 class AppConfig {
-  // Server configuration
+  // Server configuration - Use domain name in production
+  static String get baseUrl =>
+      dotenv.env['BASE_URL'] ?? 'https://api.crypto-immobilier.site';
+
+  // Legacy support (kept for backward compatibility)
   static String get serverIpAddress =>
-      dotenv.env['SERVER_IP'] ?? '192.168.1.91';
+      dotenv.env['SERVER_IP'] ?? '154.240.110.154';
 
   static int get serverPort =>
       int.tryParse(dotenv.env['SERVER_PORT'] ?? '') ?? 3000;
-
-  // Base URL construction
-  static String get baseUrl => 'http://$serverIpAddress:$serverPort';
 
   // Environment configuration
   static const bool isDebugMode = true;

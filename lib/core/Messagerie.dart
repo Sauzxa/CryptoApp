@@ -423,6 +423,18 @@ class _MessageriePageState extends State<MessageriePage> {
                 'Messagerie',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              actions: [
+                IconButton(
+                  icon: Icon(
+                    Icons.add_circle,
+                    color: const Color(0xFF6366F1),
+                    size: 28,
+                  ),
+                  tooltip: 'Nouvelle conversation',
+                  onPressed: () => _showCreateRoomDialog(context),
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
           ),
         ),

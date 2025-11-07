@@ -5,14 +5,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../api/api_endpoints.dart';
 
-// Background message handler (must be top-level function)
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('📩 Background message: ${message.messageId}');
-  print('Title: ${message.notification?.title}');
-  print('Body: ${message.notification?.body}');
-}
-
 class FirebaseNotificationService {
   static final FirebaseNotificationService _instance =
       FirebaseNotificationService._internal();
@@ -54,10 +46,8 @@ class FirebaseNotificationService {
       // Initialize local notifications
       await _initializeLocalNotifications();
 
-      // Set background message handler
-      FirebaseMessaging.onBackgroundMessage(
-        _firebaseMessagingBackgroundHandler,
-      );
+      // Background handler is registered in main.dart
+      // No need to set it here to avoid duplicate registration
 
       // Get FCM token
       _fcmToken = await _firebaseMessaging.getToken();
@@ -93,7 +83,7 @@ class FirebaseNotificationService {
   /// Initialize local notifications
   Future<void> _initializeLocalNotifications() async {
     const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@drawable/ic_notification');
 
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(

@@ -51,7 +51,7 @@ class DateInputFormatter extends TextInputFormatter {
 
 class ReserverRendezVousPage extends StatefulWidget {
   final String? phoneNumber; // Optional phone number to pre-fill
-  
+
   const ReserverRendezVousPage({Key? key, this.phoneNumber}) : super(key: key);
 
   @override
@@ -90,7 +90,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
     if (widget.phoneNumber != null && widget.phoneNumber!.isNotEmpty) {
       // Remove country code if present to extract just the phone number
       String phoneNumber = widget.phoneNumber!;
-      
+
       // Check if phone starts with + (international format)
       if (phoneNumber.startsWith('+')) {
         // Try to match with known country codes
@@ -102,7 +102,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
           }
         }
       }
-      
+
       // Set the phone number (remove any spaces or special characters)
       _phoneController.text = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
     }
@@ -1002,13 +1002,49 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                                 final day = int.parse(parts[0]);
                                 final month = int.parse(parts[1]);
                                 final year = int.parse(parts[2]);
-                                final date = DateTime(year, month, day);
-                                setState(() {
-                                  _selectedDate = date;
-                                });
+
+                                // Validate day, month, and year ranges BEFORE creating DateTime
+                                if (month < 1 ||
+                                    month > 12 ||
+                                    day < 1 ||
+                                    day > 31 ||
+                                    year < 1900 ||
+                                    year > 2100) {
+                                  setState(() {
+                                    _selectedDate = null;
+                                  });
+                                  return;
+                                }
+
+                                // Create date and validate it matches input (catches invalid dates like 30/02)
+                                // Wrap in try-catch in case of extreme invalid values
+                                try {
+                                  final date = DateTime(year, month, day);
+                                  if (date.day != day ||
+                                      date.month != month ||
+                                      date.year != year) {
+                                    setState(() {
+                                      _selectedDate = null;
+                                    });
+                                    return;
+                                  }
+
+                                  setState(() {
+                                    _selectedDate = date;
+                                  });
+                                } catch (dateError) {
+                                  // DateTime constructor failed (extreme invalid values)
+                                  setState(() {
+                                    _selectedDate = null;
+                                  });
+                                  return;
+                                }
                               }
                             } catch (e) {
-                              // Invalid date format, ignore
+                              // Invalid date format or parsing error, ignore
+                              setState(() {
+                                _selectedDate = null;
+                              });
                             }
                           }
                         },
@@ -1024,31 +1060,61 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                                 final day = int.parse(parts[0]);
                                 final month = int.parse(parts[1]);
                                 final year = int.parse(parts[2]);
-                                final date = DateTime(year, month, day);
 
-                                // Backend constraint: must be within 24 hours from now
-                                final now = DateTime.now();
-                                final startOfToday = DateTime(
-                                  now.year,
-                                  now.month,
-                                  now.day,
-                                );
-                                final twentyFourHoursLater = now.add(
-                                  const Duration(hours: 24),
-                                );
-                                final endDate = DateTime(
-                                  twentyFourHoursLater.year,
-                                  twentyFourHoursLater.month,
-                                  twentyFourHoursLater.day,
-                                );
+                                // Validate month range
+                                if (month < 1 || month > 12) {
+                                  return 'Mois invalide (1-12)';
+                                }
 
-                                if (date.isBefore(startOfToday)) {
-                                  return 'La date ne peut pas être dans le passé';
+                                // Validate day range
+                                if (day < 1 || day > 31) {
+                                  return 'Jour invalide (1-31)';
                                 }
-                                if (date.isAfter(endDate)) {
-                                  return 'La date doit être dans les 24h';
+
+                                // Validate year range
+                                if (year < 1900 || year > 2100) {
+                                  return 'Année invalide';
                                 }
-                                return null;
+
+                                // Create date and validate it matches input
+                                // This catches invalid dates like 30/02/2024, 32/01/2024, etc.
+                                // Wrap in try-catch to handle extreme invalid values
+                                try {
+                                  final date = DateTime(year, month, day);
+                                  if (date.day != day ||
+                                      date.month != month ||
+                                      date.year != year) {
+                                    return 'Date invalide pour ce mois';
+                                  }
+
+                                  // Backend constraint: must be within 24 hours from now
+                                  final now = DateTime.now();
+                                  final today = DateTime(
+                                    now.year,
+                                    now.month,
+                                    now.day,
+                                  );
+                                  final twentyFourHoursLater = now.add(
+                                    const Duration(hours: 24),
+                                  );
+                                  final maxDate = DateTime(
+                                    twentyFourHoursLater.year,
+                                    twentyFourHoursLater.month,
+                                    twentyFourHoursLater.day,
+                                  );
+
+                                  // Date must be today or within 24 hours
+                                  if (date.isBefore(today)) {
+                                    return 'La date ne peut pas être dans le passé';
+                                  }
+                                  if (date.isAfter(maxDate)) {
+                                    return 'La date doit être dans les 24h';
+                                  }
+                                  return null;
+                                } catch (dateError) {
+                                  // DateTime constructor failed
+                                  return 'Date invalide';
+                                }
                               }
                             } catch (e) {
                               return 'Format invalide (jj/MM/AAAA)';
@@ -1081,7 +1147,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                           TextButton(
                             onPressed: () => _selectDate(context),
                             child: const Text(
-                              'OK',
+                              'Modifier',
                               style: TextStyle(
                                 color: Color(0xFF6366F1),
                                 fontSize: 14,
@@ -1231,7 +1297,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                           TextButton(
                             onPressed: () => _selectTime(context),
                             child: const Text(
-                              'OK',
+                              'Modifier',
                               style: TextStyle(
                                 color: Color(0xFF6366F1),
                                 fontSize: 14,
