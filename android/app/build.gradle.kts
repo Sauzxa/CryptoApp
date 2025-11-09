@@ -8,6 +8,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Load keystore properties
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = java.util.Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.example.cryptoimmobilierapp"
     compileSdk = flutter.compileSdkVersion
@@ -35,10 +42,19 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = file(keystoreProperties["storeFile"] as String)
+            storePassword = keystoreProperties["storePassword"] as String
+        }
+    }
+
     buildTypes {
         release {
-            // Add your own signing config for the release build.
-            signingConfig = signingConfigs.getByName("debug")
+            // Use proper release signing configuration
+            signingConfig = signingConfigs.getByName("release")
             
             // Enable ProGuard/R8 for code shrinking and obfuscation
             isMinifyEnabled = true
@@ -46,7 +62,7 @@ android {
             
             // ProGuard rules
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro"
             )
             

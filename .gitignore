@@ -51,3 +51,11 @@ ProductionWorkflow.md
 .env.example
 .env.local
 .env.*.local
+
+# Android signing keys (NEVER commit these!)
+android/key.properties
+android/upload-keystore.jks
+android/*.jks
+android/*.keystore
+**/*.jks
+**/*.keystore
