@@ -15,7 +15,4 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
-    
-    <!-- Notification color for Firebase -->
-    <color name="notification_color">#6366F1</color>
 </resources>
