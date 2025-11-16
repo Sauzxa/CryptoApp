@@ -663,8 +663,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     },
                   ),
                   _buildCard(
-                    title: 'Voir les\nrendez-vous',
-                    subtitle: 'Voir les rendez-vous de\nvos clients',
+                    title: 'Voir les\nvisites',
+                    subtitle: 'Voir les visites de\nvos clients',
                     color: const Color(0xFF7DD3FC),
                     icon: Icons.content_paste_outlined,
                     onTap: () {

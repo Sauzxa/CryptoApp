@@ -638,6 +638,93 @@ class ApiClient {
 
   // Reservation Methods
 
+  /// Create a new rendez-vous (without immediate assignment)
+  Future<ApiResponse<ReservationModel>> createRendezVous(
+    ReservationModel reservation,
+    String token,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'POST',
+        '${ApiEndpoints.reservations}/rendez-vous',
+        body: reservation.toJson(),
+        token: token,
+      );
+
+      if (response.success && response.data != null) {
+        final rendezVousData = response.data!['data']['reservation'];
+
+        if (rendezVousData != null) {
+          final createdRendezVous = ReservationModel.fromJson(rendezVousData);
+          return ApiResponse<ReservationModel>(
+            success: true,
+            data: createdRendezVous,
+            message:
+                response.data!['message'] ?? 'Rendez-vous créé avec succès',
+            statusCode: response.statusCode,
+          );
+        } else {
+          return ApiResponse<ReservationModel>(
+            success: false,
+            message: 'Données de rendez-vous manquantes',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        return ApiResponse<ReservationModel>(
+          success: false,
+          message:
+              response.message ??
+              'Erreur lors de la création du rendez-vous',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<ReservationModel>(
+        success: false,
+        message:
+            'Erreur lors de la création du rendez-vous: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Delete a rendez-vous (only if not assigned to agent terrain)
+  Future<ApiResponse<void>> deleteRendezVous(
+    String rendezVousId,
+    String token,
+  ) async {
+    try {
+      final response = await _makeRequest(
+        'DELETE',
+        '${ApiEndpoints.reservations}/rendez-vous/$rendezVousId',
+        token: token,
+      );
+
+      if (response.success) {
+        return ApiResponse<void>(
+          success: true,
+          message:
+              response.data?['message'] ?? 'Rendez-vous supprimé avec succès',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse<void>(
+          success: false,
+          message:
+              response.message ??
+              'Erreur lors de la suppression du rendez-vous',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<void>(
+        success: false,
+        message:
+            'Erreur lors de la suppression du rendez-vous: ${e.toString()}',
+      );
+    }
+  }
+
   /// Create a new reservation
   Future<ApiResponse<ReservationModel>> createReservation(
     ReservationModel reservation,

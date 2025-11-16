@@ -67,7 +67,10 @@ class _ReservationsPageState extends State<ReservationsPage> {
       if (response.success && response.data != null) {
         setState(() {
           _allReservations = response.data!;
-          _filteredReservations = response.data!;
+          // Filter to only show visites (not rendez-vous)
+          _filteredReservations = response.data!.where((reservation) {
+            return reservation.interactionType == 'visite';
+          }).toList();
           _isLoading = false;
         });
       } else {
@@ -86,10 +89,15 @@ class _ReservationsPageState extends State<ReservationsPage> {
 
   void _filterReservations(String query) {
     setState(() {
+      // First filter to only show visites (not rendez-vous)
+      final visitesOnly = _allReservations.where((reservation) {
+        return reservation.interactionType == 'visite';
+      }).toList();
+
       if (query.isEmpty) {
-        _filteredReservations = _allReservations;
+        _filteredReservations = visitesOnly;
       } else {
-        _filteredReservations = _allReservations.where((reservation) {
+        _filteredReservations = visitesOnly.where((reservation) {
           final nameLower = reservation.clientFullName.toLowerCase();
           final phoneLower = reservation.clientPhone.toLowerCase();
           final queryLower = query.toLowerCase();
@@ -168,7 +176,7 @@ class _ReservationsPageState extends State<ReservationsPage> {
                 onPressed: () => Navigator.pop(context),
               ),
               title: Text(
-                'Réservations',
+                'Visits',
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white
@@ -315,7 +323,7 @@ class _ReservationsPageState extends State<ReservationsPage> {
                         const SizedBox(height: 16),
                         Text(
                           _searchController.text.isEmpty
-                              ? 'Aucune réservation'
+                              ? 'Aucune Visite'
                               : 'Aucun résultat trouvé',
                           style: const TextStyle(
                             fontSize: 16,

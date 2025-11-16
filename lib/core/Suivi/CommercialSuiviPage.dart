@@ -239,7 +239,11 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildReservationList(_payeReservations, 'Terminé', Colors.green),
+                _buildReservationList(
+                  _payeReservations,
+                  'Terminé',
+                  Colors.green,
+                ),
                 _buildReservationList(
                   _annuleReservations,
                   'Annulé',
@@ -294,10 +298,107 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
     );
   }
 
+  Future<void> _deleteRendezVous(String rendezVousId) async {
+    try {
+      // Show confirmation dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Supprimer le rendez-vous',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Êtes-vous sûr de vouloir supprimer ce rendez-vous ?',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+
+      if (token == null) return;
+
+      // Show loading
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+          ),
+        );
+      }
+
+      // Call delete API
+      final response = await apiClient.deleteRendezVous(rendezVousId, token);
+
+      // Close loading
+      if (mounted) Navigator.pop(context);
+
+      if (response.success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Rendez-vous supprimé'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        // Reload data
+        _loadSuiviData();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Erreur de suppression'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading if open
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildReservationCard(
     ReservationModel reservation,
     Color accentColor,
   ) {
+    // Check if this is a rendez-vous that can be deleted
+    final canDelete =
+        reservation.interactionType == 'rendez_vous' &&
+        (reservation.isAssigned == false || reservation.isAssigned == null);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
@@ -307,7 +408,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with status
+            // Header with status and optional delete button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -332,16 +433,106 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                     ),
                   ),
                 ),
-                Text(
-                  DateFormat('dd/MM/yyyy HH:mm').format(reservation.reservedAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).textTheme.bodySmall?.color,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      DateFormat(
+                        'dd/MM/yyyy HH:mm',
+                      ).format(reservation.reservedAt),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      ),
+                    ),
+                    // 3-dot menu for rendez-vous: always show to allow commercial actions
+                    if (reservation.interactionType == 'rendez_vous') ...[
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.more_vert,
+                          size: 20,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        itemBuilder: (context) => [
+                          const PopupMenuItem<String>(
+                            value: 'en_cours',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule,
+                                  color: Colors.orange,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text('En Cours'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'paye',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text('Terminé'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'annulee',
+                            child: Row(
+                              children: [
+                                Icon(Icons.cancel, color: Colors.red, size: 20),
+                                SizedBox(width: 8),
+                                Text('Annulé'),
+                              ],
+                            ),
+                          ),
+                          if (canDelete)
+                            const PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Supprimer'),
+                                ],
+                              ),
+                            ),
+                        ],
+                        onSelected: (value) {
+                          if (value == 'delete' && reservation.id != null) {
+                            _deleteRendezVous(reservation.id!);
+                            return;
+                          }
+                          // Map menu value to backend action key
+                          if (value == 'en_cours' ||
+                              value == 'paye' ||
+                              value == 'annulee') {
+                            _updateCommercialAction(reservation, value);
+                          }
+                        },
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 12),
+
+            // NOTE: Rendez-vous assignment badge removed - they are NEVER assigned to agent terrain
+            // Only visites get assigned to terrain agents
 
             // Client info
             Row(
@@ -578,23 +769,25 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
               ),
             ],
 
-            // Message button
+            // Chat button - ONLY for visites (rendez-vous have no chat/terrain agent)
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _openChatRoom(reservation),
-                icon: const Icon(Icons.message, size: 18),
-                label: const Text('Ouvrir la conversation'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
+              child: reservation.interactionType == 'visite'
+                  ? ElevatedButton.icon(
+                      onPressed: () => _openChatRoom(reservation),
+                      icon: const Icon(Icons.message, size: 18),
+                      label: const Text('Ouvrir la conversation'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(), // No chat for rendez-vous
             ),
           ],
         ),
@@ -602,8 +795,151 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
     );
   }
 
+  Future<void> _updateCommercialAction(
+    ReservationModel reservation,
+    String action,
+  ) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+      if (token == null || reservation.id == null) return;
+
+      // For 'paye' or 'annulee', ask for a message
+      String? message;
+      if (action == 'paye' || action == 'annulee') {
+        message = await showDialog<String>(
+          context: context,
+          builder: (context) {
+            final controller = TextEditingController();
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(
+                action == 'paye'
+                    ? 'Marquer comme Terminé'
+                    : 'Marquer comme Annulé',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Message (requis)',
+                  hintText: 'Entrez un message...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, null),
+                  child: const Text('Annuler'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (controller.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Le message est requis'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context, controller.text.trim());
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: action == 'paye'
+                        ? Colors.green
+                        : Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Confirmer'),
+                ),
+              ],
+            );
+          },
+        );
+
+        if (message == null) return; // User cancelled
+      }
+
+      // Show loading
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+          ),
+        );
+      }
+
+      // Call backend to update commercial action
+      final response = await apiClient.updateCommercialAction(
+        reservation.id!,
+        action,
+        token,
+        message: message,
+      );
+
+      if (mounted) Navigator.pop(context);
+
+      if (response.success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Action mise à jour'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        _loadSuiviData();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'Erreur lors de la mise à jour',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _openChatRoom(ReservationModel reservation) async {
     try {
+      // Only visites can open chat (rendez_vous never have chat)
+      if (reservation.interactionType != 'visite') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'La conversation est disponible uniquement pour les visites',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final messagingProvider = Provider.of<MessagingProvider>(
         context,

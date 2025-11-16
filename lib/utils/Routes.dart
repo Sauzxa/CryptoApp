@@ -9,7 +9,7 @@ import 'package:CryptoApp/core/HomePage.dart';
 import 'package:CryptoApp/core/Messagerie.dart';
 import 'package:CryptoApp/core/GestionAppels.dart';
 import 'package:CryptoApp/core/Rendez-vous/ReserverRendezVous.dart';
-import 'package:CryptoApp/core/Rendez-vous/Reservations.dart';
+import 'package:CryptoApp/core/Rendez-vous/Visits.dart';
 import 'package:CryptoApp/core/AgentTerrain.dart';
 import 'package:CryptoApp/core/Profile/ProfileSettings.dart';
 import 'package:CryptoApp/core/Suivi/SuiviPage.dart';

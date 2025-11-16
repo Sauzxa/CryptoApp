@@ -17,13 +17,42 @@
 -keep class com.google.firebase.messaging.** { *; }
 -keep class com.google.firebase.iid.** { *; }
 -keep class com.google.firebase.installations.** { *; }
+-keep class com.google.firebase.datatransport.** { *; }
+-keep class com.google.firebase.components.** { *; }
 -keepclassmembers class com.google.firebase.messaging.RemoteMessage { *; }
 -keepclassmembers class com.google.firebase.messaging.FirebaseMessaging { *; }
 -keep class * extends com.google.firebase.messaging.FirebaseMessagingService { *; }
 
+# Firebase Notification Data Models
+-keepclassmembers class com.google.firebase.messaging.RemoteMessage$Notification { *; }
+-keep class com.google.firebase.messaging.RemoteMessage$Notification { *; }
+
+# Keep all Firebase service implementations
+-keep class * implements com.google.firebase.messaging.FirebaseMessagingService { *; }
+-keepclassmembers class * implements com.google.firebase.messaging.FirebaseMessagingService {
+    public *;
+}
+
+# Keep notification data and payload classes
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeInvisibleAnnotations
+-keepattributes RuntimeVisibleParameterAnnotations
+-keepattributes RuntimeInvisibleParameterAnnotations
+
+# Firebase Analytics (required for FCM)
+-keep class com.google.firebase.analytics.** { *; }
+-keep class com.google.android.gms.measurement.** { *; }
+
 # Flutter Local Notifications
 -keep class com.dexterous.** { *; }
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
 -dontwarn com.dexterous.**
+-keepclassmembers class com.dexterous.flutterlocalnotifications.** { *; }
+
+# AndroidX Core for notifications
+-keep class androidx.core.app.NotificationCompat { *; }
+-keep class androidx.core.app.NotificationCompat$* { *; }
+-keep class androidx.core.app.NotificationManagerCompat { *; }
 
 # Gson (used by Firebase)
 -keepattributes Signature
@@ -48,6 +77,14 @@
 
 # Keep custom Firebase Messaging Service
 -keep class com.example.cryptoimmobilierapp.MyFirebaseMessagingService { *; }
+-keep class com.example.cryptoimmobilierapp.MainActivity { *; }
+
+# Keep notification resources from being stripped
+-keepclassmembers class **.R$* {
+    public static <fields>;
+}
+-keep class **.R$drawable { *; }
+-keep class **.R$color { *; }
 
 # Preserve annotation for crash reporting
 -keepattributes *Annotation*

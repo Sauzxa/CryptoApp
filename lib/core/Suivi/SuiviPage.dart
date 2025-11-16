@@ -639,7 +639,7 @@ class _SuiviPageState extends State<SuiviPage>
               Column(
                 children: [
                   // Show Rejeter + Commencer ONLY when state is 'assigned'
-                  if (reservation.isAssigned) ...[
+                  if (reservation.isStateAssigned) ...[
                     // Rejeter Button
                     SizedBox(
                       width: double.infinity,

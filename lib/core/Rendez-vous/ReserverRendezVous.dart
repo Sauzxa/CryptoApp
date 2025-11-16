@@ -71,6 +71,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
   TimeOfDay? _selectedTime;
   String _selectedCountryCode = '+213'; // Algeria as default
   String _callDirection = 'client_to_agent'; // Default: client called agent
+  String _interactionType = 'visite'; // Default: visite
   bool _isSubmitting = false;
 
   // Country codes - Algeria first as default
@@ -120,15 +121,18 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    // Backend constraint: reservedAt must be within 24 hours from now
     final now = DateTime.now();
-    final twentyFourHoursLater = now.add(const Duration(hours: 24));
+
+    // Dynamic last date based on interaction type
+    final DateTime lastDate = _interactionType == 'visite'
+        ? now.add(const Duration(hours: 24)) // 24h limit for visite
+        : DateTime(2100); // No limit for rendez-vous
 
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? now,
       firstDate: now,
-      lastDate: twentyFourHoursLater, // Allow up to 24 hours from now
+      lastDate: lastDate,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -228,9 +232,8 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
           _selectedTime!.minute,
         );
 
-        // Validate that the datetime is within 24 hours from now
+        // Validate datetime
         final now = DateTime.now();
-        final twentyFourHoursLater = now.add(const Duration(hours: 24));
 
         if (reservationDateTime.isBefore(now)) {
           if (mounted) {
@@ -246,16 +249,20 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
           return;
         }
 
-        if (reservationDateTime.isAfter(twentyFourHoursLater)) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('La réservation doit être dans les 24 heures'),
-                backgroundColor: Colors.red,
-              ),
-            );
+        // Only check 24h limit for 'visite'
+        if (_interactionType == 'visite') {
+          final twentyFourHoursLater = now.add(const Duration(hours: 24));
+          if (reservationDateTime.isAfter(twentyFourHoursLater)) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('La réservation doit être dans les 24 heures'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+            return;
           }
-          return;
         }
 
         // Create reservation model
@@ -266,6 +273,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
           message: _messageController.text.trim(),
           reservedAt: reservationDateTime,
           callDirection: _callDirection, // Add call direction
+          interactionType: _interactionType, // Add interaction type
         );
 
         // Show loading indicator
@@ -281,8 +289,10 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
           );
         }
 
-        // Call API
-        final response = await apiClient.createReservation(reservation, token);
+        // Call appropriate API based on interaction type
+        final response = _interactionType == 'visite'
+            ? await apiClient.createReservation(reservation, token)
+            : await apiClient.createRendezVous(reservation, token);
 
         // Close loading dialog
         if (mounted) {
@@ -291,7 +301,14 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
 
         if (response.success) {
           if (mounted) {
-            // Show success dialog
+            // Show success dialog with different titles based on interaction type
+            final String dialogTitle = _interactionType == 'visite'
+                ? 'Visite enregistré !'
+                : 'Rendez-vous enregistré !';
+            final String defaultMessage = _interactionType == 'visite'
+                ? 'Visite créée et attribuée avec succès'
+                : 'Rendez-vous créé avec succès';
+
             await showDialog(
               context: context,
               barrierDismissible: false,
@@ -311,9 +328,9 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                     size: 48,
                   ),
                 ),
-                title: const Text(
-                  'Rendez-vous enregistré !',
-                  style: TextStyle(
+                title: Text(
+                  dialogTitle,
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
@@ -321,8 +338,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                   textAlign: TextAlign.center,
                 ),
                 content: Text(
-                  response.message ??
-                      'Votre rendez-vous a été enregistré avec succès.',
+                  response.message ?? defaultMessage,
                   style: const TextStyle(fontSize: 14, color: Colors.black54),
                   textAlign: TextAlign.center,
                 ),
@@ -569,7 +585,9 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Remplir ce formulaire pour ajouter ce rendez-vous\ndans les réservations (dans les 24 heures suivantes)',
+                  _interactionType == 'visite'
+                      ? 'Remplir ce formulaire pour ajouter ce rendez-vous\ndans les réservations (dans les 24 heures suivantes)'
+                      : 'Remplir ce formulaire pour planifier un rendez-vous',
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark
@@ -628,6 +646,73 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                         onChanged: (value) {
                           setState(() {
                             _callDirection = value!;
+                          });
+                        },
+                        activeColor: const Color(0xFF6366F1),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Interaction Type Section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.darkCardBackground.withOpacity(0.5)
+                        : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Type d\'interaction',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      RadioListTile<String>(
+                        title: const Text('Visite'),
+                        subtitle: const Text('Réservation dans les 24 heures'),
+                        value: 'visite',
+                        groupValue: _interactionType,
+                        onChanged: (value) {
+                          setState(() {
+                            _interactionType = value!;
+                            // Clear date/time when switching types
+                            _selectedDate = null;
+                            _selectedTime = null;
+                            _dateController.clear();
+                            _timeController.clear();
+                          });
+                        },
+                        activeColor: const Color(0xFF6366F1),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      RadioListTile<String>(
+                        title: const Text('Rendez-vous'),
+                        subtitle: const Text('Planifier un rendez-vous futur'),
+                        value: 'rendez_vous',
+                        groupValue: _interactionType,
+                        onChanged: (value) {
+                          setState(() {
+                            _interactionType = value!;
+                            // Clear date/time when switching types
+                            _selectedDate = null;
+                            _selectedTime = null;
+                            _dateController.clear();
+                            _timeController.clear();
                           });
                         },
                         activeColor: const Color(0xFF6366F1),
@@ -1103,13 +1188,18 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                                     twentyFourHoursLater.day,
                                   );
 
-                                  // Date must be today or within 24 hours
+                                  // Date must not be in the past
                                   if (date.isBefore(today)) {
                                     return 'La date ne peut pas être dans le passé';
                                   }
-                                  if (date.isAfter(maxDate)) {
-                                    return 'La date doit être dans les 24h';
+
+                                  // Only check 24h limit for 'visite'
+                                  if (_interactionType == 'visite') {
+                                    if (date.isAfter(maxDate)) {
+                                      return 'La date doit être dans les 24h';
+                                    }
                                   }
+
                                   return null;
                                 } catch (dateError) {
                                   // DateTime constructor failed

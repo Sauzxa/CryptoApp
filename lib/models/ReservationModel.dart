@@ -70,6 +70,8 @@ class ReservationModel {
   final String
   state; // 'pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'missed'
   final String? callDirection; // 'client_to_agent', 'agent_to_client'
+  final String? interactionType; // 'visite', 'rendez_vous'
+  final bool? isAssigned; // Tracks if rendez-vous is assigned to agent terrain
   final String? rapportMessage;
   final String? rapportState; // 'potentiel', 'non_potentiel'
   final String? commercialAction; // 'paye', 'en_cours', 'annulee'
@@ -95,6 +97,8 @@ class ReservationModel {
     required this.reservedAt,
     this.state = 'pending',
     this.callDirection,
+    this.interactionType,
+    this.isAssigned,
     this.rapportMessage,
     this.rapportState,
     this.commercialAction,
@@ -135,6 +139,8 @@ class ReservationModel {
       reservedAt: DateTime.parse(json['reservedAt']),
       state: json['state'] ?? 'pending',
       callDirection: json['callDirection'],
+      interactionType: json['interactionType'],
+      isAssigned: json['isAssigned'] ?? false,
       rapportMessage: json['rapportMessage'],
       rapportState: json['rapportState'],
       commercialAction: json['commercialAction'],
@@ -177,6 +183,9 @@ class ReservationModel {
     if (callDirection != null) {
       data['callDirection'] = callDirection;
     }
+    if (interactionType != null) {
+      data['interactionType'] = interactionType;
+    }
 
     return data;
   }
@@ -194,6 +203,8 @@ class ReservationModel {
     DateTime? reservedAt,
     String? state,
     String? callDirection,
+    String? interactionType,
+    bool? isAssigned,
     String? rapportMessage,
     String? rapportState,
     String? commercialAction,
@@ -219,6 +230,8 @@ class ReservationModel {
       reservedAt: reservedAt ?? this.reservedAt,
       state: state ?? this.state,
       callDirection: callDirection ?? this.callDirection,
+      interactionType: interactionType ?? this.interactionType,
+      isAssigned: isAssigned ?? this.isAssigned,
       rapportMessage: rapportMessage ?? this.rapportMessage,
       rapportState: rapportState ?? this.rapportState,
       commercialAction: commercialAction ?? this.commercialAction,
@@ -238,7 +251,7 @@ class ReservationModel {
 
   // State helpers
   bool get isPending => state == 'pending';
-  bool get isAssigned => state == 'assigned';
+  bool get isStateAssigned => state == 'assigned'; // Renamed to avoid conflict with isAssigned field
   bool get isInProgress => state == 'in_progress';
   bool get isCompleted => state == 'completed';
   bool get isCancelled => state == 'cancelled';
