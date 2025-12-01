@@ -3,6 +3,7 @@ import 'package:CryptoApp/utils/Routes.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import 'package:CryptoApp/providers/messaging_provider.dart';
 import 'package:CryptoApp/providers/notification_provider.dart';
+import 'package:CryptoApp/providers/rapport_provider.dart';
 import 'package:CryptoApp/providers/theme_provider.dart';
 import 'package:CryptoApp/core/HomePage.dart';
 import 'package:CryptoApp/services/firebase_notification_service.dart';
@@ -57,6 +58,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => MessagingProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => RapportProvider()),
       ],
       child: Consumer2<ThemeProvider, AuthProvider>(
         builder: (context, themeProvider, authProvider, _) {

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:CryptoApp/providers/auth_provider.dart';
 import 'package:CryptoApp/providers/messaging_provider.dart';
+import 'package:CryptoApp/providers/rapport_provider.dart';
 import 'package:CryptoApp/models/RoomModel.dart';
 import 'package:CryptoApp/models/ReservationModel.dart';
 import 'package:CryptoApp/api/api_endpoints.dart';
@@ -1314,14 +1315,24 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               _isSubmittingRapport = false;
             });
 
+            // Notify provider for UI update
+            final rapportProvider = Provider.of<RapportProvider>(
+              context,
+              listen: false,
+            );
+            rapportProvider.notifyRapportSubmitted(reservationId);
+
             SnackbarUtils.showSuccess(
               context,
               response.message ?? 'Rapport envoyé avec succès',
             );
-
-            // Navigate back to trigger reservation check
-            // Navigator.pop(context, true); // true = rapport was submitted
           }
+
+          // Reload messages after success (outside setState to avoid lifecycle issues)
+          if (mounted) {
+            await _reloadMessages();
+          }
+
           return true;
         } else {
           if (mounted) {
@@ -1343,11 +1354,21 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             _isSubmittingRapport = false;
           });
 
-          SnackbarUtils.showSuccess(context, 'Rapport envoyé avec succès');
+          // Notify provider for UI update
+          final rapportProvider = Provider.of<RapportProvider>(
+            context,
+            listen: false,
+          );
+          rapportProvider.notifyRapportSubmitted(reservationId);
 
-          // CRITICAL FIX: Do not navigate back here, let the bottom sheet handle it
-          // Navigator.pop(context, true);
+          SnackbarUtils.showSuccess(context, 'Rapport envoyé avec succès');
         }
+
+        // Reload messages after success (outside setState to avoid lifecycle issues)
+        if (mounted) {
+          await _reloadMessages();
+        }
+
         return true;
       }
     } catch (e) {
@@ -1862,84 +1883,87 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             children: [
               // Messages list
               Expanded(
-                child: Consumer<MessagingProvider>(
-                  builder: (context, messagingProvider, child) {
-                    if (_isLoadingMessages) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF6366F1),
-                        ),
-                      );
-                    }
-
-                    final messages = messagingProvider.getMessagesForRoom(
-                      widget.room.id,
-                    );
-
-                    // Auto-scroll to bottom when new messages arrive
-                    if (messages.length > _previousMessageCount) {
-                      _previousMessageCount = messages.length;
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted && _scrollController.hasClients) {
-                          _scrollController.animateTo(
-                            _scrollController.position.maxScrollExtent,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
+                child: Consumer2<MessagingProvider, RapportProvider>(
+                  builder:
+                      (context, messagingProvider, rapportProvider, child) {
+                        if (_isLoadingMessages) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF6366F1),
+                            ),
                           );
                         }
-                      });
-                    }
 
-                    if (messages.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1).withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.chat_bubble_outline,
-                                size: 64,
-                                color: Color(0xFF6366F1),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Aucun message',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Envoyez le premier message!',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                        final messages = messagingProvider.getMessagesForRoom(
+                          widget.room.id,
+                        );
 
-                    return ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final message = messages[index];
-                        final isMe = message.sender.id == currentUserId;
-                        return _buildMessageBubble(message, isMe);
+                        // Auto-scroll to bottom when new messages arrive
+                        if (messages.length > _previousMessageCount) {
+                          _previousMessageCount = messages.length;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted && _scrollController.hasClients) {
+                              _scrollController.animateTo(
+                                _scrollController.position.maxScrollExtent,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                          });
+                        }
+
+                        if (messages.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF6366F1,
+                                    ).withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.chat_bubble_outline,
+                                    size: 64,
+                                    color: Color(0xFF6366F1),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Aucun message',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Envoyez le premier message!',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final message = messages[index];
+                            final isMe = message.sender.id == currentUserId;
+                            return _buildMessageBubble(message, isMe);
+                          },
+                        );
                       },
-                    );
-                  },
                 ),
               ),
 
