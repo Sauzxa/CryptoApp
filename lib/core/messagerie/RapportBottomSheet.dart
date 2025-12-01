@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class RapportBottomSheet extends StatefulWidget {
-  final Function(String rapportState, String? rapportMessage) onSubmit;
+  final Future<bool> Function(String rapportState, String? rapportMessage)
+  onSubmit;
   final String clientName;
   final String clientPhone;
   final String agentCommercialName;
@@ -23,6 +24,7 @@ class RapportBottomSheet extends StatefulWidget {
 class _RapportBottomSheetState extends State<RapportBottomSheet> {
   String _rapportState = 'potentiel';
   final TextEditingController _messageController = TextEditingController();
+  bool _isSubmitting = false; // Track submission state
 
   @override
   void dispose() {
@@ -49,233 +51,295 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '📝 Soumettre le Rapport',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    color: Theme.of(context).iconTheme.color,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Client Information (Read-only)
+              _buildReadOnlyField('Client', widget.clientName, Icons.person),
+              const SizedBox(height: 12),
+              _buildReadOnlyField('Téléphone', widget.clientPhone, Icons.phone),
+              const SizedBox(height: 12),
+              _buildReadOnlyField(
+                'Agent Commercial',
+                widget.agentCommercialName,
+                Icons.business_center,
+              ),
+              const SizedBox(height: 12),
+              _buildReadOnlyField(
+                'Agent Terrain',
+                widget.agentTerrainName,
+                Icons.engineering,
+              ),
+
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 20),
+
+              // Rapport State Selection
               Text(
-                '📝 Soumettre le Rapport',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                'État du rapport:',
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).textTheme.titleMedium?.color,
                 ),
               ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
-                color: Theme.of(context).iconTheme.color,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Client Information (Read-only)
-          _buildReadOnlyField('Client', widget.clientName, Icons.person),
-          const SizedBox(height: 12),
-          _buildReadOnlyField('Téléphone', widget.clientPhone, Icons.phone),
-          const SizedBox(height: 12),
-          _buildReadOnlyField('Agent Commercial', widget.agentCommercialName, Icons.business_center),
-          const SizedBox(height: 12),
-          _buildReadOnlyField('Agent Terrain', widget.agentTerrainName, Icons.engineering),
-          
-          const SizedBox(height: 20),
-          const Divider(),
-          const SizedBox(height: 20),
-          
-          // Rapport State Selection
-          Text(
-            'État du rapport:',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.titleMedium?.color,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.grey.shade300,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              color: isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.grey.shade50,
-            ),
-            child: Column(
-              children: [
-                RadioListTile<String>(
-                  value: 'potentiel',
-                  groupValue: _rapportState,
-                  onChanged: (value) {
-                    setState(() {
-                      _rapportState = value!;
-                    });
-                  },
-                  title: const Row(
-                    children: [
-                      Icon(Icons.thumb_up, color: Colors.green, size: 20),
-                      SizedBox(width: 8),
-                      Text('Potentiel'),
-                    ],
+              const SizedBox(height: 12),
+
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.grey.shade300,
                   ),
-                  subtitle: const Text('Client intéressé, vente possible'),
-                ),
-                const Divider(height: 1),
-                RadioListTile<String>(
-                  value: 'non_potentiel',
-                  groupValue: _rapportState,
-                  onChanged: (value) {
-                    setState(() {
-                      _rapportState = value!;
-                    });
-                  },
-                  title: const Row(
-                    children: [
-                      Icon(Icons.thumb_down, color: Colors.red, size: 20),
-                      SizedBox(width: 8),
-                      Text('Non Potentiel'),
-                    ],
-                  ),
-                  subtitle: const Text('Client non intéressé'),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // Message Input (required for potentiel)
-          Text(
-            _rapportState == 'potentiel' 
-                ? 'Message du rapport: *'
-                : 'Message du rapport: (optionnel)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.titleMedium?.color,
-            ),
-          ),
-          const SizedBox(height: 8),
-          
-          TextField(
-            controller: _messageController,
-            maxLines: 4,
-            style: TextStyle(
-              color: Theme.of(context).textTheme.bodyLarge?.color,
-            ),
-            decoration: InputDecoration(
-              hintText: _rapportState == 'potentiel'
-                  ? 'Décrivez l\'intérêt du client... (requis)'
-                  : 'Raison du refus... (optionnel)',
-              hintStyle: TextStyle(
-                color: isDark
-                    ? Colors.white.withOpacity(0.5)
-                    : Colors.grey.shade400,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
+                  borderRadius: BorderRadius.circular(12),
                   color: isDark
-                      ? Colors.white.withOpacity(0.1)
-                      : Colors.grey.shade300,
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.grey.shade50,
                 ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: isDark
-                      ? Colors.white.withOpacity(0.1)
-                      : Colors.grey.shade300,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-              ),
-              filled: true,
-              fillColor: isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.grey.shade50,
-              contentPadding: const EdgeInsets.all(16),
-            ),
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(
-                      color: isDark
-                          ? Colors.white.withOpacity(0.3)
-                          : Colors.grey.shade400,
+                child: Column(
+                  children: [
+                    RadioListTile<String>(
+                      value: 'potentiel',
+                      groupValue: _rapportState,
+                      onChanged: (value) {
+                        setState(() {
+                          _rapportState = value!;
+                        });
+                      },
+                      title: const Row(
+                        children: [
+                          Icon(Icons.thumb_up, color: Colors.green, size: 20),
+                          SizedBox(width: 8),
+                          Text('Potentiel'),
+                        ],
+                      ),
+                      subtitle: const Text('Client intéressé, vente possible'),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    const Divider(height: 1),
+                    RadioListTile<String>(
+                      value: 'non_potentiel',
+                      groupValue: _rapportState,
+                      onChanged: (value) {
+                        setState(() {
+                          _rapportState = value!;
+                        });
+                      },
+                      title: const Row(
+                        children: [
+                          Icon(Icons.thumb_down, color: Colors.red, size: 20),
+                          SizedBox(width: 8),
+                          Text('Non Potentiel'),
+                        ],
+                      ),
+                      subtitle: const Text('Client non intéressé'),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Message Input (required for potentiel)
+              Text(
+                _rapportState == 'potentiel'
+                    ? 'Message du rapport: *'
+                    : 'Message du rapport: (optionnel)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).textTheme.titleMedium?.color,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              TextField(
+                controller: _messageController,
+                maxLines: 4,
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+                decoration: InputDecoration(
+                  hintText: _rapportState == 'potentiel'
+                      ? 'Décrivez l\'intérêt du client... (requis)'
+                      : 'Raison du refus... (optionnel)',
+                  hintStyle: TextStyle(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.5)
+                        : Colors.grey.shade400,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey.shade300,
                     ),
                   ),
-                  child: Text(
-                    'Annuler',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
                       color: isDark
-                          ? Colors.white.withOpacity(0.7)
-                          : Colors.black54,
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.grey.shade300,
                     ),
                   ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF6366F1),
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: isDark
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.all(16),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Validation: Message is always required
-                    if (_messageController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Le message est obligatoire'),
-                          backgroundColor: Colors.red,
+
+              const SizedBox(height: 20),
+
+              // Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.3)
+                              : Colors.grey.shade400,
                         ),
-                      );
-                      return;
-                    }
-                    
-                    widget.onSubmit(
-                      _rapportState,
-                      _messageController.text.trim(),
-                    );
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Envoyer',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Annuler',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? Colors.white.withOpacity(0.7)
+                              : Colors.black54,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting
+                          ? null // Disable button while submitting
+                          : () async {
+                              // Validation: Message is always required
+                              if (_messageController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Le message est obligatoire'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              // Set loading state
+                              setState(() {
+                                _isSubmitting = true;
+                              });
+
+                              try {
+                                // Call onSubmit and wait for result
+                                final success = await widget.onSubmit(
+                                  _rapportState,
+                                  _messageController.text.trim(),
+                                );
+
+                                // Only close if submission was successful
+                                if (success && mounted) {
+                                  Navigator.pop(context);
+                                } else if (mounted) {
+                                  // Show error if submission failed
+                                  setState(() {
+                                    _isSubmitting = false;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Échec de l\'envoi du rapport. Veuillez réessayer.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                // Handle errors
+                                if (mounted) {
+                                  setState(() {
+                                    _isSubmitting = false;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Erreur: ${e.toString()}'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Text(
+                              'Envoyer',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -289,14 +353,10 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.grey.shade100,
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.grey.shade300,
+          color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
         ),
       ),
       child: Row(

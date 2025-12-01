@@ -651,8 +651,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 childAspectRatio: 0.85,
                 children: [
                   _buildCard(
-                    title: 'Réserver un\nrendez-vous',
-                    subtitle: 'Prenez un rendez-vous\npour un client',
+                    title: 'Réserver un\nrendez-vous ou Visite',
+                    subtitle: 'Prenez rendez-vous\n ou Visite pour un client',
                     color: const Color(0xFF93C5FD),
                     icon: Icons.edit_calendar_outlined,
                     onTap: () {

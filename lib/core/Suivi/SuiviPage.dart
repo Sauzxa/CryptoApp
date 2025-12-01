@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -26,6 +27,10 @@ class _SuiviPageState extends State<SuiviPage>
   bool _isLoading = true;
   String? _errorMessage;
 
+  // Debouncing and request tracking
+  Timer? _debounceTimer;
+  int _loadingRequestId = 0;
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +42,7 @@ class _SuiviPageState extends State<SuiviPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _debounceTimer?.cancel();
     _removeSocketListeners();
     super.dispose();
   }
@@ -48,25 +54,25 @@ class _SuiviPageState extends State<SuiviPage>
     // Listen for agent becoming available again
     socket.on('agent:available_again', (data) {
       debugPrint('📥 Agent available again: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
     });
 
     // Listen for agent still unavailable
     socket.on('agent:still_unavailable', (data) {
       debugPrint('📥 Agent still unavailable: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
     });
 
     // Listen for reservation updates
     socket.on('reservation:updated', (data) {
       debugPrint('📥 Reservation updated: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
     });
 
     // Listen for new reservation assigned
     socket.on('reservation:assigned', (data) {
       debugPrint('📥 New reservation assigned: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -80,7 +86,7 @@ class _SuiviPageState extends State<SuiviPage>
     // NEW: Listen for reservation rejected
     socketService.onReservationRejected((data) {
       debugPrint('📥 Reservation rejected: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -94,13 +100,13 @@ class _SuiviPageState extends State<SuiviPage>
     // NEW: Listen for reservation reassigned
     socketService.onReservationReassigned((data) {
       debugPrint('📥 Reservation reassigned: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
     });
 
     // NEW: Listen for rapport submitted
     socketService.onRapportSubmitted((data) {
       debugPrint('📥 Rapport submitted: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
     });
 
     // NEW: Listen for availability toggle enabled
@@ -121,7 +127,7 @@ class _SuiviPageState extends State<SuiviPage>
     // NEW: Listen for commercial action
     socketService.onCommercialAction((data) {
       debugPrint('📥 Commercial action: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -135,7 +141,7 @@ class _SuiviPageState extends State<SuiviPage>
     // NEW: Listen for reservation rescheduled
     socketService.onReservationRescheduled((data) {
       debugPrint('📥 Reservation rescheduled: $data');
-      _loadReservations();
+      _debouncedLoadReservations();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -157,8 +163,21 @@ class _SuiviPageState extends State<SuiviPage>
     socket.off('reservation:assigned');
   }
 
+  void _debouncedLoadReservations() {
+    // Cancel any pending reload
+    _debounceTimer?.cancel();
+
+    // Schedule reload after 300ms of inactivity
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _loadReservations();
+    });
+  }
+
   Future<void> _loadReservations() async {
     if (!mounted) return;
+
+    // Increment request ID to track this specific request
+    final requestId = ++_loadingRequestId;
 
     setState(() {
       _isLoading = true;
@@ -170,7 +189,7 @@ class _SuiviPageState extends State<SuiviPage>
       final token = authProvider.token;
 
       if (token == null) {
-        if (mounted) {
+        if (mounted && requestId == _loadingRequestId) {
           setState(() {
             _errorMessage = 'Session expirée';
             _isLoading = false;
@@ -179,25 +198,30 @@ class _SuiviPageState extends State<SuiviPage>
         return;
       }
 
-      debugPrint('🔄 Loading reservations for agent terrain...');
+      debugPrint('🔄 Loading reservations (Request ID: $requestId)...');
       final response = await apiClient.getReservations(token);
       debugPrint(
         '📥 API Response - Success: ${response.success}, Data: ${response.data?.length ?? 0} reservations',
       );
 
+      // Only update UI if this is still the latest request
       if (response.success && response.data != null) {
         // Backend already filters by agentTerrainId for field agents
         // No need to filter again on frontend
-        if (mounted) {
+        if (mounted && requestId == _loadingRequestId) {
           setState(() {
             _reservations = response.data!;
             _isLoading = false;
           });
-          debugPrint('✅ Loaded ${_reservations.length} reservations');
+          debugPrint(
+            '✅ Loaded ${_reservations.length} reservations (Request ID: $requestId)',
+          );
+        } else {
+          debugPrint('⚠️ Discarding stale response (Request ID: $requestId)');
         }
       } else {
         debugPrint('❌ Failed to load reservations: ${response.message}');
-        if (mounted) {
+        if (mounted && requestId == _loadingRequestId) {
           setState(() {
             _errorMessage = response.message ?? 'Erreur de chargement';
             _isLoading = false;

@@ -551,7 +551,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 },
               ),
               title: Text(
-                'Rendez-vous',
+                'Rendez-vous ou Visite',
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white
@@ -574,7 +574,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
               children: [
                 // Title and subtitle
                 Text(
-                  'Formulaire de prendre\nun rendez-vous',
+                  'Formulaire de prendre\nun rendez-vous ou une visite',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -586,7 +586,7 @@ class _ReserverRendezVousPageState extends State<ReserverRendezVousPage> {
                 const SizedBox(height: 8),
                 Text(
                   _interactionType == 'visite'
-                      ? 'Remplir ce formulaire pour ajouter ce rendez-vous\ndans les réservations (dans les 24 heures suivantes)'
+                      ? 'Remplir ce formulaire pour ajouter cette Visite\ndans les Visites (dans les 24 heures suivantes)'
                       : 'Remplir ce formulaire pour planifier un rendez-vous',
                   style: TextStyle(
                     fontSize: 12,

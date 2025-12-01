@@ -22,6 +22,8 @@ import 'package:intl/intl.dart';
 import 'package:CryptoApp/utils/snackbar_utils.dart';
 import 'RapportBottomSheet.dart';
 import 'CommercialActionBottomSheet.dart';
+import 'package:uuid/uuid.dart';
+import 'package:CryptoApp/utils/socket_timeout_manager.dart';
 
 class MessageRoomPage extends StatefulWidget {
   final RoomModel room;
@@ -44,6 +46,9 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   bool _isRecording = false;
   bool _isLoadingMessages = true;
   bool _isSendingMessage = false;
+  bool _isSubmittingRapport = false; // Track rapport submission state
+  Timer? _rapportTimeoutTimer; // Track timeout timer for cleanup
+  String? _currentRapportAckEvent; // Track current ack event for cleanup
   String? _recordingPath;
   int _recordingDuration = 0;
   String? _currentlyPlayingMessageId;
@@ -1125,8 +1130,12 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
             clientPhone: reservation.clientPhone,
             agentCommercialName: reservation.agentCommercialName ?? 'N/A',
             agentTerrainName: reservation.agentTerrainName ?? 'N/A',
-            onSubmit: (rapportState, rapportMessage) {
-              _submitRapport(reservation.id!, rapportState, rapportMessage);
+            onSubmit: (rapportState, rapportMessage) async {
+              return await _submitRapport(
+                reservation.id!,
+                rapportState,
+                rapportMessage,
+              );
             },
           ),
         );
@@ -1138,51 +1147,124 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     }
   }
 
-  Future<void> _submitRapport(
+  Future<bool> _submitRapport(
     String reservationId,
     String rapportState,
     String? rapportMessage,
   ) async {
+    // Prevent duplicate submissions
+    if (_isSubmittingRapport) {
+      print('⚠️ Rapport submission already in progress');
+      return false;
+    }
+
     try {
+      if (!mounted) return false;
+
+      setState(() {
+        _isSubmittingRapport = true;
+      });
+
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
 
-      if (token == null) return;
+      if (token == null) {
+        if (mounted) {
+          setState(() {
+            _isSubmittingRapport = false;
+          });
+        }
+        return false;
+      }
 
       // Show loading
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Envoi du rapport...'),
-            duration: Duration(seconds: 1),
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text('Envoi du rapport...'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
           ),
         );
       }
 
-      // Send rapport as a message via socket (this creates the message in chat)
-      final socket = socketService.socket;
-      if (socket != null) {
-        print('📤 Sending rapport via socket');
-        print('📤 Room ID: ${widget.room.id}');
-        print('📤 Room type: ${widget.room.roomType}');
-        print('📤 Reservation ID: $reservationId');
-        print('📤 Rapport state: $rapportState');
-        print('📤 Rapport message: $rapportMessage');
+      // Map rapport state to result
+      String result;
+      switch (rapportState) {
+        case 'potentiel':
+          result = 'completed'; // Potentiel means client is interested
+          break;
+        case 'non_potentiel':
+          result = 'cancelled'; // Non potentiel means not interested
+          break;
+        default:
+          result = 'cancelled';
+      }
 
-        // Map rapport state to result
-        String result;
-        switch (rapportState) {
-          case 'potentiel':
-            result = 'completed'; // Potentiel means client is interested
-            break;
-          case 'non_potentiel':
-            result = 'cancelled'; // Non potentiel means not interested
-            break;
-          default:
-            result = 'cancelled';
+      print('📤 Submitting rapport:');
+      print('   - Reservation ID: $reservationId');
+      print('   - Rapport state: $rapportState');
+      print('   - Mapped result: $result');
+      print('   - Message: $rapportMessage');
+
+      // Generate unique idempotency key
+      final idempotencyKey = const Uuid().v4();
+      print('   - Idempotency Key: $idempotencyKey');
+
+      // Try socket first, with acknowledgment
+      final socket = socketService.socket;
+      bool socketSuccess = false;
+
+      if (socket != null && socket.connected) {
+        print('📤 Attempting socket submission...');
+
+        // Create a completer to wait for socket acknowledgment
+        final completer = Completer<bool>();
+
+        // Store event name for cleanup
+        _currentRapportAckEvent = 'rapport:submitted';
+
+        // Set up one-time listener for acknowledgment
+        void ackListener(dynamic data) {
+          print('✅ Socket ACK received: $data');
+          if (!completer.isCompleted) {
+            final success = data is Map && data['success'] == true;
+            completer.complete(success);
+            _rapportTimeoutTimer?.cancel();
+          }
         }
 
-        print('📤 Mapped result: $result');
+        // Listen for acknowledgment
+        socket.once(_currentRapportAckEvent!, ackListener);
+
+        // Get adaptive timeout
+        final timeoutManager = SocketTimeoutManager();
+        final adaptiveTimeout = timeoutManager.getTimeout();
+        final startTime = DateTime.now();
+
+        // Set adaptive timeout
+        _rapportTimeoutTimer = Timer(adaptiveTimeout, () {
+          if (!completer.isCompleted) {
+            print(
+              '⏱️ Socket acknowledgment timeout after ${adaptiveTimeout.inSeconds}s',
+            );
+            socket.off(_currentRapportAckEvent!, ackListener);
+            _currentRapportAckEvent = null;
+            completer.complete(false);
+          }
+        });
 
         // Send rapport message via socket
         socket.emit('reservation_room:send_message', {
@@ -1192,45 +1274,92 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           'result': result, // For reservation state
           'rapportState': rapportState, // Actual rapport state for display
           'reservationId': reservationId,
+          'idempotencyKey': idempotencyKey, // ✅ Idempotency key
         });
 
-        print('📤 Rapport sent via socket');
+        print('📤 Rapport sent via socket, waiting for acknowledgment...');
 
-        if (mounted) {
-          SnackbarUtils.showSuccess(context, 'Rapport envoyé avec succès');
+        // Wait for acknowledgment or timeout
+        socketSuccess = await completer.future;
+        print('📤 Socket submission result: $socketSuccess');
+
+        // Record response time for adaptive timeout
+        if (socketSuccess) {
+          final responseTime = DateTime.now()
+              .difference(startTime)
+              .inMilliseconds;
+          timeoutManager.recordResponseTime(responseTime);
+          print('✅ Socket response time: ${responseTime}ms');
+
+          _rapportTimeoutTimer?.cancel();
+          _currentRapportAckEvent = null;
         }
-      } else {
-        // Fallback to API if socket not available
+      }
+
+      // If socket failed or not available, use API fallback
+      if (!socketSuccess) {
+        print('📤 Using API fallback for rapport submission...');
+
         final response = await apiClient.submitRapport(
           reservationId,
           rapportState,
           rapportMessage,
           token,
+          idempotencyKey: idempotencyKey, // ✅ Use same key
         );
 
         if (response.success) {
           if (mounted) {
+            setState(() {
+              _isSubmittingRapport = false;
+            });
+
             SnackbarUtils.showSuccess(
               context,
               response.message ?? 'Rapport envoyé avec succès',
             );
 
             // Navigate back to trigger reservation check
-            Navigator.pop(context, true); // true = rapport was submitted
+            // Navigator.pop(context, true); // true = rapport was submitted
           }
+          return true;
         } else {
           if (mounted) {
+            setState(() {
+              _isSubmittingRapport = false;
+            });
+
             SnackbarUtils.showError(
               context,
               response.message ?? 'Erreur lors de l\'envoi',
             );
           }
+          return false;
         }
+      } else {
+        // Socket submission successful
+        if (mounted) {
+          setState(() {
+            _isSubmittingRapport = false;
+          });
+
+          SnackbarUtils.showSuccess(context, 'Rapport envoyé avec succès');
+
+          // CRITICAL FIX: Do not navigate back here, let the bottom sheet handle it
+          // Navigator.pop(context, true);
+        }
+        return true;
       }
     } catch (e) {
+      print('❌ Error submitting rapport: $e');
       if (mounted) {
+        setState(() {
+          _isSubmittingRapport = false;
+        });
+
         SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');
       }
+      return false;
     }
   }
 
@@ -1496,7 +1625,9 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
                   icon: const Icon(Icons.edit, size: 16),
                   label: const Text('Changer Etat de Suivi'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+                    backgroundColor: isDark
+                        ? Colors.grey.shade800
+                        : Colors.white,
                     foregroundColor: Colors.orange,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -1539,6 +1670,15 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   @override
   void dispose() {
+    // Cancel rapport timeout timer
+    _rapportTimeoutTimer?.cancel();
+
+    // Clean up socket listeners for rapport
+    final socket = socketService.socket;
+    if (socket != null && _currentRapportAckEvent != null) {
+      socket.off(_currentRapportAckEvent!);
+    }
+
     // Remove socket listeners and leave room
     _removeSocketListeners();
 
@@ -1577,219 +1717,236 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUserId = authProvider.currentUser?.id ?? '';
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(56),
-        child: AppBar(
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? Colors.black.withOpacity(0.9)
-              : Colors.white.withOpacity(0.95),
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white
-                  : const Color(0xFF6366F1),
+    return WillPopScope(
+      onWillPop: () async {
+        // Prevent navigation if rapport is being submitted
+        if (_isSubmittingRapport) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Veuillez patienter, envoi du rapport en cours...'),
+              duration: Duration(seconds: 2),
             ),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.room.name,
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF6366F1),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '${widget.room.members.length} membres',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white70
-                      : const Color(0xFF6366F1).withOpacity(0.7),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            PopupMenuButton<String>(
+          );
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: AppBar(
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black.withOpacity(0.9)
+                : Colors.white.withOpacity(0.95),
+            elevation: 0,
+            leading: IconButton(
               icon: Icon(
-                Icons.more_vert,
+                Icons.arrow_back,
                 color: Theme.of(context).brightness == Brightness.dark
                     ? Colors.white
                     : const Color(0xFF6366F1),
               ),
-              onSelected: (value) {
-                if (value == 'leave') {
-                  _showLeaveRoomDialog();
-                } else if (value == 'info') {
-                  _showRoomInfo();
-                } else if (value == 'delete') {
-                  _showDeleteRoomDialog();
-                } else if (value == 'add_members') {
-                  _showAddMembersDialog();
-                }
-              },
-              itemBuilder: (context) {
-                final authProvider = Provider.of<AuthProvider>(
-                  context,
-                  listen: false,
-                );
-                final isCreator =
-                    widget.room.creator.id == authProvider.currentUser?.id;
-
-                return [
-                  const PopupMenuItem(
-                    value: 'info',
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline),
-                        SizedBox(width: 8),
-                        Text('Informations'),
-                      ],
-                    ),
-                  ),
-                  if (isCreator) ...[
-                    const PopupMenuItem(
-                      value: 'add_members',
-                      child: Row(
-                        children: [
-                          Icon(Icons.person_add, color: Color(0xFF6366F1)),
-                          SizedBox(width: 8),
-                          Text(
-                            'Ajouter des membres',
-                            style: TextStyle(color: Color(0xFF6366F1)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text(
-                            'Supprimer la conversation',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const PopupMenuItem(
-                    value: 'leave',
-                    child: Row(
-                      children: [
-                        Icon(Icons.exit_to_app, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Quitter', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ];
-              },
+              onPressed: _isSubmittingRapport
+                  ? null // Disable back button during submission
+                  : () => Navigator.pop(context),
             ),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Messages list
-            Expanded(
-              child: Consumer<MessagingProvider>(
-                builder: (context, messagingProvider, child) {
-                  if (_isLoadingMessages) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF6366F1),
-                      ),
-                    );
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.room.name,
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : const Color(0xFF6366F1),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '${widget.room.members.length} membres',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white70
+                        : const Color(0xFF6366F1).withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF6366F1),
+                ),
+                onSelected: (value) {
+                  if (value == 'leave') {
+                    _showLeaveRoomDialog();
+                  } else if (value == 'info') {
+                    _showRoomInfo();
+                  } else if (value == 'delete') {
+                    _showDeleteRoomDialog();
+                  } else if (value == 'add_members') {
+                    _showAddMembersDialog();
                   }
-
-                  final messages = messagingProvider.getMessagesForRoom(
-                    widget.room.id,
+                },
+                itemBuilder: (context) {
+                  final authProvider = Provider.of<AuthProvider>(
+                    context,
+                    listen: false,
                   );
+                  final isCreator =
+                      widget.room.creator.id == authProvider.currentUser?.id;
 
-                  // Auto-scroll to bottom when new messages arrive
-                  if (messages.length > _previousMessageCount) {
-                    _previousMessageCount = messages.length;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted && _scrollController.hasClients) {
-                        _scrollController.animateTo(
-                          _scrollController.position.maxScrollExtent,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOut,
-                        );
-                      }
-                    });
-                  }
-
-                  if (messages.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                  return [
+                    const PopupMenuItem(
+                      value: 'info',
+                      child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF6366F1).withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.chat_bubble_outline,
-                              size: 64,
-                              color: Color(0xFF6366F1),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Aucun message',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Envoyez le premier message!',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
+                          Icon(Icons.info_outline),
+                          SizedBox(width: 8),
+                          Text('Informations'),
                         ],
                       ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final message = messages[index];
-                      final isMe = message.sender.id == currentUserId;
-                      return _buildMessageBubble(message, isMe);
-                    },
-                  );
+                    ),
+                    if (isCreator) ...[
+                      const PopupMenuItem(
+                        value: 'add_members',
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_add, color: Color(0xFF6366F1)),
+                            SizedBox(width: 8),
+                            Text(
+                              'Ajouter des membres',
+                              style: TextStyle(color: Color(0xFF6366F1)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text(
+                              'Supprimer la conversation',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const PopupMenuItem(
+                      value: 'leave',
+                      child: Row(
+                        children: [
+                          Icon(Icons.exit_to_app, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Quitter', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ];
                 },
               ),
-            ),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Messages list
+              Expanded(
+                child: Consumer<MessagingProvider>(
+                  builder: (context, messagingProvider, child) {
+                    if (_isLoadingMessages) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF6366F1),
+                        ),
+                      );
+                    }
 
-            // Recording UI or Message input
-            if (_isRecording) _buildRecordingUI() else _buildMessageInput(),
-          ],
+                    final messages = messagingProvider.getMessagesForRoom(
+                      widget.room.id,
+                    );
+
+                    // Auto-scroll to bottom when new messages arrive
+                    if (messages.length > _previousMessageCount) {
+                      _previousMessageCount = messages.length;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && _scrollController.hasClients) {
+                          _scrollController.animateTo(
+                            _scrollController.position.maxScrollExtent,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                          );
+                        }
+                      });
+                    }
+
+                    if (messages.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.chat_bubble_outline,
+                                size: 64,
+                                color: Color(0xFF6366F1),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Aucun message',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Envoyez le premier message!',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: messages.length,
+                      itemBuilder: (context, index) {
+                        final message = messages[index];
+                        final isMe = message.sender.id == currentUserId;
+                        return _buildMessageBubble(message, isMe);
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Recording UI or Message input
+              if (_isRecording) _buildRecordingUI() else _buildMessageInput(),
+            ],
+          ),
         ),
       ),
     );
@@ -2327,7 +2484,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
       // If action is 'paye' or 'annulee' without newReservedAt, use PUT (update from en_cours)
       // Otherwise use POST (initial action after rapport)
       final ApiResponse<ReservationModel> response;
-      
+
       if ((action == 'paye' || action == 'annulee') && newReservedAt == null) {
         // Use PUT endpoint to update from en_cours to paye/annulee
         response = await apiClient.updateCommercialAction(
@@ -2440,10 +2597,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
               ),
               ListTile(
                 leading: Icon(Icons.check_circle, color: Colors.green),
-                title: Text(
-                  'Terminé',
-                  style: TextStyle(color: textColor),
-                ),
+                title: Text('Terminé', style: TextStyle(color: textColor)),
                 onTap: () {
                   Navigator.pop(context);
                   _executeCommercialAction(

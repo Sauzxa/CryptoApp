@@ -674,16 +674,14 @@ class ApiClient {
         return ApiResponse<ReservationModel>(
           success: false,
           message:
-              response.message ??
-              'Erreur lors de la création du rendez-vous',
+              response.message ?? 'Erreur lors de la création du rendez-vous',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
       return ApiResponse<ReservationModel>(
         success: false,
-        message:
-            'Erreur lors de la création du rendez-vous: ${e.toString()}',
+        message: 'Erreur lors de la création du rendez-vous: ${e.toString()}',
       );
     }
   }
@@ -924,13 +922,15 @@ class ApiClient {
     String reservationId,
     String rapportState, // 'potentiel' or 'non_potentiel'
     String? rapportMessage,
-    String token,
-  ) async {
+    String token, {
+    String? idempotencyKey,
+  }) async {
     try {
       final body = {
         'rapportState': rapportState,
         if (rapportMessage != null && rapportMessage.isNotEmpty)
           'rapportMessage': rapportMessage,
+        if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
       };
 
       final response = await _makeRequest(
