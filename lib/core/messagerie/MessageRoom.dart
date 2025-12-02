@@ -210,6 +210,11 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
           SnackbarUtils.showError(context, 'Erreur: ${data['message']}');
         }
       });
+
+      // NOTE: No need to listen to 'reservation:commercial_action' here
+      // The backend emits 'reservation_room:message' when creating the action message,
+      // which already triggers _reloadMessages() above. Listening to both would cause
+      // duplicate reloads and potential race conditions.
     } else {
       // Normal room listeners
       socket.on('new_message', (data) {

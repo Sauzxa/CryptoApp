@@ -22,7 +22,8 @@ class UserModel {
   final String role; // 'admin', 'commercial', 'field'
   final String?
   availability; // 'available', 'not_available' - only for field agents
-  final DateTime? dateAvailable; // Timestamp when agent became available/unavailable
+  final DateTime?
+  dateAvailable; // Timestamp when agent became available/unavailable
   final ProfilePhoto? profilePhoto;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -43,13 +44,19 @@ class UserModel {
 
   // Factory constructor for creating UserModel from JSON (API response)
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // For field agents, default to 'available' if not specified
+    String? availability = json['availability'];
+    if (json['role'] == 'field' && availability == null) {
+      availability = 'available';
+    }
+
     return UserModel(
       id: json['_id'] ?? json['id'],
       name: json['name'],
       email: json['email'],
       phone: json['phone'],
       role: json['role'],
-      availability: json['availability'],
+      availability: availability,
       dateAvailable: json['dateAvailable'] != null
           ? DateTime.parse(json['dateAvailable'])
           : null,

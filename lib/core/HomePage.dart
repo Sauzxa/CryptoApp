@@ -50,6 +50,45 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _setupSocketListeners() {
+    // Listen for reservation assigned event - update availability to unavailable
+    socketService.onReservationAssigned((data) {
+      debugPrint('📥 HomePage: Reservation assigned: $data');
+
+      if (!mounted) return;
+
+      // Refresh user data to update availability status in UI
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      debugPrint(
+        '🔄 HomePage: Refreshing user data to get updated availability...',
+      );
+
+      authProvider.refreshUser().then((success) {
+        if (success) {
+          final newAvailability =
+              authProvider.currentUser?.availability ?? 'unknown';
+          debugPrint(
+            '✅ HomePage: User data refreshed - New availability: $newAvailability',
+          );
+
+          // Show notification about new assignment
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Nouvelle visite assignée - Vous êtes maintenant indisponible',
+                ),
+                backgroundColor: Colors.blue,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } else {
+          debugPrint('❌ HomePage: Failed to refresh user data');
+        }
+      });
+    });
+
     // Listen for availability toggle enabled event from backend
     // This is triggered when agent submits rapport and becomes available again
     socketService.onAvailabilityToggleEnabled((data) {
@@ -496,14 +535,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               color: AppColors.statisticsPurple,
                             ),
                             title: const Text(
-                              'Suivi',
+                              'Suivre mes visites',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             subtitle: const Text(
-                              'Mes rendez-vous assignés',
+                              'Mes Visites assignés',
                               style: TextStyle(fontSize: 13),
                             ),
                             onTap: () {

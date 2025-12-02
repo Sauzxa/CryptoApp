@@ -17,6 +17,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private const val TAG = "FCMService"
         private const val CHANNEL_ID = "reservation_notifications"
         private const val CHANNEL_NAME = "Reservation Notifications"
+        private const val NOTIFICATION_GROUP = "com.example.cryptoimmobilierapp.NOTIFICATIONS"
     }
 
     override fun onNewToken(token: String) {
@@ -64,6 +65,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // Create notification channel (required for Android 8.0+)
         createNotificationChannel()
         
+        // Generate a stable notification ID based on type and reservation ID
+        // This prevents duplicate notifications for the same event
+        val type = data["type"] ?: "default"
+        val reservationId = data["reservationId"] ?: ""
+        val notificationId = if (reservationId.isNotEmpty()) {
+            // Use reservation ID hash for reservation-related notifications
+            (type + reservationId).hashCode()
+        } else {
+            // Use type hash for other notifications
+            type.hashCode()
+        }
+        
         // Create intent for notification tap
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -80,14 +93,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
         
+        // Use notificationId as requestCode to update the same PendingIntent
         val pendingIntent = PendingIntent.getActivity(
             this,
-            System.currentTimeMillis().toInt(),
+            notificationId,
             intent,
             pendingIntentFlags
         )
         
-        // Build notification
+        // Build notification with grouping
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
@@ -97,13 +111,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setContentIntent(pendingIntent)
             .setColor(resources.getColor(R.color.notification_color, null))
             .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setGroup(NOTIFICATION_GROUP)
+            .setWhen(System.currentTimeMillis())
+            .setShowWhen(true)
         
         // Show notification
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val notificationId = System.currentTimeMillis().toInt()
         notificationManager.notify(notificationId, notificationBuilder.build())
         
-        Log.d(TAG, "Notification sent: $title")
+        Log.d(TAG, "Notification sent with ID $notificationId: $title (type: $type, reservationId: $reservationId)")
     }
 
     private fun createNotificationChannel() {

@@ -201,13 +201,14 @@ class FirebaseNotificationService {
   /// Handle foreground messages
   void _handleForegroundMessage(RemoteMessage message) {
     print('📩 Foreground message: ${message.notification?.title}');
-
-    // Show local notification
-    _showLocalNotification(
-      title: message.notification?.title ?? 'Notification',
-      body: message.notification?.body ?? '',
-      payload: json.encode(message.data),
+    print(
+      '📱 Firebase handles notification display (not showing local notification)',
     );
+
+    // NOTE: We don't show local notification here because:
+    // 1. Android native service (MyFirebaseMessagingService) handles notification display
+    // 2. This prevents duplicate notifications
+    // 3. Firebase automatically shows notifications even in foreground on Android
   }
 
   /// Show local notification
@@ -216,6 +217,33 @@ class FirebaseNotificationService {
     required String body,
     String? payload,
   }) async {
+    // Generate a stable notification ID to prevent duplicates
+    int notificationId = 0;
+
+    if (payload != null) {
+      try {
+        final data = json.decode(payload);
+        final type = data['type'] ?? 'default';
+        final reservationId = data['reservationId'] ?? '';
+
+        // Use consistent ID based on type and reservationId
+        if (reservationId.isNotEmpty()) {
+          notificationId = ('$type$reservationId').hashCode.abs();
+        } else {
+          notificationId = type.hashCode.abs();
+        }
+      } catch (e) {
+        // Fallback to title hash if payload parsing fails
+        notificationId = title.hashCode.abs();
+      }
+    } else {
+      // Use title hash as fallback
+      notificationId = title.hashCode.abs();
+    }
+
+    // Keep ID within a reasonable range
+    notificationId = notificationId % 100000;
+
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
           'reservation_notifications',
@@ -224,6 +252,7 @@ class FirebaseNotificationService {
           priority: Priority.high,
           playSound: true,
           enableVibration: true,
+          groupKey: 'com.example.cryptoimmobilierapp.NOTIFICATIONS',
         );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -237,8 +266,10 @@ class FirebaseNotificationService {
       iOS: iosDetails,
     );
 
+    print('📱 Showing notification with ID: $notificationId');
+
     await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      notificationId,
       title,
       body,
       notificationDetails,

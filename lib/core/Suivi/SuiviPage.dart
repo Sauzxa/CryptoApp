@@ -72,6 +72,13 @@ class _SuiviPageState extends State<SuiviPage>
     // Listen for new reservation assigned
     socket.on('reservation:assigned', (data) {
       debugPrint('📥 New reservation assigned: $data');
+
+      // Refresh user data to get updated availability status
+      if (mounted) {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        authProvider.refreshUser();
+      }
+
       _debouncedLoadReservations();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
