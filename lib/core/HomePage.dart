@@ -170,9 +170,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Show loading dialog and get the context
     if (!mounted) return;
 
-    // Use a flag to track if we should close the dialog
-    bool dialogShown = true;
-
+    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -191,29 +189,54 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         listen: false,
       );
 
-      // Perform logout with messaging cleanup
-      await authProvider.logout(messagingProvider: messagingProvider);
+      print('📍 Starting logout process...');
 
-      // Close the loading dialog FIRST
-      if (mounted && dialogShown) {
-        Navigator.of(context, rootNavigator: false).pop();
-        dialogShown = false;
+      // Perform logout with messaging cleanup with timeout
+      await authProvider
+          .logout(messagingProvider: messagingProvider)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('⚠️ Logout timed out, but continuing with navigation');
+            },
+          );
+
+      print('✅ Logout completed');
+
+      // Close the loading dialog using root navigator
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        print('✅ Loading dialog closed');
       }
 
-      // Small delay to ensure dialog is closed
-      await Future.delayed(const Duration(milliseconds: 200));
+      // Small delay to ensure dialog is fully closed
+      await Future.delayed(const Duration(milliseconds: 300));
 
       // Navigate to welcome screen and clear navigation stack
       if (mounted) {
+        print('📍 Navigating to welcome screen...');
         Navigator.of(
           context,
         ).pushNamedAndRemoveUntil(AppRoutes.welcome, (route) => false);
+        print('✅ Navigation completed');
       }
     } catch (e) {
+      print('❌ Logout error: $e');
+
       // Close loading dialog if still open
-      if (mounted && dialogShown) {
-        Navigator.of(context, rootNavigator: false).pop();
-        dialogShown = false;
+      if (mounted) {
+        try {
+          Navigator.of(context, rootNavigator: true).pop();
+          print('✅ Dialog closed after error');
+        } catch (navError) {
+          print('⚠️ Could not pop dialog: $navError');
+          // If pop fails, try to navigate anyway
+          if (mounted) {
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil(AppRoutes.welcome, (route) => false);
+          }
+        }
       }
 
       // Show error
@@ -432,14 +455,26 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   'not_available',
                               builder: (context, availability, child) => Switch(
                                 value: availability == 'available',
-                                onChanged: (value) {
+                                onChanged: (value) async {
                                   final newAvailability = value
                                       ? 'available'
                                       : 'not_available';
-                                  // No await - Selector handles UI update automatically
-                                  authProvider.updateAvailability(
-                                    newAvailability,
-                                  );
+
+                                  final success = await authProvider
+                                      .updateAvailability(newAvailability);
+
+                                  if (!success && mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          authProvider.errorMessage ??
+                                              'Impossible de changer la disponibilité',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        duration: const Duration(seconds: 4),
+                                      ),
+                                    );
+                                  }
                                 },
                                 activeColor: const Color(0xFF059669),
                               ),

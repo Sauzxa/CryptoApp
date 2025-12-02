@@ -23,8 +23,6 @@ import 'package:intl/intl.dart';
 import 'package:CryptoApp/utils/snackbar_utils.dart';
 import 'RapportBottomSheet.dart';
 import 'CommercialActionBottomSheet.dart';
-import 'package:uuid/uuid.dart';
-import 'package:CryptoApp/utils/socket_timeout_manager.dart';
 
 class MessageRoomPage extends StatefulWidget {
   final RoomModel room;
@@ -47,9 +45,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   bool _isRecording = false;
   bool _isLoadingMessages = true;
   bool _isSendingMessage = false;
-  bool _isSubmittingRapport = false; // Track rapport submission state
-  Timer? _rapportTimeoutTimer; // Track timeout timer for cleanup
-  String? _currentRapportAckEvent; // Track current ack event for cleanup
+  bool _isSubmittingRapport = false;
   String? _recordingPath;
   int _recordingDuration = 0;
   String? _currentlyPlayingMessageId;
@@ -153,9 +149,15 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     final socket = socketService.socket;
     if (socket == null || widget.room.id.isEmpty) return;
 
-    print('🔌 Joining socket room: ${widget.room.id}');
+    print('🔌 ========================================');
+    print('🔌 JOINING SOCKET ROOM');
+    print('🔌 Room ID: ${widget.room.id}');
     print('🔌 Room type: ${widget.room.roomType}');
     print('🔌 Reservation ID: ${widget.room.reservationId}');
+    print('🔌 Agent Commercial ID: ${widget.room.agentCommercialId}');
+    print('🔌 Agent Terrain ID: ${widget.room.agentTerrainId}');
+    print('🔌 Socket Connected: ${socket.connected}');
+    print('🔌 ========================================');
 
     // Check if this is a reservation room
     if (widget.room.roomType == 'reservation' &&
@@ -184,6 +186,19 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     if (isReservationRoom) {
       // Reservation room specific listeners
       socket.on('reservation_room:message', (data) {
+        print('📩 Received reservation_room:message event');
+        print('   🔑 Data: $data');
+        _reloadMessages();
+      });
+
+      // CRITICAL: Listen for message_sent so the sender sees their own rapport
+      socket.on('message_sent', (data) {
+        print('📩 Received message_sent event (sender\'s own message)');
+        print('   🔑 Data: $data');
+        if (data is Map) {
+          print('   🔑 Message type: ${data['type']}');
+          print('   🔑 Message room: ${data['roomId'] ?? data['room']}');
+        }
         _reloadMessages();
       });
 
@@ -225,6 +240,7 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
     if (isReservationRoom) {
       socket.off('reservation_room:message');
+      socket.off('message_sent'); // Remove this listener too
       socket.off('reservation_room:joined');
       socket.off('reservation_room:error');
 
@@ -247,6 +263,8 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
   }
 
   Future<void> _reloadMessages() async {
+    if (!mounted) return;
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final messagingProvider = Provider.of<MessagingProvider>(
       context,
@@ -255,12 +273,36 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
     final token = authProvider.token;
     if (token != null) {
+      print('🔄 RELOADING MESSAGES:');
+      print('   🔑 Current Room ID: ${widget.room.id}');
+      print('   🔑 Reservation ID: ${widget.room.reservationId}');
+
+      // Fetch latest messages from server
       await messagingProvider.fetchRoomMessages(
         token: token,
         roomId: widget.room.id,
       );
 
-      messagingProvider.getMessagesForRoom(widget.room.id);
+      final messages = messagingProvider.getMessagesForRoom(widget.room.id);
+      print('   ✅ Fetched ${messages.length} messages');
+
+      // Debug: Print message types
+      if (messages.isNotEmpty) {
+        print('   📋 Message types: ${messages.map((m) => m.type).join(', ')}');
+        final rapportMessages = messages
+            .where((m) => m.type == 'rapport')
+            .toList();
+        print('   📋 Rapport messages count: ${rapportMessages.length}');
+      }
+
+      // Force UI update by triggering rebuild
+      if (mounted) {
+        setState(() {
+          // This ensures the UI reflects the new messages
+        });
+      }
+
+      print('   ✅ UI updated');
     }
   }
 
@@ -1154,230 +1196,64 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
     String? rapportMessage,
   ) async {
     // Prevent duplicate submissions
-    if (_isSubmittingRapport) {
-      print('⚠️ Rapport submission already in progress');
-      return false;
-    }
+    if (_isSubmittingRapport) return false;
+
+    if (!mounted) return false;
+
+    setState(() => _isSubmittingRapport = true);
 
     try {
-      if (!mounted) return false;
-
-      setState(() {
-        _isSubmittingRapport = true;
-      });
-
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
 
       if (token == null) {
-        if (mounted) {
-          setState(() {
-            _isSubmittingRapport = false;
-          });
-        }
+        if (mounted) setState(() => _isSubmittingRapport = false);
         return false;
       }
 
-      // Show loading
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Text('Envoi du rapport...'),
-              ],
-            ),
-            duration: Duration(seconds: 2),
-          ),
+      print(
+        '📤 Submitting rapport: $rapportState for reservation: $reservationId',
+      );
+
+      // Submit via API - Let backend handle everything
+      final response = await apiClient.submitRapport(
+        reservationId,
+        rapportState,
+        rapportMessage,
+        token,
+      );
+
+      if (mounted) setState(() => _isSubmittingRapport = false);
+
+      if (response.success) {
+        // Notify provider
+        final rapportProvider = Provider.of<RapportProvider>(
+          context,
+          listen: false,
         );
-      }
+        rapportProvider.notifyRapportSubmitted(reservationId);
 
-      // Map rapport state to result
-      String result;
-      switch (rapportState) {
-        case 'potentiel':
-          result = 'completed'; // Potentiel means client is interested
-          break;
-        case 'non_potentiel':
-          result = 'cancelled'; // Non potentiel means not interested
-          break;
-        default:
-          result = 'cancelled';
-      }
-
-      print('📤 Submitting rapport:');
-      print('   - Reservation ID: $reservationId');
-      print('   - Rapport state: $rapportState');
-      print('   - Mapped result: $result');
-      print('   - Message: $rapportMessage');
-
-      // Generate unique idempotency key
-      final idempotencyKey = const Uuid().v4();
-      print('   - Idempotency Key: $idempotencyKey');
-
-      // Try socket first, with acknowledgment
-      final socket = socketService.socket;
-      bool socketSuccess = false;
-
-      if (socket != null && socket.connected) {
-        print('📤 Attempting socket submission...');
-
-        // Create a completer to wait for socket acknowledgment
-        final completer = Completer<bool>();
-
-        // Store event name for cleanup
-        _currentRapportAckEvent = 'rapport:submitted';
-
-        // Set up one-time listener for acknowledgment
-        void ackListener(dynamic data) {
-          print('✅ Socket ACK received: $data');
-          if (!completer.isCompleted) {
-            final success = data is Map && data['success'] == true;
-            completer.complete(success);
-            _rapportTimeoutTimer?.cancel();
-          }
-        }
-
-        // Listen for acknowledgment
-        socket.once(_currentRapportAckEvent!, ackListener);
-
-        // Get adaptive timeout
-        final timeoutManager = SocketTimeoutManager();
-        final adaptiveTimeout = timeoutManager.getTimeout();
-        final startTime = DateTime.now();
-
-        // Set adaptive timeout
-        _rapportTimeoutTimer = Timer(adaptiveTimeout, () {
-          if (!completer.isCompleted) {
-            print(
-              '⏱️ Socket acknowledgment timeout after ${adaptiveTimeout.inSeconds}s',
-            );
-            socket.off(_currentRapportAckEvent!, ackListener);
-            _currentRapportAckEvent = null;
-            completer.complete(false);
-          }
-        });
-
-        // Send rapport message via socket
-        socket.emit('reservation_room:send_message', {
-          'roomId': widget.room.id,
-          'type': 'rapport',
-          'text': rapportMessage ?? 'Rapport soumis',
-          'result': result, // For reservation state
-          'rapportState': rapportState, // Actual rapport state for display
-          'reservationId': reservationId,
-          'idempotencyKey': idempotencyKey, // ✅ Idempotency key
-        });
-
-        print('📤 Rapport sent via socket, waiting for acknowledgment...');
-
-        // Wait for acknowledgment or timeout
-        socketSuccess = await completer.future;
-        print('📤 Socket submission result: $socketSuccess');
-
-        // Record response time for adaptive timeout
-        if (socketSuccess) {
-          final responseTime = DateTime.now()
-              .difference(startTime)
-              .inMilliseconds;
-          timeoutManager.recordResponseTime(responseTime);
-          print('✅ Socket response time: ${responseTime}ms');
-
-          _rapportTimeoutTimer?.cancel();
-          _currentRapportAckEvent = null;
-        }
-      }
-
-      // If socket failed or not available, use API fallback
-      if (!socketSuccess) {
-        print('📤 Using API fallback for rapport submission...');
-
-        final response = await apiClient.submitRapport(
-          reservationId,
-          rapportState,
-          rapportMessage,
-          token,
-          idempotencyKey: idempotencyKey, // ✅ Use same key
-        );
-
-        if (response.success) {
-          if (mounted) {
-            setState(() {
-              _isSubmittingRapport = false;
-            });
-
-            // Notify provider for UI update
-            final rapportProvider = Provider.of<RapportProvider>(
-              context,
-              listen: false,
-            );
-            rapportProvider.notifyRapportSubmitted(reservationId);
-
-            SnackbarUtils.showSuccess(
-              context,
-              response.message ?? 'Rapport envoyé avec succès',
-            );
-          }
-
-          // Reload messages after success (outside setState to avoid lifecycle issues)
-          if (mounted) {
-            await _reloadMessages();
-          }
-
-          return true;
-        } else {
-          if (mounted) {
-            setState(() {
-              _isSubmittingRapport = false;
-            });
-
-            SnackbarUtils.showError(
-              context,
-              response.message ?? 'Erreur lors de l\'envoi',
-            );
-          }
-          return false;
-        }
-      } else {
-        // Socket submission successful
         if (mounted) {
-          setState(() {
-            _isSubmittingRapport = false;
-          });
-
-          // Notify provider for UI update
-          final rapportProvider = Provider.of<RapportProvider>(
-            context,
-            listen: false,
-          );
-          rapportProvider.notifyRapportSubmitted(reservationId);
-
           SnackbarUtils.showSuccess(context, 'Rapport envoyé avec succès');
-        }
 
-        // Reload messages after success (outside setState to avoid lifecycle issues)
-        if (mounted) {
+          // Reload messages to show the rapport
           await _reloadMessages();
         }
 
         return true;
+      } else {
+        if (mounted) {
+          SnackbarUtils.showError(
+            context,
+            response.message ?? 'Erreur lors de l\'envoi',
+          );
+        }
+        return false;
       }
     } catch (e) {
       print('❌ Error submitting rapport: $e');
       if (mounted) {
-        setState(() {
-          _isSubmittingRapport = false;
-        });
-
+        setState(() => _isSubmittingRapport = false);
         SnackbarUtils.showError(context, 'Erreur: ${e.toString()}');
       }
       return false;
@@ -1691,15 +1567,6 @@ class _MessageRoomPageState extends State<MessageRoomPage> {
 
   @override
   void dispose() {
-    // Cancel rapport timeout timer
-    _rapportTimeoutTimer?.cancel();
-
-    // Clean up socket listeners for rapport
-    final socket = socketService.socket;
-    if (socket != null && _currentRapportAckEvent != null) {
-      socket.off(_currentRapportAckEvent!);
-    }
-
     // Remove socket listeners and leave room
     _removeSocketListeners();
 

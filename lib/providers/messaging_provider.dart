@@ -40,32 +40,51 @@ class MessagingProvider with ChangeNotifier {
 
   /// Clear all messaging data (call on logout)
   void clearMessagingData() {
-    debugPrint('🧹 MessagingProvider: Clearing all messaging data...');
+    try {
+      debugPrint('🧹 MessagingProvider: Clearing all messaging data...');
 
-    // Clear all state
-    _rooms = [];
-    _roomMessages = {};
-    _typingUsers = {};
-    _isLoading = false;
-    _errorMessage = null;
-    _currentRoomId = null;
+      // Clear all state
+      _rooms = [];
+      _roomMessages = {};
+      _typingUsers = {};
+      _isLoading = false;
+      _errorMessage = null;
+      _currentRoomId = null;
 
-    // Remove all socket listeners
-    if (_socketService.socket != null) {
-      final socket = _socketService.socket!;
-      socket.off('message:new');
-      socket.off('message:seen-update');
-      socket.off('room:updated');
-      socket.off('room:new');
-      socket.off('room:typing-update');
-      socket.off('room:member-left');
-      socket.off('new_message');
-      socket.off('message_sent');
-      debugPrint('✅ MessagingProvider: All socket listeners removed');
+      // Remove all socket listeners
+      if (_socketService.socket != null) {
+        try {
+          final socket = _socketService.socket!;
+          socket.off('message:new');
+          socket.off('message:seen-update');
+          socket.off('room:updated');
+          socket.off('room:new');
+          socket.off('room:typing-update');
+          socket.off('room:member-left');
+          socket.off('new_message');
+          socket.off('message_sent');
+          socket.off('reservation_room:message');
+          debugPrint('✅ MessagingProvider: All socket listeners removed');
+        } catch (e) {
+          debugPrint(
+            '⚠️ MessagingProvider: Error removing socket listeners: $e',
+          );
+        }
+      }
+
+      notifyListeners();
+      debugPrint('✅ MessagingProvider: Data cleared successfully');
+    } catch (e) {
+      debugPrint('❌ MessagingProvider: Error clearing data: $e');
+      // Force clear state anyway
+      _rooms = [];
+      _roomMessages = {};
+      _typingUsers = {};
+      _isLoading = false;
+      _errorMessage = null;
+      _currentRoomId = null;
+      notifyListeners();
     }
-
-    notifyListeners();
-    debugPrint('✅ MessagingProvider: Data cleared successfully');
   }
 
   /// Initialize messaging system with Socket.IO event listeners
