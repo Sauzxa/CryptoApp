@@ -50,43 +50,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _setupSocketListeners() {
-    // Listen for reservation assigned event - update availability to unavailable
+    // Listen for reservation assigned event - show notification only
+    // NOTE: availability update is handled by agent:status_changed in AuthProvider
     socketService.onReservationAssigned((data) {
       debugPrint('📥 HomePage: Reservation assigned: $data');
 
       if (!mounted) return;
 
-      // Refresh user data to update availability status in UI
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      debugPrint(
-        '🔄 HomePage: Refreshing user data to get updated availability...',
+      // Show notification about new assignment
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Nouvelle visite assignée - Vous êtes maintenant indisponible',
+          ),
+          backgroundColor: Colors.blue,
+          duration: const Duration(seconds: 3),
+        ),
       );
-
-      authProvider.refreshUser().then((success) {
-        if (success) {
-          final newAvailability =
-              authProvider.currentUser?.availability ?? 'unknown';
-          debugPrint(
-            '✅ HomePage: User data refreshed - New availability: $newAvailability',
-          );
-
-          // Show notification about new assignment
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Nouvelle visite assignée - Vous êtes maintenant indisponible',
-                ),
-                backgroundColor: Colors.blue,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-        } else {
-          debugPrint('❌ HomePage: Failed to refresh user data');
-        }
-      });
     });
 
     // Listen for availability toggle enabled event from backend
@@ -488,25 +468,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 ),
                               ),
                             ),
-                            trailing: Selector<AuthProvider, String?>(
-                              selector: (context, auth) =>
-                                  auth.currentUser?.availability ??
-                                  'not_available',
-                              builder: (context, availability, child) => Switch(
-                                value: availability == 'available',
+                            trailing: Consumer<AuthProvider>(
+                              builder: (context, auth, child) => Switch(
+                                value:
+                                    auth.currentUser?.availability ==
+                                    'available',
                                 onChanged: (value) async {
                                   final newAvailability = value
                                       ? 'available'
                                       : 'not_available';
 
-                                  final success = await authProvider
-                                      .updateAvailability(newAvailability);
+                                  // Capture messenger BEFORE async gap
+                                  final messenger = ScaffoldMessenger.of(
+                                    context,
+                                  );
+
+                                  final success = await auth.updateAvailability(
+                                    newAvailability,
+                                  );
 
                                   if (!success && mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    messenger.showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          authProvider.errorMessage ??
+                                          auth.errorMessage ??
                                               'Impossible de changer la disponibilité',
                                         ),
                                         backgroundColor: Colors.red,

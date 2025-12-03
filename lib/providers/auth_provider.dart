@@ -355,7 +355,9 @@ class AuthProvider with ChangeNotifier {
     final previousAvailability = _currentUser!.availability;
 
     try {
-      debugPrint('AuthProvider: Optimistically updating availability to $availability...');
+      debugPrint(
+        'AuthProvider: Optimistically updating availability to $availability...',
+      );
 
       // OPTIMISTIC UPDATE: Update local state immediately
       _currentUser = _currentUser?.copyWith(availability: availability);
@@ -377,13 +379,19 @@ class AuthProvider with ChangeNotifier {
         // Emit socket event to notify other clients
         _socketService.emitStatusChange(availability);
 
-        debugPrint('AuthProvider: Availability updated successfully (confirmed by server)');
+        debugPrint(
+          'AuthProvider: Availability updated successfully (confirmed by server)',
+        );
         notifyListeners();
         return true;
       } else {
         // API failed - ROLLBACK to previous state
-        debugPrint('AuthProvider: Update failed - rolling back to $previousAvailability');
-        _currentUser = _currentUser?.copyWith(availability: previousAvailability);
+        debugPrint(
+          'AuthProvider: Update failed - rolling back to $previousAvailability',
+        );
+        _currentUser = _currentUser?.copyWith(
+          availability: previousAvailability,
+        );
         _authService.updateUserData(_currentUser!);
         _errorMessage = response.message ?? 'Erreur lors de la mise à jour';
         notifyListeners(); // Selector rebuilds Switch back to previous state
@@ -391,7 +399,9 @@ class AuthProvider with ChangeNotifier {
       }
     } catch (e) {
       // Exception - ROLLBACK to previous state
-      debugPrint('AuthProvider: Update error - rolling back to $previousAvailability');
+      debugPrint(
+        'AuthProvider: Update error - rolling back to $previousAvailability',
+      );
       _currentUser = _currentUser?.copyWith(availability: previousAvailability);
       _authService.updateUserData(_currentUser!);
       _errorMessage = 'Erreur: ${e.toString()}';

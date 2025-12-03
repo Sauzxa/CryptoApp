@@ -73,8 +73,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             // Use reservation ID hash for reservation-related notifications
             (type + reservationId).hashCode()
         } else {
-            // Use type hash for other notifications
-            type.hashCode()
+            // Use type + timestamp for unique notifications
+            (type + System.currentTimeMillis()).hashCode()
+        }
+        
+        // Select channel based on notification type
+        val channelId = when (type) {
+            "agent_available", "agent_available_again", "availability_reminder" -> "agent_availability"
+            "message_received" -> "messages"
+            "suivi_reminder" -> "reminders"
+            else -> CHANNEL_ID // reservation_notifications
         }
         
         // Create intent for notification tap
@@ -102,7 +110,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         )
         
         // Build notification with grouping
-        val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
@@ -119,7 +127,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notificationBuilder.build())
         
-        Log.d(TAG, "Notification sent with ID $notificationId: $title (type: $type, reservationId: $reservationId)")
+        Log.d(TAG, "Notification sent with ID $notificationId: $title (type: $type, channel: $channelId)")
     }
 
     private fun createNotificationChannel() {

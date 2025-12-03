@@ -54,109 +54,104 @@ class _SuiviPageState extends State<SuiviPage>
     // Listen for agent becoming available again
     socket.on('agent:available_again', (data) {
       debugPrint('📥 Agent available again: $data');
+      if (!mounted) return;
       _debouncedLoadReservations();
     });
 
     // Listen for agent still unavailable
     socket.on('agent:still_unavailable', (data) {
       debugPrint('📥 Agent still unavailable: $data');
+      if (!mounted) return;
       _debouncedLoadReservations();
     });
 
     // Listen for reservation updates
     socket.on('reservation:updated', (data) {
       debugPrint('📥 Reservation updated: $data');
+      if (!mounted) return;
       _debouncedLoadReservations();
     });
 
     // Listen for new reservation assigned
+    // NOTE: availability update is handled by agent:status_changed in AuthProvider
     socket.on('reservation:assigned', (data) {
       debugPrint('📥 New reservation assigned: $data');
-
-      // Refresh user data to get updated availability status
-      if (mounted) {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        authProvider.refreshUser();
-      }
+      if (!mounted) return;
 
       _debouncedLoadReservations();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? 'Nouveau rendez-vous assigné'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(data['message'] ?? 'Nouveau rendez-vous assigné'),
+          backgroundColor: Colors.blue,
+        ),
+      );
     });
 
     // NEW: Listen for reservation rejected
     socketService.onReservationRejected((data) {
       debugPrint('📥 Reservation rejected: $data');
+      if (!mounted) return;
       _debouncedLoadReservations();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? 'Réservation rejetée'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(data['message'] ?? 'Réservation rejetée'),
+          backgroundColor: Colors.orange,
+        ),
+      );
     });
 
     // NEW: Listen for reservation reassigned
     socketService.onReservationReassigned((data) {
       debugPrint('📥 Reservation reassigned: $data');
+      if (!mounted) return;
       _debouncedLoadReservations();
     });
 
     // NEW: Listen for rapport submitted
     socketService.onRapportSubmitted((data) {
       debugPrint('📥 Rapport submitted: $data');
+      if (!mounted) return;
       _debouncedLoadReservations();
     });
 
     // NEW: Listen for availability toggle enabled
     socketService.onAvailabilityToggleEnabled((data) {
       debugPrint('📥 Availability toggle enabled: $data');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              data['message'] ?? 'Vous pouvez modifier votre disponibilité',
-            ),
-            backgroundColor: Colors.green,
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            data['message'] ?? 'Vous pouvez modifier votre disponibilité',
           ),
-        );
-      }
+          backgroundColor: Colors.green,
+        ),
+      );
     });
 
     // NEW: Listen for commercial action
     socketService.onCommercialAction((data) {
       debugPrint('📥 Commercial action: $data');
+      if (!mounted) return;
       _debouncedLoadReservations();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? 'Action commerciale effectuée'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(data['message'] ?? 'Action commerciale effectuée'),
+          backgroundColor: Colors.blue,
+        ),
+      );
     });
 
     // NEW: Listen for reservation rescheduled
     socketService.onReservationRescheduled((data) {
       debugPrint('📥 Reservation rescheduled: $data');
+      if (!mounted) return;
       _debouncedLoadReservations();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? 'Rendez-vous reprogrammé'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(data['message'] ?? 'Rendez-vous reprogrammé'),
+          backgroundColor: Colors.blue,
+        ),
+      );
     });
   }
 

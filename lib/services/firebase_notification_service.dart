@@ -307,6 +307,7 @@ class FirebaseNotificationService {
         case 'reservation_reminder':
         case 'reservation_rapport_received':
         case 'reservation_state_changed':
+        case 'rapport_submitted':
           final reservationId = data['reservationId'];
           if (reservationId != null) {
             onNotificationTap!('/reservation-details', {'id': reservationId});
