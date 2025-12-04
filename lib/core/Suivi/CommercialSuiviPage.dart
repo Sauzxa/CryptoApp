@@ -531,6 +531,51 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
             ),
             const SizedBox(height: 12),
 
+            // Rendez-vous indicator
+            if (reservation.interactionType == 'rendez_vous') ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.purple.shade900.withOpacity(0.5)
+                      : Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.purple.shade400.withOpacity(0.5)
+                        : Colors.purple.shade200,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 14,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.purple.shade200
+                          : Colors.purple.shade700,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Rendez-vous',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.purple.shade200
+                            : Colors.purple.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
             // NOTE: Rendez-vous assignment badge removed - they are NEVER assigned to agent terrain
             // Only visites get assigned to terrain agents
 
@@ -1021,15 +1066,21 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
   Widget _buildCalendarView() {
     return Column(
       children: [
-        // Month header
+        // Month header - reduced padding
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           color: const Color(0xFF6366F1),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left, color: Colors.white),
+                icon: const Icon(
+                  Icons.chevron_left,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 onPressed: () {
                   setState(() {
                     _focusedDay = DateTime(
@@ -1044,12 +1095,18 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                 DateFormat('MMMM yyyy', 'fr').format(_focusedDay),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.chevron_right, color: Colors.white),
+                icon: const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 onPressed: () {
                   setState(() {
                     _focusedDay = DateTime(
@@ -1064,10 +1121,11 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
           ),
         ),
 
-        // Simple calendar grid
+        // Simple calendar grid - reduced padding
         Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Day headers
               Row(
@@ -1080,6 +1138,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                             day,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
+                              fontSize: 12,
                               color:
                                   Theme.of(context).brightness ==
                                       Brightness.dark
@@ -1092,7 +1151,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
                     )
                     .toList(),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
 
               // Calendar days grid
               _buildCalendarGrid(),
@@ -1100,7 +1159,9 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
           ),
         ),
 
-        const Divider(),
+        const Divider(height: 1),
+
+        // Reservations section - Expanded with ListView inside
         Expanded(
           child: _selectedDay == null
               ? Center(
@@ -1158,7 +1219,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
             });
           },
           child: Container(
-            margin: const EdgeInsets.all(2),
+            margin: const EdgeInsets.all(1),
             decoration: BoxDecoration(
               color: isSelected
                   ? const Color(0xFF6366F1)
@@ -1174,6 +1235,7 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
               child: Text(
                 '$day',
                 style: TextStyle(
+                  fontSize: 12,
                   color: isSelected
                       ? Colors.white
                       : Theme.of(context).brightness == Brightness.dark
@@ -1193,6 +1255,9 @@ class _CommercialSuiviPageState extends State<CommercialSuiviPage>
     return GridView.count(
       crossAxisCount: 7,
       shrinkWrap: true,
+      childAspectRatio: 1.2,
+      mainAxisSpacing: 2,
+      crossAxisSpacing: 2,
       physics: const NeverScrollableScrollPhysics(),
       children: dayWidgets,
     );

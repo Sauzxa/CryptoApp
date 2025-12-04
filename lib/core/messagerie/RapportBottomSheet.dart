@@ -25,6 +25,7 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
   String _rapportState = 'potentiel';
   final TextEditingController _messageController = TextEditingController();
   bool _isSubmitting = false; // Track submission state
+  String? _messageError; // Track validation error
 
   @override
   void dispose() {
@@ -131,7 +132,7 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
                           Text('Potentiel'),
                         ],
                       ),
-                      subtitle: const Text('Client intéressé, vente possible'),
+                      subtitle: const Text('Client intéressé'),
                     ),
                     const Divider(height: 1),
                     RadioListTile<String>(
@@ -173,6 +174,14 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
               TextField(
                 controller: _messageController,
                 maxLines: 4,
+                onChanged: (value) {
+                  // Clear error when user starts typing
+                  if (_messageError != null && value.trim().isNotEmpty) {
+                    setState(() {
+                      _messageError = null;
+                    });
+                  }
+                },
                 style: TextStyle(
                   color: Theme.of(context).textTheme.bodyLarge?.color,
                 ),
@@ -185,6 +194,12 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
                         ? Colors.white.withOpacity(0.5)
                         : Colors.grey.shade400,
                   ),
+                  errorText: _messageError,
+                  errorStyle: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
@@ -196,17 +211,29 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.grey.shade300,
+                      color: _messageError != null
+                          ? Colors.red
+                          : (isDark
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.grey.shade300),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF6366F1),
+                    borderSide: BorderSide(
+                      color: _messageError != null
+                          ? Colors.red
+                          : const Color(0xFF6366F1),
                       width: 2,
                     ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
                   ),
                   filled: true,
                   fillColor: isDark
@@ -255,17 +282,15 @@ class _RapportBottomSheetState extends State<RapportBottomSheet> {
                           : () async {
                               // Validation: Message is always required
                               if (_messageController.text.trim().isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Le message est obligatoire'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
+                                setState(() {
+                                  _messageError = 'Le message est obligatoire';
+                                });
                                 return;
                               }
 
-                              // Set loading state
+                              // Clear any previous error
                               setState(() {
+                                _messageError = null;
                                 _isSubmitting = true;
                               });
 
